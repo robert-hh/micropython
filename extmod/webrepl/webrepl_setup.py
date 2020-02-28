@@ -59,7 +59,7 @@ def change_daemon(action):
                 if patt in l:
                     found = True
                     if action and l.startswith("#"):
-                        l = l[1:]
+                        l = l[1:].strip()
                     elif not action and not l.startswith("#"):
                         l = "#" + l
             new_f.write(l)
