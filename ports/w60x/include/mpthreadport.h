@@ -32,9 +32,10 @@
 
 #define MPY_FTPS_PRIO               32
 #define MPY_TASK_PRIO               33
-#define MPY_TASK_SIZE               4096
+#define MPY_STACK_SIZE              (16 * 1024)
+#define MPY_STACK_LEN               (MPY_STACK_SIZE / sizeof(OS_STK))
 
-extern OS_STK mpy_task_stk[MPY_TASK_SIZE];
+extern OS_STK mpy_task_stk[MPY_STACK_LEN];
 
 typedef struct _mp_thread_mutex_t {
     tls_os_mutex_t *sem;
