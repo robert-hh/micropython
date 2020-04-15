@@ -39,6 +39,9 @@
 
 #if MICROPY_PY_THREAD
 
+#define MP_THREAD_MIN_STACK_SIZE                        (2 * 1024)
+#define MP_THREAD_DEFAULT_STACK_SIZE                    (MP_THREAD_MIN_STACK_SIZE + 2048)
+
 // this structure forms a linked list, one node per active thread
 typedef struct _thread_t {
     xTaskHandle id;        // system id of thread
@@ -143,14 +146,14 @@ void mp_thread_create(void *(*entry)(void *), void *arg, size_t *stack_size) {
     ext_thread_entry = entry;
 
     if (*stack_size == 0) {
-        *stack_size = 4096; // default stack size
-    } else if (*stack_size < 2048) {
-        *stack_size = 2048; // minimum stack size
+        *stack_size = MP_THREAD_DEFAULT_STACK_SIZE; // default stack size
+    } else if (*stack_size < MP_THREAD_MIN_STACK_SIZE) {
+        *stack_size = MP_THREAD_MIN_STACK_SIZE; // minimum stack size
     }
 
     // allocate TCB, stack and linked-list node (must be outside thread_mutex lock)
     //StaticTask_t *tcb = m_new(StaticTask_t, 1);
-    OS_STK *stack = m_new(OS_STK, *stack_size / sizeof(OS_STK));
+    OS_STK *stack = m_new(OS_STK, *stack_size / sizeof(OS_STK)); // OK to get that from the heap?
     thread_t *th = m_new_obj(thread_t);
 
     mp_thread_mutex_lock(&thread_mutex, 1);
@@ -161,8 +164,8 @@ void mp_thread_create(void *(*entry)(void *), void *arg, size_t *stack_size) {
     u8 err = tls_os_task_create(&id, "MPY_Thread",
                                 freertos_entry,
                                 (void *)arg,
-                                (void *)stack,          /* 任务栈的起始地址 */
-                                *stack_size, /* 任务栈的大小     */
+                                (void *)stack, // Bottom of the stack  任务栈的起始地址 
+                                *stack_size, // Size of the stack in bytes 任务栈的大小
                                 MPY_TASK_PRIO + (thread_cnt + 2),
                                 0);
     if (id == NULL) {
