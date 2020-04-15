@@ -209,10 +209,10 @@ LIB_SRC_C += \
 endif
 
 ifeq ($(MICROPY_USE_LITTLEFS), 1)
+CFLAGS += -DLFS2_NO_DEBUG
 LIB_SRC_C += \
 	lib/littlefs/lfs2.c \
 	lib/littlefs/lfs2_util.c
-CFLAGS += LFS2_NO_DEBUG
 endif
 
 DRIVERS_SRC_C = $(addprefix drivers/,\
