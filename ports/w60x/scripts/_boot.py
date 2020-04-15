@@ -13,6 +13,10 @@
 
 from upysh import *
 from easyw600 import *
-connect("B82", "Den 20. Jaenner ging Lenz durchs Gebirg.")
-ftpserver()
+try:
+    import wifi_config
+    connect(wifi_config.WIFI_SSID, wifi_config.WIFI_PASSWD)
+    ftpserver()
+except:
+    print("No Wifi setting found")
 from pye_mp import pye
