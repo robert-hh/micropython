@@ -29,8 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "py/gc.h"
 #include "py/runtime.h"
+#include "py/gc.h"
 
 #if MICROPY_DEBUG_VALGRIND
 #include <valgrind/memcheck.h>
