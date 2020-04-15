@@ -35,7 +35,7 @@
 
 #include "mpthreadport.h"
 
-OS_STK mpy_task_stk[MPY_TASK_SIZE];
+OS_STK mpy_task_stk[MPY_STACK_LEN];
 
 #if MICROPY_USE_INTERVAL_FLS_FS
 fs_user_mount_t *spi_fls_vfs = NULL;
@@ -199,26 +199,28 @@ static void mpy_task(void *param) {
     volatile uint32_t sp = (uint32_t)get_sp();
 
 #if MICROPY_PY_THREAD
-    mp_thread_init(mpy_task_stk, MPY_TASK_SIZE);
+    mp_thread_init(mpy_task_stk, MPY_STACK_LEN);
 #endif
 
     uart_init();
 
     // Allocate the uPy heap using malloc and get the largest available region
-    // printf("avail_heap_size = %u\r\n", tls_mem_get_avail_heapsize());
+    printf("Stack base = %p, SP = %p\n", mpy_task_stk, sp);
+
+    printf("avail_heap_size = %u\r\n", tls_mem_get_avail_heapsize());
 #ifdef W60X_USE_MBEDTLS_SSL
     u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 4) / 10; // 40%
 #else
     u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 6) / 10; // 60%
 #endif
-    // printf("mp_task_heap_size = %u\r\n", mp_task_heap_size);
+    printf("mp_task_heap_size = %u\r\n", mp_task_heap_size);
 
     void *mp_task_heap = tls_mem_alloc(mp_task_heap_size);
 
 soft_reset:
     // initialise the stack pointer for the main thread
     mp_stack_set_top((void *)sp);
-    mp_stack_set_limit(MPY_TASK_SIZE * sizeof(OS_STK));
+    mp_stack_set_limit(MPY_STACK_SIZE - 1024);
     gc_init(mp_task_heap, mp_task_heap + mp_task_heap_size);
     mp_init();
     mp_obj_list_init(mp_sys_path, 0);
@@ -269,7 +271,7 @@ soft_reset:
 
 void UserMain(void) {
     tls_os_task_create(NULL, "w60xmpy", mpy_task, NULL,
-                       (void *)mpy_task_stk, MPY_TASK_SIZE * sizeof(OS_STK),
+                       (void *)mpy_task_stk, MPY_STACK_SIZE,
                        MPY_TASK_PRIO, 0);
 }
 
