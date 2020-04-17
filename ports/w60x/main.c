@@ -205,17 +205,16 @@ static void mpy_task(void *param) {
     uart_init();
 
     // Allocate the uPy heap using malloc and get the largest available region
-    printf("Stack base = %p, SP = %p\n", mpy_task_stk, sp);
-
-    printf("avail_heap_size = %u\r\n", tls_mem_get_avail_heapsize());
 #ifdef W60X_USE_MBEDTLS_SSL
     u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 4) / 10; // 40%
 #else
     u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 6) / 10; // 60%
 #endif
-    printf("mp_task_heap_size = %u\r\n", mp_task_heap_size);
-
     void *mp_task_heap = tls_mem_alloc(mp_task_heap_size);
+
+    // printf("Stack base = %p, SP = %p\n", mpy_task_stk, sp);
+    // printf("avail_heap_size = %u\r\n", tls_mem_get_avail_heapsize());
+    // printf("heap_address = %p, heap_size = %u\n", mp_task_heap, mp_task_heap_size);
 
 soft_reset:
     // initialise the stack pointer for the main thread

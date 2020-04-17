@@ -30,26 +30,21 @@
 #include "py/obj.h"
 #include "py/gc.h"
 #include "py/mpthread.h"
-
-extern uint32_t _ram_end;
-
-static inline void *get_sp(void) {
-    void *sp;
-    asm volatile ("mov %0, sp;" : "=r" (sp));
-    return sp;
-}
+#include "lib/utils/gchelper.h"
 
 void gc_collect(void) {
     // start the GC
     gc_collect_start();
 
-    uintptr_t sp = get_sp();
+    // get the registers and the sp
+    uintptr_t regs[10];
+    uintptr_t sp = gc_helper_get_regs_and_sp(regs);
 
-    // trace the stack, including the registers (since they live on the stack in this function)
+    // trace the stack, including the registers (since they live [now] on the stack in this function)
 #if MICROPY_PY_THREAD
     gc_collect_root((void **)sp, ((uint32_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
 #else
-    gc_collect_root((void **)sp, ((uint32_t)&_ram_end - sp) / sizeof(uint32_t));
+    gc_collect_root((void **)sp, ((uint32_t)(mpy_task_stk + MPY_STACK_LEN) - sp) / sizeof(uint32_t));
 #endif
 
     // trace root pointers from any threads
@@ -60,4 +55,3 @@ void gc_collect(void) {
     // end the GC
     gc_collect_end();
 }
-
