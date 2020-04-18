@@ -229,7 +229,6 @@ soft_reset:
     readline_init0();
 
     machine_pins_init();
-    tls_crypto_random_init(tls_os_get_time(), CRYPTO_RNG_SWITCH_16);
 
 #if MICROPY_USE_INTERVAL_FLS_FS
     init_spiflash_fs();
