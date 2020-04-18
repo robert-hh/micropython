@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "wm_include.h"
+#include "wm_adc.h"
 #include "wm_crypto_hard.h"
 #include "mphalport.h"
 
@@ -70,13 +71,46 @@ STATIC mp_obj_t os_uname(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(os_uname_obj, os_uname);
 
+STATIC u32 w600_adc_get_allch_4bit_rst(void)
+{
+extern u8 adc_irq_flag;
+	u32 average = 0;
+	int i = 0;
+
+	for (i = 0; i < 8; i++)
+	{
+		adc_get_offset();
+		tls_adc_init(0, 0);
+		tls_adc_reference_sel(ADC_REFERENCE_EXTERNAL);
+		adc_irq_flag = 0;
+		tls_adc_start_with_cpu(i);
+		tls_os_time_delay(2);
+        while(1)
+        {
+            if(adc_irq_flag)
+            {
+                adc_irq_flag = 0;
+                break;
+            }
+        }
+		average = (average << 4) | (tls_read_adc_result() & 0xF);
+		tls_adc_stop(0);
+	}
+
+	return average;
+}
+
 STATIC mp_obj_t os_urandom(mp_obj_t num) {
     mp_int_t n = mp_obj_get_int(num);
     vstr_t vstr;
+    static bool seeded = false; // Seed the RNG on the first call to uos.urandom
+    if (seeded == false) {
+        /* adc floating in the air can get the seed of true random number */
+        tls_crypto_random_init(w600_adc_get_allch_4bit_rst(), CRYPTO_RNG_SWITCH_32); 
+        seeded = true;
+    }
     vstr_init_len(&vstr, n);
-    // tls_crypto_random_init(tls_os_get_time(), CRYPTO_RNG_SWITCH_16);
     tls_crypto_random_bytes((unsigned char *)vstr.buf, n);
-    // tls_crypto_random_stop();
     return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_urandom_obj, os_urandom);
