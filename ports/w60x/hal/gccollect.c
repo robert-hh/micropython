@@ -32,6 +32,11 @@
 #include "py/mpthread.h"
 #include "lib/utils/gchelper.h"
 
+#define MPY_STACK_SIZE              (16 * 1024)
+#define MPY_STACK_LEN               (MPY_STACK_SIZE / sizeof(OS_STK))
+
+extern OS_STK mpy_task_stk[MPY_STACK_LEN];
+
 void gc_collect(void) {
     // start the GC
     gc_collect_start();
