@@ -139,7 +139,7 @@ const mp_obj_type_t w600_flash_type = {
 #define FS_EXTENSION                        (0x10000)  // 64 k extra space
 #define INTERVAL_FLS_BASE                   (USER_ADDR_START - FS_EXTENSION)
 #define INTERVAL_FLS_LEN                    (USER_AREA_LEN + FS_EXTENSION)
-#define INTERVAL_FLS_FS_SECTOR_SIZE         (512)
+#define INTERVAL_FLS_FS_SECTOR_SIZE         (4096)
 
 STATIC int w600_flash_lfs_read(const struct lfs2_config *c, lfs2_block_t block,
                                lfs2_off_t off, void *buffer, lfs2_size_t size) {
