@@ -78,31 +78,33 @@ struct ftp_session *ftp_new_session(void) {
 
     session = (struct ftp_session *)tls_mem_alloc(sizeof(struct ftp_session));
 
-    session->sockfd = -1;
-    session->pasv_sockfd = -1;
-    session->pasv_acpt_sockfd = -1;
+    if (session != NULL) {
+        session->sockfd = -1;
+        session->pasv_sockfd = -1;
+        session->pasv_acpt_sockfd = -1;
 
-    session->next = session_list;
-    session_list = session;
-
+        session->next = session_list;
+        session_list = session;
+    }
     return session;
 }
 
 void ftp_close_session(struct ftp_session *session) {
-    struct ftp_session *list;
+    struct ftp_session *list = session_list;
+    struct ftp_session *prev = NULL;
 
-    if (session_list == session) {
-        session_list = session_list->next;
-        session->next = NULL;
-    } else {
-        list = session_list;
-        while (list->next != session) list = list->next;
-
-        list->next = session->next;
-        session->next = NULL;
+    while (list != NULL) { // walk through the list
+        if (list == session) { // match
+            if (prev == NULL) {  // at the head; remove it
+                session_list = list->next; // tail will get the list
+            } else { // Middle element
+                prev->next = list->next; // link the tail to the head
+            }
+            tls_mem_free(session);
+            break;
+        }
+        list = list->next;
     }
-
-    tls_mem_free(session);
 }
 
 int ftp_get_filesize(char *filename) {
@@ -137,11 +139,15 @@ int build_full_path(struct ftp_session *session, char *path, char *new_path, siz
     if (is_absolute_path(path) == TRUE) {
         strcpy(new_path, path);
     } else {
-        sprintf(new_path, "%s/%s", session->currentdir, path);
+        if (session->currentdir[strlen(session->currentdir) - 1] == '/') { // CWD ends in '/'?
+            sprintf(new_path, "%s%s", session->currentdir, path);  // Yes: do not add '/'
+        } else {
+            sprintf(new_path, "%s/%s", session->currentdir, path); // No: add '/'
+        }
     }
 
     if ((strlen(new_path) > 2) && new_path[strlen(new_path) - 1] == '/')
-        new_path[strlen(new_path) - 1] = '\0';
+        new_path[strlen(new_path) - 1] = '\0'; // drop trailing '/'
 
     return 0;
 }
@@ -156,6 +162,9 @@ static void w600_ftps_task(void *param) {
     int ret;
     u32 addr_len = sizeof(struct sockaddr);
     char *buffer = (char *) tls_mem_alloc(FTP_BUFFER_SIZE);
+    if (buffer == NULL) { // Alloc failed
+        return;
+    }
 
     local.sin_port = htons(ftpsport);
     local.sin_family = PF_INET;
@@ -167,6 +176,7 @@ static void w600_ftps_task(void *param) {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         FTPS_DBG("create socket failed\n");
+        tls_mem_free(buffer);
         return ;
     }
 
@@ -178,7 +188,7 @@ static void w600_ftps_task(void *param) {
         return;
     }
 
-    printf("ftpserver is running.\r\n");
+    FTPS_DBG("ftpserver is running.\r\n");
     FD_SET(sockfd, &readfds);
     tv.tv_sec  = 0;
     tv.tv_usec = 100 * 1000;
@@ -219,6 +229,7 @@ static void w600_ftps_task(void *param) {
                     f_chdir (&vfs_fs->fatfs, "/");
 #endif
                     strcpy(session->currentdir, FTP_SRV_ROOT);
+                    session->offset = 0; // Initialize offset
                     session->sockfd = com_socket;
                     session->remote = remote;
 
@@ -446,6 +457,9 @@ int ftp_get_pasv_sock(struct ftp_session *session) {
         return 0;
 
     sbuf = (char *)tls_mem_alloc(FTP_BUFFER_SIZE);
+    if (sbuf == NULL) {
+        return -1;
+    }
 
     tv.tv_sec = 3, tv.tv_usec = 0;
     FD_ZERO(&readfds);
@@ -492,6 +506,9 @@ int ftp_process_request(struct ftp_session *session, char *buf) {
     struct sockaddr_in local, pasvremote;
 
     sbuf = (char *)tls_mem_alloc(FTP_BUFFER_SIZE);
+    if (sbuf == NULL) { // Alloc failed
+        return -1;
+    }
 
     tv.tv_sec = 3, tv.tv_usec = 0;
     local.sin_family = PF_INET;
@@ -531,6 +548,7 @@ int ftp_process_request(struct ftp_session *session, char *buf) {
             tls_mem_free(sbuf);
             return -1;
         }
+        tls_mem_free(sbuf);
         return 0;
     } else if (str_begin_with(buf, "PASS") == 0) {
         FTPS_DBG("%s sent password \"%s\"\n", inet_ntoa(session->remote.sin_addr), parameter_ptr);
@@ -557,7 +575,7 @@ int ftp_process_request(struct ftp_session *session, char *buf) {
         closesocket(session->pasv_sockfd);
         session->pasv_sockfd = -1;
         session->pasv_active = 0;
-        sprintf(sbuf, "226 Transfert Complete.\r\n");
+        sprintf(sbuf, "226 Transfer complete.\r\n");
         send(session->sockfd, sbuf, strlen(sbuf), 0);
     } else if (str_begin_with(buf, "NLST") == 0 ) {
         memset(sbuf, 0, FTP_BUFFER_SIZE);
@@ -568,7 +586,7 @@ int ftp_process_request(struct ftp_session *session, char *buf) {
         closesocket(session->pasv_sockfd);
         session->pasv_sockfd = -1;
         session->pasv_active = 0;
-        sprintf(sbuf, "226 Transfert Complete.\r\n");
+        sprintf(sbuf, "226 Transfer complete.\r\n");
         send(session->sockfd, sbuf, strlen(sbuf), 0);
     } else if (str_begin_with(buf, "PWD") == 0 || str_begin_with(buf, "XPWD") == 0) {
         sprintf(sbuf, "257 \"%s\" is current directory.\r\n", session->currentdir);
@@ -732,6 +750,7 @@ err1:
 #endif
         closesocket(session->pasv_sockfd);
         session->pasv_sockfd = -1;
+        session->offset = 0;  // Reset offset after a download
     } else if (str_begin_with(buf, "STOR") == 0) {
         if (session->is_anonymous == TRUE) {
             sprintf(sbuf, "550 Permission denied.\r\n");
@@ -892,7 +911,7 @@ err1:
     } else if (str_begin_with(buf, "REST") == 0) {
         if (atoi(parameter_ptr) >= 0) {
             session->offset = atoi(parameter_ptr);
-            sprintf(sbuf, "350 Send RETR or STOR to start transfert.\r\n");
+            sprintf(sbuf, "350 Send RETR or STOR to start a transfer.\r\n");
             send(session->sockfd, sbuf, strlen(sbuf), 0);
         }
     } else if (str_begin_with(buf, "MKD") == 0) {
