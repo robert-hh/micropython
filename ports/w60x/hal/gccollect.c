@@ -29,6 +29,7 @@
 
 #include "py/obj.h"
 #include "py/gc.h"
+#include "py/mpstate.h"
 #include "py/mpthread.h"
 #include "lib/utils/gchelper.h"
 
@@ -46,11 +47,7 @@ void gc_collect(void) {
     uintptr_t sp = gc_helper_get_regs_and_sp(regs);
 
     // trace the stack, including the registers (since they live [now] on the stack in this function)
-#if MICROPY_PY_THREAD
     gc_collect_root((void **)sp, ((uint32_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
-#else
-    gc_collect_root((void **)sp, ((uint32_t)(mpy_task_stk + MPY_STACK_LEN) - sp) / sizeof(uint32_t));
-#endif
 
     // trace root pointers from any threads
 #if MICROPY_PY_THREAD
