@@ -32,11 +32,13 @@
 #include "py/mpstate.h"
 #include "py/mpthread.h"
 #include "lib/utils/gchelper.h"
+#include "py/runtime.h"
 
-#define MPY_STACK_SIZE              (16 * 1024)
-#define MPY_STACK_LEN               (MPY_STACK_SIZE / sizeof(OS_STK))
 
-extern OS_STK mpy_task_stk[MPY_STACK_LEN];
+#if MICROPY_USE_INTERVAL_FLS_FS
+extern void *spi_fls_vfs;  // The type does not matter here
+#endif
+
 
 void gc_collect(void) {
     // start the GC
@@ -46,6 +48,9 @@ void gc_collect(void) {
     uintptr_t regs[10];
     uintptr_t sp = gc_helper_get_regs_and_sp(regs);
 
+#if MICROPY_USE_INTERVAL_FLS_FS
+    gc_collect_root((void **)&spi_fls_vfs, 1);  // maybe not needed
+#endif
     // trace the stack, including the registers (since they live [now] on the stack in this function)
     gc_collect_root((void **)sp, ((uint32_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
 
