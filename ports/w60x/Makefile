@@ -15,8 +15,8 @@ include ../../py/mkenv.mk
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 
-MICROPY_USE_FATFS = 0
-MICROPY_USE_LITTLEFS = 1
+MICROPY_USE_FATFS = 1
+MICROPY_USE_LITTLEFS = 0
 
 MICROPY_USE_2M_FLASH = 0
 
