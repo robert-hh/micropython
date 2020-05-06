@@ -15,8 +15,8 @@ include ../../py/mkenv.mk
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 
-MICROPY_USE_FATFS = 1
-MICROPY_USE_LITTLEFS = 0
+MICROPY_USE_FATFS = 0
+MICROPY_USE_LITTLEFS = 1
 
 MICROPY_USE_2M_FLASH = 0
 
@@ -213,6 +213,7 @@ endif
 
 ifeq ($(MICROPY_USE_LITTLEFS), 1)
 CFLAGS += -DLFS2_NO_DEBUG
+# CFLAGS += -DLFS2_NO_DEBUG -DLFS2_NO_WARN -DLFS2_NO_ERROR -DLFS2_NO_ASSERT
 LIB_SRC_C += \
 	lib/littlefs/lfs2.c \
 	lib/littlefs/lfs2_util.c
