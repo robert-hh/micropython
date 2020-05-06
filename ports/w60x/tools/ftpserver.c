@@ -26,7 +26,7 @@ extern "C" {
 #include "mp_vfs_lfs.h"
 #endif
 
-//#define FTPS_DBG printf
+// #define FTPS_DBG printf("%ld: ", mp_hal_ticks_us());printf
 #define FTPS_DBG(...)
 
 #define FTP_SRV_ROOT        "/"
