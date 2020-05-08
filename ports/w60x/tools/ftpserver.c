@@ -151,24 +151,27 @@ bool is_dir(char *directory) {
     return false;
 }
 
-int build_full_path(struct ftp_session *session, char *path, char *new_path, size_t size) {
-    if (*path == '/') {
-        strcpy(new_path, path);
+void build_full_path(struct ftp_session *session, char *path, char *new_path) {
+    if (path[0] == '/' || session->currentdir[0] == '\0') {
+        strcpy(new_path, "/");
     } else {
-        if (session->currentdir[strlen(session->currentdir) - 1] == '/') { // CWD ends in '/'?
-            sprintf(new_path, "%s%s", session->currentdir, path);  // Yes: do not add '/'
-        } else {
-            sprintf(new_path, "%s/%s", session->currentdir, path); // No: add '/'
+        strcpy(new_path, session->currentdir);
+    }
+    // Normalize path
+    for (char *token = strtok(path, "/"); token != NULL; token = strtok(NULL, "/")) {
+        if (strlen(token) == 2 && token[0] == '.' && token[1] == '.') { // double dot, skip back in new_path
+            char *p = strrchr(new_path, '/'); // should always work
+            if (p) { // just for being sure
+                p[p == new_path ? 1 : 0] = '\0'; // cut off the tail, but not the head
+            }
+        } else if (strlen(token) != 1 || token[0] != '.') {
+            if (strlen(new_path) > 1) { // not at the start
+                strcat(new_path, "/");
+            }
+            strcat(new_path, token);
         }
     }
-
-    if ((strlen(new_path) > 1) && new_path[strlen(new_path) - 1] == '/')
-        new_path[strlen(new_path) - 1] = '\0'; // drop trailing '/'
-
-    return 0;
 }
-
-
 
 static void w600_ftps_task(void *param) {
     int numbytes;
@@ -402,7 +405,19 @@ int ftp_process_request(struct ftp_session *session, char *buf) {
 
     /* get request parameter */
     parameter_ptr = strchr(buf, ' ');
-    if (parameter_ptr != NULL) parameter_ptr ++;
+    if (parameter_ptr) {
+        while (*parameter_ptr == ' ' && *parameter_ptr != '\0') {
+            parameter_ptr++;
+        }
+        // Check the size of the path name, in case it is needed later.
+        if (*parameter_ptr && (3 + strlen(parameter_ptr) + 
+                               (*parameter_ptr == '/' ? 0 : strlen(session->currentdir))) >= FTP_PATH_SIZE) {
+            sprintf(sbuf, "553 Path name too long\r\n");
+            send(session->sockfd, sbuf, strlen(sbuf), 0);
+            tls_mem_free(sbuf);
+            return 0;
+        }
+    }
 
     // debug:
     FTPS_DBG("%s requested: \"%s\"\n", inet_ntoa(session->remote.sin_addr), buf);
@@ -555,10 +570,7 @@ err1:
         }
     } else if (str_begin_with(buf, "RETR") == 0) {
         int file_size;
-
-        strcpy(filename, buf + 5);
-
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
+        build_full_path(session, parameter_ptr, filename);
         file_size = ftp_get_filesize(filename);
         if (file_size == -1) {
             sprintf(sbuf, "550 \"%s\" : not a regular file\r\n", filename);
@@ -629,8 +641,7 @@ err1:
             tls_mem_free(sbuf);
             return 0;
         }
-
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
+        build_full_path(session, parameter_ptr, filename);
 
         fs_user_mount_t *vfs_fs = spi_fls_vfs;
 #if MICROPY_VFS_FAT
@@ -694,9 +705,7 @@ err1:
         session->pasv_sockfd = -1;
     } else if (str_begin_with(buf, "SIZE") == 0) {
         int file_size;
-
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
-
+        build_full_path(session, parameter_ptr, filename);
         file_size = ftp_get_filesize(filename);
         if (file_size == -1) {
             sprintf(sbuf, "550 \"%s\" : not a regular file\r\n", filename);
@@ -713,7 +722,7 @@ err1:
         send(session->sockfd, sbuf, strlen(sbuf), 0);
     } else if (str_begin_with(buf, "CWD") == 0) {
         // Test for path existence by using filesize, which in turn calls stat()
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
+        build_full_path(session, parameter_ptr, filename);
         if (is_dir(filename)) {
             strcpy(session->currentdir, filename);
             sprintf(sbuf, "250 Changed to directory \"%s\"\r\n", filename);
@@ -723,7 +732,7 @@ err1:
         send(session->sockfd, sbuf, strlen(sbuf), 0);
         FTPS_DBG("Changed to directory %s", filename);
     } else if (str_begin_with(buf, "CDUP") == 0) {
-        build_full_path(session, "..", filename, FTP_PATH_SIZE);
+        build_full_path(session, "..", filename);
         sprintf(sbuf, "250 Changed to directory \"%s\"\r\n", filename);
         send(session->sockfd, sbuf, strlen(sbuf), 0);
         strcpy(session->currentdir, filename);
@@ -786,9 +795,7 @@ err1:
             tls_mem_free(sbuf);
             return 0;
         }
-
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
-
+        build_full_path(session, parameter_ptr, filename);
         fs_user_mount_t *vfs_fs = spi_fls_vfs;
 #if MICROPY_VFS_FAT
         FRESULT res = f_mkdir (&vfs_fs->fatfs, filename);
@@ -813,9 +820,7 @@ err1:
             tls_mem_free(sbuf);
             return 0;
         }
-
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
-
+        build_full_path(session, parameter_ptr, filename);
         fs_user_mount_t *vfs_fs = spi_fls_vfs;
 #if MICROPY_VFS_FAT
         FRESULT res = f_unlink (&vfs_fs->fatfs, filename);
@@ -842,8 +847,7 @@ err1:
             tls_mem_free(sbuf);
             return 0;
         }
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
-
+        build_full_path(session, parameter_ptr, filename);
         fs_user_mount_t *vfs_fs = spi_fls_vfs;
 #if MICROPY_VFS_FAT
         FILINFO fno;
@@ -872,13 +876,12 @@ err1:
             tls_mem_free(sbuf);
             return 0;
         }
-
-        build_full_path(session, parameter_ptr, session->rename, FTP_PATH_SIZE);
+        build_full_path(session, parameter_ptr, session->rename);
         sprintf(sbuf, "350 Requested file action pending further information.\r\n");
         send(session->sockfd, sbuf, strlen(sbuf), 0);
     } else if (str_begin_with(buf, "RNTO") == 0) {
         fs_user_mount_t *vfs_fs = spi_fls_vfs;
-        build_full_path(session, parameter_ptr, filename, FTP_PATH_SIZE);
+        build_full_path(session, parameter_ptr, filename);
 #if MICROPY_VFS_FAT
         FRESULT res = f_rename (&vfs_fs->fatfs, session->rename, filename);
         if (res != FR_OK) {
