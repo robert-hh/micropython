@@ -159,7 +159,7 @@ int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, m
     int transfer_ret = 0;
 
     wait = 1000; // Experimental value, just guessed. 
-    while(tls_reg_read32((HR_I2C_CR_SR) & I2C_SR_BUSY) && wait > 0) { // Wait while the device is busy
+    while((tls_reg_read32(HR_I2C_CR_SR) & I2C_SR_BUSY) && wait > 0) { // Wait while the device is busy
         wait--;      // but not forever
     }
 
