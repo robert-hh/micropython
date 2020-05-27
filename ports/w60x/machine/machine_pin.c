@@ -38,6 +38,7 @@
 
 #include "mphalport.h"
 #include "modmachine.h"
+#include "mpthreadport.h"
 
 enum mp_pin_mode {
   GPIO_MODE_INPUT = WM_GPIO_DIR_INPUT,
@@ -64,12 +65,15 @@ typedef struct _machine_pin_obj_t {
     enum tls_io_name id;
     enum tls_gpio_attr gpio_attr;
     enum mp_pin_mode mode;
+    bool mp_pin_irq_mode;
 } machine_pin_obj_t;
 
 typedef struct _machine_pin_irq_obj_t {
     mp_obj_base_t base;
     enum tls_io_name id;
 } machine_pin_irq_obj_t;
+
+#define RAM_START                   0x20000000
 
 STATIC machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_00},
@@ -141,7 +145,34 @@ void machine_pins_init(void) {
 STATIC void machine_pin_isr_handler(void *arg) {
     machine_pin_obj_t *self = arg;
     mp_obj_t handler = MP_STATE_PORT(machine_pin_irq_handler)[self->id];
-    mp_sched_schedule(handler, MP_OBJ_FROM_PTR(self));
+
+    if (self->mp_pin_irq_mode == false) {
+        mp_sched_schedule(handler, MP_OBJ_FROM_PTR(self));
+    } else { // Hard blib
+        mp_sched_lock();
+        // When executing code within a handler we must lock the GC to prevent
+        // any memory allocations.  We must also catch any exceptions.
+        gc_lock();
+        // save stack top and set temporary value to pass the stack check
+        char *saved_stack_top = MP_STATE_THREAD(stack_top);
+        MP_STATE_THREAD(stack_top) = &saved_stack_top + 1024; // kind of arbitrary
+        nlr_buf_t nlr;
+        if (nlr_push(&nlr) == 0) {
+            mp_call_function_1(handler, MP_OBJ_FROM_PTR(self));
+            nlr_pop();
+        } else {
+            // Uncaught exception; disable the callback so it doesn't run again.
+            MP_STATE_PORT(machine_pin_irq_handler)[self->id] = MP_OBJ_NULL;
+            tls_gpio_isr_register(self->id, 0, 0);
+            tls_gpio_irq_disable(self->id);
+            mp_printf(MICROPY_ERROR_PRINTER, "Uncaught exception in ExtInt interrupt handler GPIO %u\n", (unsigned int)self->id);
+            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+        }
+        // restore the stack top value for stack checks and GC
+        MP_STATE_THREAD(stack_top) = saved_stack_top;
+        gc_unlock();
+        mp_sched_unlock();
+    }
 }
 
 STATIC inline machine_pin_obj_t *mp_obj_to_pin_obj(mp_obj_t pin) {
@@ -310,17 +341,18 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
 
 STATIC void machine_pin_irq_callback(void *p) {
     machine_pin_obj_t *self = p;
-    tls_clr_gpio_irq_status(self->id);
     machine_pin_isr_handler(self);
+    tls_clr_gpio_irq_status(self->id);
 }
 
 
 // pin.irq(trigger_mode)
 STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_handler, ARG_trigger };
+    enum { ARG_handler, ARG_trigger, ARG_hard };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_handler, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_trigger, MP_ARG_INT, {.u_int = 0} },
+        { MP_QSTR_hard, MP_ARG_BOOL, {.u_bool = false} },
     };
     machine_pin_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
@@ -333,6 +365,7 @@ STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
         if (handler == mp_const_none) {
             handler = MP_OBJ_NULL;
         }
+        self->mp_pin_irq_mode = args[ARG_hard].u_bool;
 
         MP_STATE_PORT(machine_pin_irq_handler)[self->id] = handler;
         if (handler != MP_OBJ_NULL) {
