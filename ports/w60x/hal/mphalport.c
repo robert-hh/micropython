@@ -31,6 +31,7 @@
 
 #include "wm_osal.h"
 #include "wm_cpu.h"
+#include "wm_timer.h"
 
 #include "py/obj.h"
 #include "py/mpstate.h"
@@ -53,11 +54,18 @@ uint32_t mp_hal_ticks_cpu(void) {
     return tls_os_get_time();
 }
 
+STATIC inline void delay(uint32_t us) {
+    volatile int32_t loops = ((int32_t)us - 2) * 6 + us/10 * 6;
+    while(loops > 0) {
+        loops--;
+    }
+}
+
 STATIC void __mp_hal_delay_ms(uint32_t ms) {
     if (ms / (1000 / HZ) > 0) {
         tls_os_time_delay(ms / (1000 / HZ));
     } else {
-        delay_us(ms * 1000);
+        delay(ms * 1000);
     }
 }
 
@@ -66,7 +74,7 @@ void mp_hal_delay_ms(uint32_t ms) {
         // IRQs enabled, so can use systick counter to do the delay
         uint32_t start = tls_os_get_time();
         // Wraparound of tick is taken care of by 2's complement arithmetic.
-        while (tls_os_get_time() - start < (ms / (1000 / HZ))) {
+        while ((tls_os_get_time() - start) < (ms / (1000 / HZ))) {
             // This macro will execute the necessary idle behaviour.  It may
             // raise an exception, switch threads or enter sleep mode (waiting for
             // (at least) the SysTick interrupt).
@@ -79,24 +87,21 @@ void mp_hal_delay_ms(uint32_t ms) {
             tls_os_time_delay(1);
         }
     } else {
-        // IRQs disabled, so need to use a busy loop for the delay.
-        // To prevent possible overflow of the counter we use a double loop.
         __mp_hal_delay_ms(ms);
     }
 }
 
 void mp_hal_delay_us(uint32_t us) {
-    if ((us / 1000) > 0) {
+    if ((us / 1000) > 3) {
         mp_hal_delay_ms(us / 1000);
-        delay_us((us % 1000));
+        delay(us % 1000);
     } else {
-        delay_us(us);
+        delay(us);
     }
 }
 
-// this function could do with improvements (eg use ets_delay_us)
 void mp_hal_delay_us_fast(uint32_t us) {
-    delay_us(us);
+    delay(us);
 }
 
 uint32_t mp_hal_get_cpu_freq(void) {
