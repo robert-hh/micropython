@@ -39,9 +39,31 @@
 #include "mphalport.h"
 #include "modmachine.h"
 
+enum mp_pin_mode {
+  GPIO_MODE_INPUT = WM_GPIO_DIR_INPUT,
+  GPIO_MODE_OUTPUT = WM_GPIO_DIR_OUTPUT,
+  GPIO_MODE_OPEN_DRAIN = 3 // SDK has no matching WM_GPIO_DIR!
+};
+
+/*
+ * WM_GPIO_IRQ_TRIG_RISING_EDGE  == GPIO_IRQ_RISING - 1
+ * WM_GPIO_IRQ_TRIG_FALLING_EDGE == GPIO_IRQ_FALLING - 1
+ * WM_GPIO_IRQ_TRIG_DOUBLE_EDGE  == (GPIO_IRQ_RISING | GPIO_IRQ_FALLING)
+ * WM_GPIO_IRQ_TRIG_HIGH_LEVEL == GPIO_IRQ_HIGH_LEVEL - 1
+ * WM_GPIO_IRQ_TRIG_HIGH_LEVEL == GPIO_IRQ_LOW_LEVEL - 1
+ */
+enum mp_pin_irq_mode {
+  GPIO_IRQ_RISING = WM_GPIO_IRQ_TRIG_RISING_EDGE + 1,    // 1
+  GPIO_IRQ_FALLING = WM_GPIO_IRQ_TRIG_FALLING_EDGE + 1,  // 2
+  GPIO_IRQ_HIGH_LEVEL = WM_GPIO_IRQ_TRIG_HIGH_LEVEL + 1, // 4
+  GPIO_IRQ_LOW_LEVEL = WM_GPIO_IRQ_TRIG_LOW_LEVEL  + 1,  // 5
+};
+
 typedef struct _machine_pin_obj_t {
     mp_obj_base_t base;
     enum tls_io_name id;
+    enum tls_gpio_attr gpio_attr;
+    enum mp_pin_mode mode;
 } machine_pin_obj_t;
 
 typedef struct _machine_pin_irq_obj_t {
@@ -49,7 +71,7 @@ typedef struct _machine_pin_irq_obj_t {
     enum tls_io_name id;
 } machine_pin_irq_obj_t;
 
-STATIC const machine_pin_obj_t machine_pin_obj[] = {
+STATIC machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_00},
     {{&machine_pin_type}, WM_IO_PA_01},
     {{&machine_pin_type}, WM_IO_PA_02},
@@ -122,21 +144,77 @@ STATIC void machine_pin_isr_handler(void *arg) {
     mp_sched_schedule(handler, MP_OBJ_FROM_PTR(self));
 }
 
-mp_hal_pin_obj_t machine_pin_get_id(mp_obj_t pin_in) {
-    if (mp_obj_get_type(pin_in) != &machine_pin_type) {
+STATIC inline machine_pin_obj_t *mp_obj_to_pin_obj(mp_obj_t pin) {
+    if (mp_obj_get_type(pin) != &machine_pin_type) {
         mp_raise_ValueError("expecting a pin");
     }
-    machine_pin_obj_t *self = pin_in;
-    return self->id;
+    return MP_OBJ_TO_PTR(pin);
+}
+
+STATIC inline machine_pin_obj_t *pin_idx_to_pin_obj(mp_hal_pin_obj_t pin_index) {
+    return (machine_pin_obj_t *)&machine_pin_obj[pin_index];
+}
+
+mp_hal_pin_obj_t machine_pin_get_id(mp_obj_t pin_in) {
+    return mp_obj_to_pin_obj(pin_in)->id;
+}
+
+/*
+ * NOTE: The WM60x does not have a native Pin.OPEN_DRAIN operation mode.
+ * To get the behavior of Pin.OPEN_DRAIN, the pin must be configured to
+ * WM_GPIO_DIR_OUTPUT when writing a 0 (pin pulled low) and to
+ * WM_GPIO_DIR_INPUT when writing a 1 (pin in high impedance state).
+ */
+
+void machine_set_pin(machine_pin_obj_t *self, bool value) {
+    if (GPIO_MODE_OPEN_DRAIN == self->mode) {
+        tls_gpio_cfg(self->id, value ? WM_GPIO_DIR_INPUT : WM_GPIO_DIR_OUTPUT, self->gpio_attr);
+    }
+    tls_gpio_write(self->id, value);
+}
+
+void mp_hal_pin_input(mp_hal_pin_obj_t pin) {
+    machine_pin_obj_t *self = pin_idx_to_pin_obj(pin);
+    self->mode = GPIO_MODE_INPUT;
+    tls_gpio_cfg(pin, WM_GPIO_DIR_INPUT, WM_GPIO_ATTR_FLOATING);
+}
+
+void mp_hal_pin_output(mp_hal_pin_obj_t pin) {
+    machine_pin_obj_t *self = pin_idx_to_pin_obj(pin);
+    self->mode = GPIO_MODE_OUTPUT;
+    tls_gpio_cfg(pin, WM_GPIO_DIR_OUTPUT, WM_GPIO_ATTR_FLOATING);
+}
+
+void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin) {
+    machine_pin_obj_t *self = pin_idx_to_pin_obj(pin);
+    self->mode = GPIO_MODE_OPEN_DRAIN;
+    tls_gpio_cfg(pin, WM_GPIO_DIR_INPUT, WM_GPIO_ATTR_PULLHIGH);
+}
+
+void mp_hal_pin_od_low(mp_hal_pin_obj_t pin) {
+    machine_pin_obj_t *self = pin_idx_to_pin_obj(pin);
+    self->mode = GPIO_MODE_OPEN_DRAIN;
+    tls_gpio_cfg(pin, WM_GPIO_DIR_OUTPUT, WM_GPIO_ATTR_PULLHIGH);
+    tls_gpio_write(pin, 0);
+}
+
+void mp_hal_pin_od_high(mp_hal_pin_obj_t pin) {
+    machine_pin_obj_t *self = pin_idx_to_pin_obj(pin);
+    self->mode = GPIO_MODE_OPEN_DRAIN;
+    tls_gpio_cfg(pin, WM_GPIO_DIR_INPUT, WM_GPIO_ATTR_PULLHIGH);
+}
+
+void mp_hal_pin_write(mp_hal_pin_obj_t pin, int value) {
+    machine_set_pin(pin_idx_to_pin_obj(pin), value);
 }
 
 STATIC void machine_pin_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
-    machine_pin_obj_t *self = self_in;
+    machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
     mp_printf(print, "Pin(%u)", self->id);
 }
 
 // pin.init(direction, attribute, value)
-STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t machine_pin_obj_init_helper(machine_pin_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_mode, ARG_pull, ARG_value };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode, MP_ARG_INT, {.u_int = WM_GPIO_DIR_INPUT} },
@@ -148,10 +226,20 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    tls_gpio_cfg(self->id, args[ARG_mode].u_int, args[ARG_pull].u_int);
+    bool has_value_arg = args[ARG_value].u_obj != MP_OBJ_NULL;
+    bool value = has_value_arg ? mp_obj_is_true(args[ARG_value].u_obj) : true;
+    int mode = args[ARG_mode].u_int;
+    self->mode = mode;
 
-    if (args[ARG_value].u_obj != MP_OBJ_NULL)
-        tls_gpio_write(self->id,  mp_obj_is_true(args[ARG_value].u_obj));
+    if (GPIO_MODE_OPEN_DRAIN == mode) {
+       tls_gpio_cfg(self->id, value ? WM_GPIO_DIR_INPUT : WM_GPIO_DIR_OUTPUT, args[ARG_pull].u_int);
+    }
+    else {
+       tls_gpio_cfg(self->id, mode, args[ARG_pull].u_int);
+    }
+    if (has_value_arg) {
+        tls_gpio_write(self->id, value);
+    }
 
     return mp_const_none;
 }
@@ -162,9 +250,9 @@ mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, 
 
     // get the wanted pin object
     int wanted_pin = mp_obj_get_int(args[0]);
-    const machine_pin_obj_t *self = NULL;
+    machine_pin_obj_t *self = NULL;
     if (0 <= wanted_pin && wanted_pin < MP_ARRAY_SIZE(machine_pin_obj)) {
-        self = (machine_pin_obj_t *)&machine_pin_obj[wanted_pin];
+        self = pin_idx_to_pin_obj(wanted_pin);
     }
     if (self == NULL || self->base.type == NULL) {
         mp_raise_ValueError("invalid pin");
@@ -183,13 +271,13 @@ mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, 
 // fast method for getting/setting pin value
 STATIC mp_obj_t machine_pin_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
-    machine_pin_obj_t *self = self_in;
+    machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
     if (n_args == 0) {
         // get pin
         return MP_OBJ_NEW_SMALL_INT(tls_gpio_read(self->id));
     } else {
         // set pin
-        tls_gpio_write(self->id, mp_obj_is_true(args[0]));
+        machine_set_pin(self, mp_obj_is_true(args[0]));
         return mp_const_none;
     }
 }
@@ -208,16 +296,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_value_obj, 1, 2, machine_
 
 // pin.off()
 STATIC mp_obj_t machine_pin_off(mp_obj_t self_in) {
-    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    tls_gpio_write(self->id,  0);
+    machine_set_pin(mp_obj_to_pin_obj(self_in), false);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_off_obj, machine_pin_off);
 
 // pin.on()
 STATIC mp_obj_t machine_pin_on(mp_obj_t self_in) {
-    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    tls_gpio_write(self->id, 1);
+    machine_set_pin(mp_obj_to_pin_obj(self_in), true);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
@@ -249,8 +335,13 @@ STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
         }
 
         MP_STATE_PORT(machine_pin_irq_handler)[self->id] = handler;
-        tls_gpio_isr_register(self->id, machine_pin_irq_callback, self);
-        tls_gpio_irq_enable(self->id, trigger);
+        if (handler != MP_OBJ_NULL) {
+            tls_gpio_isr_register(self->id, machine_pin_irq_callback, self);
+            tls_gpio_irq_enable(self->id, trigger - 1);
+        } else {
+            tls_gpio_irq_disable(self->id);
+            tls_gpio_isr_register(self->id, 0, 0);
+        }
     }
 
     // return the irq object
@@ -267,18 +358,17 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
 
     // class constants
-    { MP_ROM_QSTR(MP_QSTR_OPEN_DRAIN), MP_ROM_INT(WM_GPIO_DIR_INPUT) },
+    { MP_ROM_QSTR(MP_QSTR_OPEN_DRAIN), MP_ROM_INT(GPIO_MODE_OPEN_DRAIN) },
 
-    { MP_ROM_QSTR(MP_QSTR_IN), MP_ROM_INT(WM_GPIO_DIR_INPUT) },
-    { MP_ROM_QSTR(MP_QSTR_OUT), MP_ROM_INT(WM_GPIO_DIR_OUTPUT) },
+    { MP_ROM_QSTR(MP_QSTR_IN), MP_ROM_INT(GPIO_MODE_INPUT) },
+    { MP_ROM_QSTR(MP_QSTR_OUT), MP_ROM_INT(GPIO_MODE_OUTPUT) },
     { MP_ROM_QSTR(MP_QSTR_PULL_UP), MP_ROM_INT(WM_GPIO_ATTR_PULLHIGH) },
     { MP_ROM_QSTR(MP_QSTR_PULL_DOWN), MP_ROM_INT(WM_GPIO_ATTR_PULLLOW) },
-    { MP_ROM_QSTR(MP_QSTR_PULL_FLOATING), MP_ROM_INT(WM_GPIO_ATTR_FLOATING) },
-    { MP_ROM_QSTR(MP_QSTR_IRQ_DOUBLE_EDGE), MP_ROM_INT(WM_GPIO_IRQ_TRIG_DOUBLE_EDGE) },
-    { MP_ROM_QSTR(MP_QSTR_IRQ_RISING), MP_ROM_INT(WM_GPIO_IRQ_TRIG_RISING_EDGE) },
-    { MP_ROM_QSTR(MP_QSTR_IRQ_FALLING), MP_ROM_INT(WM_GPIO_IRQ_TRIG_FALLING_EDGE) },
-    { MP_ROM_QSTR(MP_QSTR_IRQ_HIGH_LEVEL), MP_ROM_INT(WM_GPIO_IRQ_TRIG_HIGH_LEVEL) },
-    { MP_ROM_QSTR(MP_QSTR_IRQ_LOW_LEVEL), MP_ROM_INT(WM_GPIO_IRQ_TRIG_LOW_LEVEL) },
+    { MP_ROM_QSTR(MP_QSTR_PULL_NONE), MP_ROM_INT(WM_GPIO_ATTR_FLOATING) },
+    { MP_ROM_QSTR(MP_QSTR_IRQ_RISING), MP_ROM_INT(GPIO_IRQ_RISING) },
+    { MP_ROM_QSTR(MP_QSTR_IRQ_FALLING), MP_ROM_INT(GPIO_IRQ_FALLING) },
+    { MP_ROM_QSTR(MP_QSTR_IRQ_HIGH_LEVEL), MP_ROM_INT(GPIO_IRQ_HIGH_LEVEL) },
+    { MP_ROM_QSTR(MP_QSTR_IRQ_LOW_LEVEL), MP_ROM_INT(GPIO_IRQ_LOW_LEVEL) },
 
     { MP_ROM_QSTR(MP_QSTR_PA_00), MP_ROM_INT(WM_IO_PA_00) },
     { MP_ROM_QSTR(MP_QSTR_PA_01), MP_ROM_INT(WM_IO_PA_01) },
@@ -450,7 +540,7 @@ STATIC mp_obj_t machine_pin_irq_trigger(size_t n_args, const mp_obj_t *args) {
 
     if (n_args == 2) {
         // set trigger
-        tls_gpio_irq_enable(self->id, mp_obj_get_int(args[1]));
+        tls_gpio_irq_enable(self->id, mp_obj_get_int(args[1]) - 1);
     }
     // return irq status
     return MP_OBJ_NEW_SMALL_INT(tls_get_gpio_irq_status(self->id));
