@@ -229,6 +229,7 @@ soft_reset:
     readline_init0();
 
     machine_pins_init();
+    timer_init0();
 
 #if MICROPY_USE_INTERVAL_FLS_FS
     init_spiflash_fs();
