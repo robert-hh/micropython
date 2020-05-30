@@ -31,7 +31,9 @@
 
 #include "wm_osal.h"
 #include "wm_cpu.h"
-#include "wm_timer.h"
+#include "wm_regs.h"
+#include "wm_watchdog.h"
+#include "wm_irq.h"
 
 #include "py/obj.h"
 #include "py/mpstate.h"
@@ -40,24 +42,47 @@
 #include "lib/utils/pyexec.h"
 #include "mphalport.h"
 
-extern void delay_us(unsigned int time);
+#define CNT_START_VALUE (0xffffffff)
+static uint32_t timer_ovfl = 0;
+static uint32_t ticks_per_us = 40;
+uint32_t ticks_us_max_value;
+
+void timer_init0() {
+
+    tls_sys_clk sysclk;
+    tls_sys_clk_get(&sysclk);
+    ticks_per_us = sysclk.apbclk;
+
+    tls_reg_write32(HR_WDG_LOAD_VALUE, CNT_START_VALUE);
+    tls_reg_write32(HR_WDG_CTRL, 0x1);              /* enable irq */
+    ticks_us_max_value = CNT_START_VALUE / ticks_per_us;
+}
+
 
 uint32_t mp_hal_ticks_ms(void) {
     return tls_os_get_time() * (1000 / HZ);
 }
 
 uint32_t mp_hal_ticks_us(void) {
-    return tls_os_get_time() * (1000 / HZ) * 1000;
+    return (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / ticks_per_us;
 }
 
 uint32_t mp_hal_ticks_cpu(void) {
-    return tls_os_get_time();
+    return CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE);
 }
 
 STATIC inline void delay(uint32_t us) {
-    volatile int32_t loops = ((int32_t)us - 2) * 6 + us/10 * 6;
-    while(loops > 0) {
-        loops--;
+    if (us < 20) {
+        volatile int32_t loops = ((int32_t)us - 2) * 6 + us/10 * 6;
+        while(loops > 0) {
+            loops--;
+        }
+    } else {
+        uint32_t start = tls_reg_read32(HR_WDG_CUR_VALUE);
+        uint32_t diff = (us - 4) * ticks_per_us;
+        while((start - tls_reg_read32(HR_WDG_CUR_VALUE)) < diff) {
+            ;
+        }
     }
 }
 
