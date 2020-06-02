@@ -11,8 +11,8 @@
 #include <string.h>
 #include "wm_include.h"
 #include "wm_mem.h"
-#include "wm_watchdog.h"
 #include "wm_crypto_hard.h"
+#include "wm_rtc.h"
 
 #include "py/stackctrl.h"
 #include "py/nlr.h"
@@ -229,6 +229,13 @@ soft_reset:
     readline_init0();
 
     machine_pins_init();
+    // start rtc inital
+    struct tm tblock;
+    memset(&tblock, 0, sizeof(tblock));
+    tblock.tm_mon = 1;
+    tblock.tm_mday = 1;
+    tls_set_rtc(&tblock);
+    // start ticks_xx timer
     timer_init0();
 
 #if MICROPY_USE_INTERVAL_FLS_FS
