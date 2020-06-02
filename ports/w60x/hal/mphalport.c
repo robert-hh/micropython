@@ -47,7 +47,7 @@ static uint32_t ticks_hi_word = 0;
 static uint32_t ticks_per_us = 40;
 uint32_t ticks_us_max_value;
 
-void ticks_IRQHandler(void *data)
+void WDG_IRQHandler(void *data)
 {
     tls_reg_write32(HR_WDG_INT_CLR, 0x01);
     ticks_hi_word++;
@@ -68,9 +68,9 @@ void timer_init0() {
     tls_watchdog_start_cal_elapsed_time();
 
     // Registerung ticks_IRQHandler() does not work at the moment. 
-    // But if, the following two lines would enable it
+    // But if, the following line would enable it
     // tls_irq_register_handler(WATCHDOG_INT, ticks_IRQHandler, NULL);
-	// tls_irq_enable(WATCHDOG_INT);
+	tls_irq_enable(WATCHDOG_INT);
     
     ticks_us_max_value = CNT_START_VALUE / ticks_per_us;
 }
@@ -81,11 +81,11 @@ uint32_t mp_hal_ticks_ms(void) {
 }
 
 uint32_t mp_hal_ticks_us(void) {
-    return (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / ticks_per_us;
+    // return (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / ticks_per_us;
 
     // Once ticks_IRQHandler() is used, use the expression below
-    // return ticks_hi_word * ticks_us_max_value + 
-    //        (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / ticks_per_us;
+    return ticks_hi_word * ticks_us_max_value + 
+           (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / ticks_per_us;
 }
 
 uint32_t mp_hal_ticks_cpu(void) {
