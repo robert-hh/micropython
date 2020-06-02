@@ -10,10 +10,10 @@ except:
 # (date(2000, 1, 1) - date(1900, 1, 1)).days * 24*60*60
 NTP_DELTA = 3155673600
 
-#host = "pool.ntp.org"
-host = "cn.pool.ntp.org"
+default_host = "pool.ntp.org"
+# default_host = "cn.pool.ntp.org"
 
-def time():
+def time(host=default_host):
     NTP_QUERY = bytearray(48)
     NTP_QUERY[0] = 0x1b
     addr = socket.getaddrinfo(host, 123)[0][-1]
@@ -27,8 +27,8 @@ def time():
 
 # There's currently no timezone support in MicroPython, so
 # utime.localtime() will return UTC time (as if it was .gmtime())
-def settime():
-    t = time()
+def settime(host=default_host):
+    t = time(host)
     import machine
     import utime
     tm = utime.localtime(t)
