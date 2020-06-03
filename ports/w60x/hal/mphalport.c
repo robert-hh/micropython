@@ -78,6 +78,9 @@ void timer_init0() {
 
 uint32_t mp_hal_ticks_ms(void) {
     return tls_os_get_time() * (1000 / HZ);
+    // Code for using the WDG counter fpor ticks_ms. Works & tested.
+    // return ticks_hi_word * (ticks_us_max_value / 1000) +
+    //        (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / (ticks_per_us * 1000);
 }
 
 uint32_t mp_hal_ticks_us(void) {
