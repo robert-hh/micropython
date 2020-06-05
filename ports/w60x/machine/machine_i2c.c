@@ -58,9 +58,9 @@ mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, siz
     enum { ARG_id, ARG_scl, ARG_sda, ARG_freq, ARG_timeout };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id, MP_ARG_REQUIRED | MP_ARG_OBJ },
-        { MP_QSTR_scl, MP_ARG_KW_ONLY | MP_ARG_OBJ },
-        { MP_QSTR_sda, MP_ARG_KW_ONLY | MP_ARG_OBJ },
-        { MP_QSTR_freq, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 200000} },
+        { MP_QSTR_scl, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_sda, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_freq, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 100000} },
         { MP_QSTR_timeout, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 255} },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
@@ -68,9 +68,19 @@ mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, siz
 
     machine_hard_i2c_obj_t *self = m_new_obj(machine_hard_i2c_obj_t);
 
+    if (args[ARG_scl].u_obj == MP_OBJ_NULL || args[ARG_scl].u_obj == mp_const_none) {
+        self->scl = WM_IO_PB_13;
+    } else {
+        self->scl = mp_hal_get_pin_obj(args[ARG_scl].u_obj);
+    }
+
+    if (args[ARG_sda].u_obj == MP_OBJ_NULL || args[ARG_sda].u_obj == mp_const_none) {
+        self->sda = WM_IO_PB_14;
+    } else {
+        self->sda = mp_hal_get_pin_obj(args[ARG_sda].u_obj);
+    }
+
     self->base.type = &machine_hard_i2c_type;
-    self->scl = mp_hal_get_pin_obj(args[ARG_scl].u_obj);
-    self->sda = mp_hal_get_pin_obj(args[ARG_sda].u_obj);
     self->freq = args[ARG_freq].u_int;
 
     wm_i2c_scl_config(self->scl);
