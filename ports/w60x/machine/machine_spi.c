@@ -37,6 +37,8 @@
 #include "py/mphal.h"
 #include "extmod/machine_spi.h"
 #include "modmachine.h"
+#include "wm_hostspi.h"
+#include "wm_dma.h"
 
 
 typedef struct _machine_spi_obj_t {
@@ -76,10 +78,10 @@ STATIC void w600_spi_set_endian(u8 endian)
 
 	if (endian == 0) {
 		reg_val &= ~(0x01U << 3);
-		reg_val |= SPI_LITTLE_ENDIAN;
+		reg_val |= SPI_BIG_ENDIAN;
 	} else if(endian == 1) {
 		reg_val &= ~(0x01U << 3);
-		reg_val |= SPI_BIG_ENDIAN;
+		reg_val |= SPI_LITTLE_ENDIAN;
 	}
 
 	tls_reg_write32(HR_SPI_SPICFG_REG, reg_val);
@@ -133,6 +135,30 @@ STATIC u8 w600_spi_read(u8 *data, u32 len)
     return tls_spi_read(data + cnt, remain);
 }
 
+STATIC u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len)
+{
+    u32 cnt;
+    u32 repeat;
+    u32 remain;
+
+    cnt = 0;
+    remain = len;
+
+    if(len > SPI_DMA_BUF_MAX_SIZE)
+    {
+        repeat = len / SPI_DMA_BUF_MAX_SIZE;
+        remain = len % SPI_DMA_BUF_MAX_SIZE;
+
+        while(cnt < (repeat * SPI_DMA_BUF_MAX_SIZE))
+        {
+            tls_spi_write_readinto(tx_data + cnt, rx_data + cnt, SPI_DMA_BUF_MAX_SIZE);
+            cnt += SPI_DMA_BUF_MAX_SIZE;
+        }
+    }
+
+    return tls_spi_write_readinto(tx_data + cnt, rx_data + cnt, remain);
+}
+
 STATIC void machine_spi_init_internal(
     machine_spi_obj_t    *self,
     int32_t                 baudrate,
@@ -146,7 +172,7 @@ STATIC void machine_spi_init_internal(
     int8_t                  cs) 
 {
     int ret;
-    u8 mode;
+    u8 mode = TLS_SPI_MODE_0;
 
     self->baudrate = baudrate;
     self->polarity = polarity;
@@ -182,13 +208,13 @@ STATIC void machine_spi_init_internal(
             }
         }
 
-        if (0 == polarity || 0 == phase) {
+        if (0 == polarity && 0 == phase) {
             mode = TLS_SPI_MODE_0;
-        } else if (0 == polarity || 1 == phase) {
-            mode = TLS_SPI_MODE_2;
-        } else if (1 == polarity || 0 == phase) {
+        } else if (0 == polarity && 1 == phase) {
             mode = TLS_SPI_MODE_1;
-        } else if (1 == polarity || 1 == phase) {
+        } else if (1 == polarity && 0 == phase) {
+            mode = TLS_SPI_MODE_2;
+        } else if (1 == polarity && 1 == phase) {
             mode = TLS_SPI_MODE_3;
         }
         ret = tls_spi_setup(mode, TLS_SPI_CS_LOW, baudrate);
@@ -217,10 +243,11 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
     machine_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     if (0 == self->spi_type) {
-        if (src && len) {
+        if (src && dest && len)  {
+            ret = w600_spi_write_read(src, dest, len);
+        } else if (src && len) {
             ret = w600_spi_write(src, len);
-        }
-        if (dest && len) {
+        } else if (dest && len) {
             ret = w600_spi_read(dest, len);
         }
     } else {
@@ -250,11 +277,11 @@ STATIC void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
     enum { ARG_id, ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_sck, ARG_mosi, ARG_miso, ARG_cs };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id,       MP_ARG_INT, {.u_int = -1} },
-        { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = -1} },
-        { MP_QSTR_polarity, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
-        { MP_QSTR_phase,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
-        { MP_QSTR_bits,     MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
-        { MP_QSTR_firstbit, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
+        { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = SPI_DEFAULT_SPEED} },
+        { MP_QSTR_polarity, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
+        { MP_QSTR_phase,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
+        { MP_QSTR_bits,     MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 8} },
+        { MP_QSTR_firstbit, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = MICROPY_PY_MACHINE_SPI_MSB} },
         { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_mosi,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_miso,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
@@ -273,43 +300,18 @@ STATIC void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
 
     self->base.type = &machine_spi_type;
 
-    int8_t sck, mosi, miso, cs;
-
-    if (args[ARG_sck].u_obj == MP_OBJ_NULL) {
-        sck = WM_IO_PB_16;
-    } else if (args[ARG_sck].u_obj == mp_const_none) {
-        sck = WM_IO_PB_16;
-    } else {
-        sck = machine_pin_get_id(args[ARG_sck].u_obj);
-    }
-
-    if (args[ARG_miso].u_obj == MP_OBJ_NULL) {
-        miso = WM_IO_PB_17;
-    } else if (args[ARG_miso].u_obj == mp_const_none) {
-        miso = WM_IO_PB_17;
-    } else {
-        miso = machine_pin_get_id(args[ARG_miso].u_obj);
-    }
-
-    if (args[ARG_mosi].u_obj == MP_OBJ_NULL) {
-        mosi = WM_IO_PB_18;
-    } else if (args[ARG_mosi].u_obj == mp_const_none) {
-        mosi = WM_IO_PB_18;
-    } else {
-        mosi = machine_pin_get_id(args[ARG_mosi].u_obj);
-    }
-
-    if (args[ARG_cs].u_obj == MP_OBJ_NULL) {
-        cs = WM_IO_PB_15;
-    } else if (args[ARG_cs].u_obj == mp_const_none) {
-        cs = WM_IO_PB_15;
-    } else {
-        cs = machine_pin_get_id(args[ARG_cs].u_obj);
-    }
-
-    machine_spi_init_internal(self, args[ARG_baudrate].u_int,
-                              args[ARG_polarity].u_int, args[ARG_phase].u_int, args[ARG_bits].u_int,
-                              args[ARG_firstbit].u_int, sck, mosi, miso, cs);
+    machine_spi_init_internal(
+        self,
+        args[ARG_baudrate].u_int,
+        args[ARG_polarity].u_int,
+        args[ARG_phase].u_int,
+        args[ARG_bits].u_int,
+        args[ARG_firstbit].u_int,
+        args[ARG_sck].u_obj == MP_OBJ_NULL ? WM_IO_PB_16 : machine_pin_get_id(args[ARG_sck].u_obj),
+        args[ARG_mosi].u_obj == MP_OBJ_NULL ? WM_IO_PB_18 : machine_pin_get_id(args[ARG_mosi].u_obj),
+        args[ARG_miso].u_obj == MP_OBJ_NULL ? WM_IO_PB_17 : machine_pin_get_id(args[ARG_miso].u_obj),
+        args[ARG_cs].u_obj == MP_OBJ_NULL ? 0 : machine_pin_get_id(args[ARG_cs].u_obj));
+        // args[ARG_cs].u_obj == MP_OBJ_NULL ? WM_IO_PB_15 : machine_pin_get_id(args[ARG_cs].u_obj));
 }
 
 mp_obj_t machine_hard_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
@@ -347,7 +349,8 @@ mp_obj_t machine_hard_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
         args[ARG_sck].u_obj == MP_OBJ_NULL ? WM_IO_PB_16 : machine_pin_get_id(args[ARG_sck].u_obj),
         args[ARG_mosi].u_obj == MP_OBJ_NULL ? WM_IO_PB_18 : machine_pin_get_id(args[ARG_mosi].u_obj),
         args[ARG_miso].u_obj == MP_OBJ_NULL ? WM_IO_PB_17 : machine_pin_get_id(args[ARG_miso].u_obj),
-        args[ARG_cs].u_obj == MP_OBJ_NULL ? WM_IO_PB_15 : machine_pin_get_id(args[ARG_cs].u_obj));
+        args[ARG_cs].u_obj == MP_OBJ_NULL ? 0 : machine_pin_get_id(args[ARG_cs].u_obj));
+//        args[ARG_cs].u_obj == MP_OBJ_NULL ? WM_IO_PB_15 : machine_pin_get_id(args[ARG_cs].u_obj));
 
     return MP_OBJ_FROM_PTR(self);
 }
