@@ -43,6 +43,6 @@ typedef struct _mp_thread_mutex_t {
 
 void mp_thread_init(void *stack, uint32_t stack_len);
 void mp_thread_gc_others(void);
-void mp_thread_deinit(void);
+int mp_thread_deinit(void);
 
 #endif // MICROPY_INCLUDED_W600_MPTHREADPORT_H

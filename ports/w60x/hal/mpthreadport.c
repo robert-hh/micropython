@@ -225,14 +225,13 @@ void mp_thread_finish(void) {
     mp_thread_mutex_unlock(&thread_mutex);
 }
 
-void mp_thread_deinit(void) {
+int mp_thread_deinit(void) {
     // If more than the main thread exists, do a hard reset. 
     // That will also end all threads, so cleaning is not required. 
     // And free'ing the heap was anyhow not yet implemented
     // If it is just the main thread, there is nothing to clean
-    if (thread && thread != &thread_entry0) {
-        tls_sys_reset();
-    }
+    // The actual hard reset is done in main.c
+    return thread && thread != &thread_entry0 ? 1 : 0;
 }
 
 void mp_thread_mutex_init(mp_thread_mutex_t *mutex) {

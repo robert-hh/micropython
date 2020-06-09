@@ -264,15 +264,22 @@ soft_reset:
         }
     }
 
+    int coldboot = 0;
 #if MICROPY_PY_THREAD
-    mp_thread_deinit();
+    coldboot = mp_thread_deinit();
 #endif
 
     mp_hal_stdout_tx_str("MPY: soft reboot\r\n");
 
+    gc_sweep_all();
+
     mp_deinit();
 
-    goto soft_reset;
+    if (coldboot) {
+        tls_sys_reset();
+    } else {
+        goto soft_reset;
+    }
 }
 
 void UserMain(void) {
