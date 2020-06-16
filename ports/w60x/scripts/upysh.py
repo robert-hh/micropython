@@ -47,6 +47,13 @@ def head(f, n=10):
 def cat(f):
     head(f, 1 << 30)
 
+def cp(s, t):
+    with open(s, "rb") as s:
+        with open(t, "wb") as t:
+            while True:
+                l = s.readline()
+                if not l: break
+                t.write(l)
 
 def newfile(path):
     print("Type file contents line by line, finish with EOF (Ctrl+D).")
@@ -97,9 +104,9 @@ from upysh import *
 To see this help text again, type "man".
 
 upysh commands:
-pwd, cd("new_dir"), ls, ls(...), head(...), cat(...), hd(...)
-newfile(...), mv("old", "new"), rm(...), mkdir(...), rmdir(...)
-clear
+pwd, cd('new_dir'), ls, ls(...), head(...), cat(...), hd(...)
+cp('src', 'dest'), mv('old', 'new'), rm(...), mkdir(...), rmdir(...)
+newfile(...), clear
 """)
 
 man = Man()
