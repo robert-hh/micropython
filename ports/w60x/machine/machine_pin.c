@@ -73,8 +73,6 @@ typedef struct _machine_pin_irq_obj_t {
     enum tls_io_name id;
 } machine_pin_irq_obj_t;
 
-#define RAM_START                   0x20000000
-
 STATIC machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_00},
     {{&machine_pin_type}, WM_IO_PA_01},
