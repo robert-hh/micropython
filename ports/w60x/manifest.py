@@ -1,0 +1,5 @@
+freeze("$(PORT_DIR)/scripts")
+freeze("$(MPY_DIR)/tools", ("upip.py", "upip_utarfile.py"))
+freeze('$(MPY_DIR)/../pye', 'pye_mp.py')
+freeze("$(MPY_LIB_DIR)/upysh", "upysh.py")
+include("$(MPY_DIR)/extmod/uasyncio/manifest.py")

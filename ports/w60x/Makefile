@@ -26,7 +26,8 @@ else
 MICROPY_SSL_MBEDTLS = 0
 endif
 
-FROZEN_MPY_DIR = scripts
+# FROZEN_MPY_DIR = scripts
+FROZEN_MANIFEST ?= manifest.py
 
 # include py core make definitions
 include $(TOP)/py/py.mk
