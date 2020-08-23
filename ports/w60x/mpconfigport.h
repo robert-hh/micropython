@@ -49,6 +49,7 @@
 #define MICROPY_MODULE_FROZEN_MPY           (1)
 #define MICROPY_QSTR_EXTRA_POOL             mp_qstr_frozen_const_pool
 #define MICROPY_CAN_OVERRIDE_BUILTINS       (1)
+#define MICROPY_MODULE_BUILTIN_INIT         (1)
 #define MICROPY_USE_INTERNAL_ERRNO          (1)
 #define MICROPY_USE_INTERNAL_PRINTF         (0)
 #define MICROPY_ENABLE_SCHEDULER            (1)
@@ -263,6 +264,9 @@ typedef uint32_t mp_uint_t; // must be pointer size
 typedef long mp_off_t;
 // ssize_t, off_t as required by POSIX-signatured functions in stream.h
 #include <sys/types.h>
+
+u32 w600_adc_get_allch_4bit_rst(void);
+#define MICROPY_PY_URANDOM_SEED_INIT_FUNC   (w600_adc_get_allch_4bit_rst())
 
 // board specifics
 #define MICROPY_W600_VERSION    "B1.6"

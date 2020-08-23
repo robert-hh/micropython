@@ -72,7 +72,7 @@ STATIC mp_obj_t os_uname(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(os_uname_obj, os_uname);
 
-STATIC u32 w600_adc_get_allch_4bit_rst(void)
+u32 w600_adc_get_allch_4bit_rst(void)
 {
 extern u8 adc_irq_flag;
 	u32 average = 0;
