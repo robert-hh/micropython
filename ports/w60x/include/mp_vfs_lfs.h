@@ -32,9 +32,12 @@
 #include "lib/littlefs/lfs2.h"
 #include "extmod/vfs.h"
 
+// This structure MUST be identical to the structure mp_obj_vfs_lfs2_t from vfs_lfs.c
+
 typedef struct _fs_user_mount_t {
     mp_obj_base_t base;
     mp_vfs_blockdev_t blockdev;
+    bool enable_mtime;
     vstr_t cur_dir;
     struct lfs2_config config;
     lfs2_t lfs;
