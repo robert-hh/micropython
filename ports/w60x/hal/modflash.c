@@ -136,7 +136,7 @@ const mp_obj_type_t w600_flash_type = {
 #endif
 
 #if MICROPY_VFS_LFS2
-#define FS_EXTENSION                        (0x10000)  // 64 k extra space
+#define FS_EXTENSION                        (0x20000)  // 128 k extra space
 #define INTERVAL_FLS_BASE                   (USER_ADDR_START - FS_EXTENSION)
 #define INTERVAL_FLS_LEN                    (USER_AREA_LEN + FS_EXTENSION)
 #define INTERVAL_FLS_FS_SECTOR_SIZE         (512)
@@ -185,6 +185,7 @@ void w600_flash_init_vfs(fs_user_mount_t *vfs_fs) {
 #endif
 #if MICROPY_VFS_LFS2
     vfs_fs->base.type = &mp_type_vfs_lfs2;
+    vfs_fs->enable_mtime = true;
 
     // block device operations
     vfs_fs->config.read  = w600_flash_lfs_read;
