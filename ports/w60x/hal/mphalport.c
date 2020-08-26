@@ -28,18 +28,22 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "wm_osal.h"
 #include "wm_cpu.h"
 #include "wm_regs.h"
 #include "wm_watchdog.h"
 #include "wm_irq.h"
+#include "wm_rtc.h"
+#include "modmachine.h"
 
 #include "py/obj.h"
 #include "py/mpstate.h"
 #include "py/mphal.h"
 #include "extmod/misc.h"
 #include "lib/utils/pyexec.h"
+#include "lib/timeutils/timeutils.h"
 #include "mphalport.h"
 
 #define CNT_START_VALUE (0xffffffff)
@@ -154,4 +158,15 @@ uint32_t mp_hal_get_cpu_freq(void) {
     tls_sys_clk sysclk;
     tls_sys_clk_get(&sysclk);
     return sysclk.cpuclk;
+}
+
+uint64_t mp_hal_time_ns(void) {
+    uint64_t ns = 0;
+    // Get current according to the RTC.
+    struct tm tblock;
+    tls_get_rtc(&tblock);
+    ns = timeutils_nanoseconds_since_1970(
+        W600_YEAR_BASE + tblock.tm_year, tblock.tm_mon, tblock.tm_mday, 
+        tblock.tm_hour, tblock.tm_min, tblock.tm_sec);
+    return ns;
 }
