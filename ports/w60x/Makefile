@@ -149,6 +149,7 @@ MPY_SRC_C = main.c \
     hal/modflash.c \
     hal/wm_watchdog.c \
     hal/wm_hostspi.c \
+    hal/wm_uart.c \
     machine/machine_timer.c \
     machine/machine_wdt.c \
     machine/machine_pin.c \
