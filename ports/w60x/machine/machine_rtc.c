@@ -24,19 +24,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "wm_sockets2.0.3.h"
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "wm_include.h"
 #include "wm_rtc.h"
 
-#include "py/nlr.h"
 #include "py/obj.h"
 #include "py/runtime.h"
-#include "py/mphal.h"
 #include "timeutils.h"
 
 #include "modmachine.h"
@@ -105,17 +98,18 @@ STATIC mp_obj_t machine_rtc_datetime_helper(mp_uint_t n_args, const mp_obj_t *ar
         return mp_const_none;
     }
 }
-STATIC mp_obj_t machine_rtc_now(mp_uint_t n_args, const mp_obj_t *args) {
+
+STATIC mp_obj_t machine_rtc_now(size_t n_args, const mp_obj_t *args) {
     return machine_rtc_datetime_helper(1, args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_now_obj, 0, 1, machine_rtc_now);
 
-STATIC mp_obj_t machine_rtc_init(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t machine_rtc_init(size_t n_args, const mp_obj_t *args) {
     return machine_rtc_datetime_helper(n_args, args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_init_obj, 1, 2, machine_rtc_init);
 
-STATIC mp_obj_t machine_rtc_deinit(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t machine_rtc_deinit(size_t n_args, const mp_obj_t *args) {
     struct tm tblock;
     tblock.tm_year = 2015 - W600_YEAR_BASE;
     tblock.tm_mon = 1;
@@ -128,12 +122,12 @@ STATIC mp_obj_t machine_rtc_deinit(mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_deinit_obj, 0, 1, machine_rtc_deinit);
 
-STATIC mp_obj_t machine_rtc_datetime(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t machine_rtc_datetime(size_t n_args, const mp_obj_t *args) {
     return machine_rtc_datetime_helper(n_args, args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_datetime_obj, 1, 2, machine_rtc_datetime);
 
-STATIC mp_obj_t machine_rtc_alarm(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t machine_rtc_alarm(size_t n_args, const mp_obj_t *args) {
     machine_rtc_obj_t *self = args[0];
     struct tm tblock;
     mp_obj_t *items;
@@ -177,13 +171,13 @@ STATIC mp_obj_t machine_rtc_alarm_left(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_alarm_left_obj, 1, 2, machine_rtc_alarm_left);
 
-STATIC mp_obj_t machine_rtc_cancel(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t machine_rtc_cancel(size_t n_args, const mp_obj_t *args) {
     tls_rtc_timer_stop();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_cancel_obj, 0, 1, machine_rtc_cancel);
 
-STATIC void machine_rtc_alarm_irq(u8 *arg) {
+STATIC void machine_rtc_alarm_irq(void *arg) {
     machine_rtc_obj_t *self = (machine_rtc_obj_t *)arg;
 
     if (self->handler) {

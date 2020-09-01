@@ -110,7 +110,7 @@ static int _socket_getaddrinfo2(const mp_obj_t host, const mp_obj_t portx, struc
 }
 
 int _socket_getaddrinfo(const mp_obj_t addrtuple, struct addrinfo **resp) {
-    mp_uint_t len = 0;
+    size_t len = 0;
     mp_obj_t *elem;
     mp_obj_get_array(addrtuple, &len, &elem);
     if (len != 2) return -1;
@@ -359,7 +359,7 @@ int _socket_send(socket_obj_t *sock, const char *data, size_t datalen) {
 
 STATIC mp_obj_t socket_send(const mp_obj_t arg0, const mp_obj_t arg1) {
     socket_obj_t *sock = MP_OBJ_TO_PTR(arg0);
-    mp_uint_t datalen;
+    size_t datalen;
     const char *data = mp_obj_str_get_data(arg1, &datalen);
     int r = _socket_send(sock, data, datalen);
     return mp_obj_new_int(r);

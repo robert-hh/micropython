@@ -46,7 +46,9 @@ static void SpiMasterInit(u8 mode, u8 cs_active, u32 fclk)
 	tls_sys_clk sysclk;
 
     SPIM_CHCFG_REG = SPI_CLEAR_FIFOS;
-    while (SPIM_CHCFG_REG & SPI_CLEAR_FIFOS);
+    while (SPIM_CHCFG_REG & SPI_CLEAR_FIFOS) {
+		;
+	}
 
 	tls_sys_clk_get(&sysclk);						//��ȡʵ��Ƶ��
 

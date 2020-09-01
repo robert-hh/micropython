@@ -290,7 +290,7 @@ static void w600_ftps_task(void *param) {
     }
 }
 
-void w600_ftps_start(int port, char *user, char *pass) {
+void w600_ftps_start(int port, const char *user, const char *pass) {
     ftpsport = port;
     strcpy(username, user);
     strcpy(userpwd, pass);
@@ -333,7 +333,7 @@ int do_list(char *directory, int sockfd, char*line_buffer, bool full_dir) {
         if ((res != FR_OK) || (fno.fname[0] == 0))
             break;
         if (full_dir) {
-            line_length = sprintf(line_buffer, "%srwxrwxrwx %3d root root %6d Jan 1 2018 %s\r\n", (fno.fattrib & AM_DIR) ? "d" : "-", 0, fno.fsize, fno.fname);
+            line_length = sprintf(line_buffer, "%srwxrwxrwx %3d root root %6ld Jan 1 2018 %s\r\n", (fno.fattrib & AM_DIR) ? "d" : "-", 0, fno.fsize, fno.fname);
         } else {
             line_length = sprintf(line_buffer, "%s\r\n", fno.fname);
         }
@@ -346,7 +346,8 @@ int do_list(char *directory, int sockfd, char*line_buffer, bool full_dir) {
         if (res <= 0)
             break;
         if (full_dir) {
-            line_length = sprintf(line_buffer, "%srwxrwxrwx %3d root root %6d Jan 1 2018 %s\r\n", (fno.type & LFS2_TYPE_DIR) ? "d" : "-", 0, fno.size, fno.name);
+            line_length = sprintf(line_buffer, "%srwxrwxrwx %3d root root %6ld Jan 1 2018 %s\r\n",
+                                  (fno.type & LFS2_TYPE_DIR) ? "d" : "-", 0, fno.size, fno.name);
         } else {
             line_length = sprintf(line_buffer, "%s\r\n", fno.name);
         }
@@ -429,7 +430,7 @@ int ftp_process_request(struct ftp_session *session, char *buf) {
         // login correct
         if (strcmp(parameter_ptr, "anonymous") == 0) {
             session->is_anonymous = TRUE;
-            sprintf(sbuf, "331 Anonymous login OK send e-mail address for password.\r\n", parameter_ptr);
+            sprintf(sbuf, "331 Anonymous login OK send e-mail address for password.\r\n");
             send(session->sockfd, sbuf, strlen(sbuf), 0);
         } else if (strcmp(parameter_ptr, username) == 0) {
             session->is_anonymous = FALSE;
@@ -613,7 +614,7 @@ err1:
         send(session->sockfd, sbuf, strlen(sbuf), 0);
 
 #if MICROPY_VFS_FAT
-        while (f_read(&fp, sbuf, FTP_BUFFER_SIZE, &numbytes) == FR_OK) {
+        while (f_read(&fp, sbuf, FTP_BUFFER_SIZE, (UINT *)&numbytes) == FR_OK) {
             if (numbytes == 0)
                 break;
 #endif

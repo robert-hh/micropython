@@ -15,8 +15,8 @@ include ../../py/mkenv.mk
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 
-MICROPY_USE_FATFS = 0
-MICROPY_USE_LITTLEFS = 1
+MICROPY_USE_FATFS = 1
+MICROPY_USE_LITTLEFS = 0
 
 MICROPY_USE_2M_FLASH = 0
 
@@ -355,6 +355,9 @@ endif
 ifeq ($(MICROPY_USE_LITTLEFS), 1)
 CFLAGS += -DW60X_USE_LITTLEFS=1
 endif
+
+CFLAGS += -Wno-unused-variable -Wno-unused-function 
+# CFLAGS += -Werror -Wno-error=unused-function -Wno-error=unused-but-set-variable
 
 _ENV_OS=$(subst /,-,$(COMPILER_OS))
 ENV_OS=$(shell echo $(_ENV_OS) | tr '[A-Z]' '[a-z]')
