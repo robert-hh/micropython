@@ -235,7 +235,7 @@ STATIC void machine_spi_init_internal(
 }
 
 STATIC void machine_spi_deinit(mp_obj_base_t *self_in) {
-    machine_spi_obj_t *self = (machine_spi_obj_t *) self_in;
+    // machine_spi_obj_t *self = (machine_spi_obj_t *) self_in;
 }
 
 STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8_t *src, uint8_t *dest) {
@@ -244,9 +244,9 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
 
     if (0 == self->spi_type) {
         if (src && dest && len)  {
-            ret = w600_spi_write_read(src, dest, len);
+            ret = w600_spi_write_read((u8 *)src, dest, len);
         } else if (src && len) {
-            ret = w600_spi_write(src, len);
+            ret = w600_spi_write((u8 *)src, len);
         } else if (dest && len) {
             ret = w600_spi_read(dest, len);
         }

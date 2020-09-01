@@ -31,6 +31,7 @@
 
 #include "wm_include.h"
 #include "mphalport.h"
+#include "py/runtime.h"
 
 #include "py/mpstate.h"
 #include "py/mphal.h"
@@ -96,7 +97,7 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
 }
 
 STATIC s16 uart_rx_callback(u16 len) {
-    int c;
+    uint8_t c;
     while(tls_uart_read(TLS_UART_0, &c, 1) > 0) {
         if (c == mp_interrupt_char) {
             mp_keyboard_interrupt();
@@ -105,6 +106,7 @@ STATIC s16 uart_rx_callback(u16 len) {
             ringbuf_put(&stdin_ringbuf, c);
         }
     }
+    return 0;
 }
 
 void uart_init(void) {

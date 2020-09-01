@@ -46,7 +46,7 @@ typedef struct _machine_uart_obj_t {
 
 STATIC void machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    uint32_t baudrate;
+
     mp_printf(print, "UART(%u, baudrate=%u, bits=%u, parity=%s, stop=%u)",
               self->uart_num, self->uartcfg.baudrate, self->uartcfg.charlength + 5,
               self->uartcfg.paritytype ? ((self->uartcfg.paritytype == 1) ? "1" : "0") : "None",
@@ -153,7 +153,6 @@ STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, 
 }
 
 STATIC mp_obj_t machine_uart_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
-    machine_uart_obj_t *self = args[0];
     machine_uart_init_helper(args[0], n_args - 1, args + 1, kw_args);
     return mp_const_none;
 }
@@ -200,7 +199,7 @@ STATIC mp_uint_t machine_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t siz
 STATIC mp_uint_t machine_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_t size, int *errcode) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
-    int bytes_written = tls_uart_write(self->uart_num, buf_in, size);
+    int bytes_written = tls_uart_write(self->uart_num, (char *)buf_in, size);
 
     if (bytes_written < 0) {
         *errcode = MP_EAGAIN;

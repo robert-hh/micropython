@@ -34,6 +34,7 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/mphal.h"
+#include "py/gc.h"
 #include "extmod/virtpin.h"
 
 #include "mphalport.h"
@@ -153,7 +154,7 @@ STATIC void machine_pin_isr_handler(void *arg) {
         gc_lock();
         // save stack top and set temporary value to pass the stack check
         char *saved_stack_top = MP_STATE_THREAD(stack_top);
-        MP_STATE_THREAD(stack_top) = &saved_stack_top + 1024; // kind of arbitrary
+        MP_STATE_THREAD(stack_top) = (void *)&saved_stack_top + 1024; // kind of arbitrary
         nlr_buf_t nlr;
         if (nlr_push(&nlr) == 0) {
             mp_call_function_1(handler, MP_OBJ_FROM_PTR(self));

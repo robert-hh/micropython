@@ -13,6 +13,7 @@
 #include "wm_mem.h"
 #include "wm_crypto_hard.h"
 #include "wm_rtc.h"
+#include "wm_watchdog.h"
 
 #include "py/stackctrl.h"
 #include "py/nlr.h"
@@ -36,6 +37,12 @@
 #include "mpthreadport.h"
 
 OS_STK mpy_task_stk[MPY_STACK_LEN];
+
+void w600_flash_init_vfs(fs_user_mount_t *vfs_fs);
+void uart_init(void);
+void machine_pins_init(void);
+void timer_init0(void);
+void tls_sys_reset(void);
 
 #if MICROPY_USE_INTERVAL_FLS_FS
 fs_user_mount_t *spi_fls_vfs = NULL;

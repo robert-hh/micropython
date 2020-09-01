@@ -34,6 +34,7 @@
 #include "lib/utils/gchelper.h"
 #include "py/runtime.h"
 
+uintptr_t gc_helper_get_regs_and_sp(uintptr_t *regs);
 
 #if MICROPY_USE_INTERVAL_FLS_FS
 extern void *spi_fls_vfs;  // The type does not matter here

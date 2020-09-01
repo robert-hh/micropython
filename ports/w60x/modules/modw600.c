@@ -46,6 +46,7 @@ extern const u8 SysCreatedDate[];
 extern const u8 SysCreatedTime[];
 
 extern int tls_fls_get_param(u8 type, void *param);
+extern void w600_ftps_start(int port, const char *user, const char *pass);
 
 STATIC mp_obj_t w600_flash_read(mp_obj_t offset_in, mp_obj_t buf_in) {
     mp_int_t offset = mp_obj_get_int(offset_in);

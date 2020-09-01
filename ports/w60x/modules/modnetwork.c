@@ -163,7 +163,7 @@ STATIC mp_obj_t w600_connect(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
 
     // configure any parameters that are given
     if (n_args > 1) {
-        mp_uint_t len;
+        size_t len;
         const char *p;
         if (args[ARG_ssid].u_obj != mp_const_none) {
             p = mp_obj_str_get_data(args[ARG_ssid].u_obj, &len);
@@ -196,9 +196,9 @@ STATIC mp_obj_t w600_connect(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
     // connect to the WiFi AP
     MP_THREAD_GIL_EXIT();
     if (bssidset) {
-        tls_wifi_connect_by_ssid_bssid(apssid, strlen(apssid), apbssid, apkey, strlen(apkey));
+        tls_wifi_connect_by_ssid_bssid(apssid, strlen((const char *)apssid), apbssid, apkey, strlen((const char *)apkey));
     } else {
-        tls_wifi_connect(apssid, strlen(apssid), apkey, strlen(apkey));
+        tls_wifi_connect(apssid, strlen((const char *)apssid), apkey, strlen((const char *)apkey));
     }
     MP_THREAD_GIL_ENTER();
     wifi_sta_connect_requested = true;
@@ -442,7 +442,7 @@ STATIC mp_obj_t w600_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwarg
                     break;
                 }
                 case QS(MP_QSTR_essid): {
-                    mp_uint_t len;
+                    size_t len;
                     req_if = IEEE80211_MODE_AP;
                     const char *s = mp_obj_str_get_data(kwargs->table[i].value, &len);
                     len = MIN(len, sizeof(apinfo.ssid) - 1);
@@ -456,7 +456,7 @@ STATIC mp_obj_t w600_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwarg
                     break;
                 }
                 case QS(MP_QSTR_password): {
-                    mp_uint_t len;
+                    size_t len;
                     req_if = IEEE80211_MODE_AP;
                     const char *s = mp_obj_str_get_data(kwargs->table[i].value, &len);
                     len = MIN(len, sizeof(apinfo.keyinfo.key));

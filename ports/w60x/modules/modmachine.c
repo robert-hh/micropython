@@ -33,6 +33,7 @@
 #include "wm_include.h"
 #include "wm_cpu.h"
 #include "wm_watchdog.h"
+#include "tls_wireless.h"
 #include "task.h"
 
 #include "py/runtime.h"
@@ -43,6 +44,8 @@
 #include "extmod/machine_spi.h"
 
 #include "modmachine.h"
+
+extern uint8_t *wpa_supplicant_get_mac(void);
 
 #if MICROPY_PY_MACHINE
 

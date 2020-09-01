@@ -31,11 +31,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "py/runtime.h"
+#include "py/obj.h"
+
 #include "wm_include.h"
 #include "wm_timer.h"
 
-#include "py/obj.h"
-#include "py/runtime.h"
 //#include "modmachine.h"
 //#include "mphalport.h"
 
@@ -56,7 +57,7 @@ STATIC void machine_timer_print(const mp_print_t *print, mp_obj_t self_in, mp_pr
 
     mp_printf(print, "Timer(%p; ", self);
 
-    mp_printf(print, "timerid=%x, ", self->is_hwtimer ? self->timerid : self->stimer);
+    mp_printf(print, "timerid=%x, ", self->is_hwtimer ? self->timerid : (uint32_t)self->stimer);
     mp_printf(print, "period=%u, ", self->timeout);
     mp_printf(print, "auto_reload=%d)", self->is_repeat);
 }
@@ -118,7 +119,7 @@ STATIC void machine_soft_timer_callback(void *ptmr, void *parg)
     }
 }
 
-STATIC mp_obj_t machine_timer_init(mp_uint_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+STATIC mp_obj_t machine_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     machine_timer_obj_t *self = (machine_timer_obj_t *)args[0];
     struct tls_timer_cfg timercfg;
 
@@ -128,7 +129,7 @@ STATIC mp_obj_t machine_timer_init(mp_uint_t n_args, const mp_obj_t *args, mp_ma
         ARG_callback,
     };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_mode,         MP_ARG_INT, {.u_int = MP_ROM_INT(true)} },
+        { MP_QSTR_mode,         MP_ARG_INT, {.u_int = true} },
         { MP_QSTR_period,       MP_ARG_INT, {.u_int = 100} },
         { MP_QSTR_callback,     MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
