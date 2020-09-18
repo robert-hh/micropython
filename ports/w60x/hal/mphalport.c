@@ -165,9 +165,10 @@ uint64_t mp_hal_time_ns(void) {
     // Get current according to the RTC.
     struct tm tblock;
     tls_get_rtc(&tblock);
-    ns = timeutils_nanoseconds_since_1970(
+    ns = timeutils_seconds_since_epoch(
         W600_YEAR_BASE + tblock.tm_year, tblock.tm_mon, tblock.tm_mday, 
         tblock.tm_hour, tblock.tm_min, tblock.tm_sec);
+    ns *= 1000000000ULL;
     return ns;
 }
 #endif
