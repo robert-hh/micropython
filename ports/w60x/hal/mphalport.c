@@ -162,7 +162,7 @@ uint32_t mp_hal_get_cpu_freq(void) {
 
 uint64_t mp_hal_time_ns(void) {
     uint64_t ns = 0;
-    // Get current according to the RTC.
+    // Get current according to the RTC, which has only seconds resolution
     struct tm tblock;
     tls_get_rtc(&tblock);
     ns = timeutils_seconds_since_epoch(
