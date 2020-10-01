@@ -159,7 +159,7 @@ uint32_t mp_hal_get_cpu_freq(void) {
     tls_sys_clk_get(&sysclk);
     return sysclk.cpuclk;
 }
-#if MICROPY_VFS_LFS2
+
 uint64_t mp_hal_time_ns(void) {
     uint64_t ns = 0;
     // Get current according to the RTC.
@@ -171,4 +171,3 @@ uint64_t mp_hal_time_ns(void) {
     ns *= 1000000000ULL;
     return ns;
 }
-#endif

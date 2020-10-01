@@ -44,17 +44,17 @@ typedef struct _machine_i2c_obj_t {
     enum tls_io_name scl;
     enum tls_io_name sda;
     uint32_t freq;
-} machine_hard_i2c_obj_t;
+} machine_hw_i2c_obj_t;
 
-STATIC const mp_obj_type_t machine_hard_i2c_type;
+const mp_obj_type_t machine_hw_i2c_type;
 
 STATIC void machine_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
-    machine_hard_i2c_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    machine_hw_i2c_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "I2C(scl=%d, sda=%d, freq=%u)",
               self->scl, self->sda, self->freq);
 }
 
-mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args)  {
+mp_obj_t machine_hw_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args)  {
     enum { ARG_id, ARG_scl, ARG_sda, ARG_freq, ARG_timeout };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -66,7 +66,7 @@ mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, siz
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    machine_hard_i2c_obj_t *self = m_new_obj(machine_hard_i2c_obj_t);
+    machine_hw_i2c_obj_t *self = m_new_obj(machine_hw_i2c_obj_t);
 
     if (args[ARG_scl].u_obj == MP_OBJ_NULL || args[ARG_scl].u_obj == mp_const_none) {
         self->scl = WM_IO_PB_13;
@@ -80,7 +80,7 @@ mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, siz
         self->sda = mp_hal_get_pin_obj(args[ARG_sda].u_obj);
     }
 
-    self->base.type = &machine_hard_i2c_type;
+    self->base.type = &machine_hw_i2c_type;
     self->freq = args[ARG_freq].u_int;
 
     wm_i2c_scl_config(self->scl);
@@ -128,7 +128,7 @@ STATIC int w600_i2c_send_address(uint16_t addr, bool bit10, bool read) {
 
 // return value:
 // 0: Success
-STATIC int machine_hard_i2c_read(uint16_t addr, uint8_t *dest, size_t len, bool nack) {
+STATIC int machine_hw_i2c_read(uint16_t addr, uint8_t *dest, size_t len, bool nack) {
 
     while (len > 1) {
         *dest++ = tls_i2c_read_byte(1, 0);
@@ -141,7 +141,7 @@ STATIC int machine_hard_i2c_read(uint16_t addr, uint8_t *dest, size_t len, bool 
 // return value:
 //   >=0 - len bytes written and # acks received
 //   <0 - error, with errno being the negative of the return value
-STATIC int machine_hard_i2c_write(uint16_t addr, const uint8_t *src, size_t len) {
+STATIC int machine_hw_i2c_write(uint16_t addr, const uint8_t *src, size_t len) {
     int ret;
     int ack_received = 0;
     uint8_t *buf = (uint8_t *)src;
@@ -163,7 +163,7 @@ STATIC int machine_hard_i2c_write(uint16_t addr, const uint8_t *src, size_t len)
 // required return value:
 //  >=0 - success; for read it's 0, for write it's number of acks received
 //   <0 - error, with errno being the negative of the return value
-int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, mp_machine_i2c_buf_t *bufs, unsigned int flags) {
+int machine_hw_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, mp_machine_i2c_buf_t *bufs, unsigned int flags) {
     int ret = 0;
     int wait;
     int transfer_ret = 0;
@@ -182,10 +182,10 @@ int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, m
 
     for (; n--; ++bufs) {
         if (flags & MP_MACHINE_I2C_FLAG_READ) {
-            machine_hard_i2c_read(addr, bufs->buf, bufs->len, n == 0);
+            machine_hw_i2c_read(addr, bufs->buf, bufs->len, n == 0);
         } else {
             if (bufs->len != 0) {
-                ret = machine_hard_i2c_write(addr, bufs->buf, bufs->len);
+                ret = machine_hw_i2c_write(addr, bufs->buf, bufs->len);
                 if (ret < 0) {
                     return ret;
                 }
@@ -201,16 +201,16 @@ int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, m
     return transfer_ret;
 }
 
-STATIC const mp_machine_i2c_p_t machine_hard_i2c_p = {
-    .transfer = machine_hard_i2c_transfer,
+STATIC const mp_machine_i2c_p_t machine_hw_i2c_p = {
+    .transfer = machine_hw_i2c_transfer,
 };
 
-STATIC const mp_obj_type_t machine_hard_i2c_type = {
+const mp_obj_type_t machine_hw_i2c_type = {
     { &mp_type_type },
     .name = MP_QSTR_I2C,
     .print = machine_i2c_print,
-    .make_new = machine_hard_i2c_make_new,
-    .protocol = &machine_hard_i2c_p,
+    .make_new = machine_hw_i2c_make_new,
+    .protocol = &machine_hw_i2c_p,
     .locals_dict = (mp_obj_dict_t *) &mp_machine_soft_i2c_locals_dict,
 };
 

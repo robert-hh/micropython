@@ -41,7 +41,7 @@
 #include "wm_dma.h"
 
 
-typedef struct _machine_spi_obj_t {
+typedef struct _machine_hw_spi_obj_t {
     mp_obj_base_t base;
 
     uint32_t baudrate;
@@ -55,7 +55,7 @@ typedef struct _machine_spi_obj_t {
     int8_t cs;
 
     uint8_t spi_type;/* 0-lspi, 1-hspi */
-} machine_spi_obj_t;
+} machine_hw_spi_obj_t;
 
 STATIC size_t   machine_spi_rx_len = 0;
 STATIC uint8_t *machine_spi_rx_buf = NULL;
@@ -160,7 +160,7 @@ STATIC u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len)
 }
 
 STATIC void machine_spi_init_internal(
-    machine_spi_obj_t    *self,
+    machine_hw_spi_obj_t    *self,
     int32_t                 baudrate,
     int8_t                  polarity,
     int8_t                  phase,
@@ -234,13 +234,13 @@ STATIC void machine_spi_init_internal(
     }
 }
 
-STATIC void machine_spi_deinit(mp_obj_base_t *self_in) {
-    // machine_spi_obj_t *self = (machine_spi_obj_t *) self_in;
+STATIC void machine_hw_spi_deinit(mp_obj_base_t *self_in) {
+    // machine_hw_spi_obj_t *self = (machine_spi_obj_t *) self_in;
 }
 
-STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8_t *src, uint8_t *dest) {
+STATIC void machine_hw_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8_t *src, uint8_t *dest) {
     int ret = TLS_SPI_STATUS_OK;
-    machine_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    machine_hw_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     if (0 == self->spi_type) {
         if (src && dest && len)  {
@@ -263,16 +263,16 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
 /******************************************************************************/
 // MicroPython bindings for hw_spi
 
-STATIC void machine_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
-    machine_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
+STATIC void machine_hw_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+    machine_hw_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "SPI(id=%u, baudrate=%u, polarity=%u, phase=%u, bits=%u, firstbit=%u, sck=%d, mosi=%d, miso=%d, cs=%d)",
               self->spi_type, self->baudrate, self->polarity,
               self->phase, self->bits, self->firstbit,
               self->sck, self->mosi, self->miso, self->cs);
 }
 
-STATIC void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    machine_spi_obj_t *self = (machine_spi_obj_t *) self_in;
+STATIC void machine_hw_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    machine_hw_spi_obj_t *self = (machine_hw_spi_obj_t *) self_in;
 
     enum { ARG_id, ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_sck, ARG_mosi, ARG_miso, ARG_cs };
     static const mp_arg_t allowed_args[] = {
@@ -298,7 +298,7 @@ STATIC void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
         self->spi_type = 0;
     }
 
-    self->base.type = &machine_spi_type;
+    self->base.type = &machine_hw_spi_type;
 
     machine_spi_init_internal(
         self,
@@ -314,7 +314,7 @@ STATIC void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
         // args[ARG_cs].u_obj == MP_OBJ_NULL ? WM_IO_PB_15 : machine_pin_get_id(args[ARG_cs].u_obj));
 }
 
-mp_obj_t machine_hard_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+mp_obj_t machine_hw_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_id, ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_sck, ARG_mosi, ARG_miso, ARG_cs };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id,       MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = -1} },
@@ -331,13 +331,13 @@ mp_obj_t machine_hard_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    machine_spi_obj_t *self = m_new_obj(machine_spi_obj_t);
+    machine_hw_spi_obj_t *self = m_new_obj(machine_hw_spi_obj_t);
     if (args[ARG_id].u_int == 1) {
         self->spi_type = 1;
     } else {
         self->spi_type = 0;
     }
-    self->base.type = &machine_spi_type;
+    self->base.type = &machine_hw_spi_type;
 
     machine_spi_init_internal(
         self,
@@ -355,17 +355,17 @@ mp_obj_t machine_hard_spi_make_new(const mp_obj_type_t *type, size_t n_args, siz
     return MP_OBJ_FROM_PTR(self);
 }
 
-STATIC const mp_machine_spi_p_t machine_spi_p = {
-    .init = machine_spi_init,
-    .deinit = machine_spi_deinit,
-    .transfer = machine_spi_transfer,
+STATIC const mp_machine_spi_p_t machine_hw_spi_p = {
+    .init = machine_hw_spi_init,
+    .deinit = machine_hw_spi_deinit,
+    .transfer = machine_hw_spi_transfer,
 };
 
-const mp_obj_type_t machine_spi_type = {
+const mp_obj_type_t machine_hw_spi_type = {
     { &mp_type_type },
     .name = MP_QSTR_SPI,
-    .print = machine_spi_print,
-    .make_new = machine_hard_spi_make_new,
-    .protocol = &machine_spi_p,
+    .print = machine_hw_spi_print,
+    .make_new = machine_hw_spi_make_new,
+    .protocol = &machine_hw_spi_p,
     .locals_dict = (mp_obj_dict_t *) &mp_machine_spi_locals_dict,
 };
