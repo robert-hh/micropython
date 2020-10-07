@@ -33,7 +33,7 @@
 #include "modmachine.h"
 
 #include "lib/oofatfs/ff.h"
-#include "timeutils.h"
+#include "lib/timeutils/timeutils.h"
 
 DWORD get_fattime(void) {
     struct tm tblock;
