@@ -26,8 +26,8 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
-#ifndef MBEDTLS_CONFIG_H
-#define MBEDTLS_CONFIG_H
+#ifndef MICROPY_INCLUDED_MBEDTLS_CONFIG_H
+#define MICROPY_INCLUDED_MBEDTLS_CONFIG_H
 
 #include "wm_mem.h"
 #include "wm_osal.h"
@@ -2872,6 +2872,6 @@ MBEDTLS_TLS_DHE_RSA_WITH_AES_128_CBC_SHA
 #include MBEDTLS_USER_CONFIG_FILE
 #endif
 
-#include "check_config.h"
+#include "mbedtls/check_config.h"
 
-#endif /* MBEDTLS_CONFIG_H */
+#endif /* MICROPY_INCLUDED_MBEDTLS_CONFIG_H */

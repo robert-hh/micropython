@@ -155,17 +155,7 @@
 #define MICROPY_PY_MACHINE_SPI_MAKE_NEW     machine_hard_spi_make_new
 #define MICROPY_HW_SOFTSPI_MIN_DELAY        (0)
 #define MICROPY_HW_SOFTSPI_MAX_BAUDRATE     (mp_hal_get_cpu_freq() * 1000000 / 200) // roughly
-#ifdef W60X_USE_MBEDTLS_SSL
-#define MICROPY_PY_UCRYPTOLIB               (1)
-#define MICROPY_PY_USSL                     (1)
-#define MICROPY_SSL_MBEDTLS                 (1)
-#define MICROPY_PY_USSL_FINALISER           (1)
-#else
-#define MICROPY_PY_UCRYPTOLIB               (0)
-#define MICROPY_PY_USSL                     (0)
-#define MICROPY_SSL_MBEDTLS                 (0)
-#define MICROPY_PY_USSL_FINALISER           (0)
-#endif
+#define MICROPY_PY_UCRYPTOLIB               (MICROPY_PY_USSL)
 #define MICROPY_PY_WEBREPL                  (0)
 #define MICROPY_PY_UWEBSOCKET               (1)
 #define MICROPY_PY_FRAMEBUF                 (1)
