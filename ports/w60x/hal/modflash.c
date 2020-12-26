@@ -48,7 +48,7 @@
 
 #if MICROPY_VFS_FAT
 #define FS_EXTENSION                    (0x20000) // 128k extra space
-#define INTERVAL_FLS_BASE               (USER_ADDR_START - FS_EXTENSION) // 176k (32+48)
+#define INTERVAL_FLS_BASE               (USER_ADDR_START - FS_EXTENSION) // 176k (128+48)
 #define INTERVAL_FLS_LEN                (USER_AREA_LEN + FS_EXTENSION) // gz image <=352kb
 #define INTERVAL_FLS_FS_SECTOR_SIZE     (FF_MAX_SS)
 
