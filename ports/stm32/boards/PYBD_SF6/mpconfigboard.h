@@ -64,3 +64,7 @@
 #define MICROPY_HW_ETH_RMII_TX_EN   (pyb_pin_W8)
 #define MICROPY_HW_ETH_RMII_TXD0    (pyb_pin_W45)
 #define MICROPY_HW_ETH_RMII_TXD1    (pyb_pin_W49)
+
+#undef MICROPY_HW_FLASH_MOUNT_AT_BOOT
+#define MICROPY_HW_FLASH_MOUNT_AT_BOOT      (1)
+#define MICROPY_HW_SDCARD_MOUNT_AT_BOOT (0)

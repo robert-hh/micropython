@@ -181,7 +181,8 @@ extern struct _spi_bdev_t spi_bdev2;
 #define MICROPY_HW_SDCARD_DETECT_PIN        (pyb_pin_SD_SW)
 #define MICROPY_HW_SDCARD_DETECT_PULL       (GPIO_PULLUP)
 #define MICROPY_HW_SDCARD_DETECT_PRESENT    (GPIO_PIN_RESET)
-#define MICROPY_HW_SDCARD_MOUNT_AT_BOOT     (0)
+// Hack for broken SF2 board
+// #define MICROPY_HW_FLASH_MOUNT_AT_BOOT      (0)
 
 // USB config
 #define MICROPY_HW_USB_FS           (1)

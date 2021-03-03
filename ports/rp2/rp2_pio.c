@@ -634,7 +634,7 @@ STATIC mp_obj_t rp2_state_machine_get(size_t n_args, const mp_obj_t *args) {
             } else {
                 bufinfo.typecode |= 0x20; // make lowercase to support upper and lower
             }
-            if (bufinfo.len == 0) { // edge case: buffer of zero length supplied
+            if (bufinfo.len <= 0) {  // edge case: buffer of zero length supplied
                 return args[1];
             }
         }
