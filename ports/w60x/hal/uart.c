@@ -100,7 +100,7 @@ STATIC s16 uart_rx_callback(u16 len) {
     uint8_t c;
     while(tls_uart_read(TLS_UART_0, &c, 1) > 0) {
         if (c == mp_interrupt_char) {
-            mp_keyboard_interrupt();
+            mp_sched_keyboard_interrupt();
         } else {
             // this is an inline function so will be in IRAM
             ringbuf_put(&stdin_ringbuf, c);
