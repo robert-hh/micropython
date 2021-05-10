@@ -102,7 +102,7 @@ void mp_task(void *pvParameter) {
             break;
         default:
             // No SPIRAM, fallback to normal allocation
-            mp_task_heap_size = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) - (16 * 1024);
+            mp_task_heap_size = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) - (8 * 1024);
             mp_task_heap = malloc(mp_task_heap_size);
             break;
     }
@@ -115,12 +115,12 @@ void mp_task(void *pvParameter) {
         mp_task_heap_size = esp_spiram_size;
     } else {
         // No SPIRAM, fallback to normal allocation
-        mp_task_heap_size = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+        mp_task_heap_size = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) - (16 * 1024);
         mp_task_heap = malloc(mp_task_heap_size);
     }
     #else
     // Allocate the uPy heap using malloc and get the largest available region
-    size_t mp_task_heap_size = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) - (16 * 1024);
+    size_t mp_task_heap_size = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) - (8 * 1024);
     void *mp_task_heap = malloc(mp_task_heap_size);
     #endif
 
