@@ -1,0 +1,110 @@
+/*
+ * This file is part of the MicroPython project, http://micropython.org/
+ *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2021 Philipp Ebensberger
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+#include "py/runtime.h"
+#include "extmod/vfs.h"
+
+#include "modmachine.h"
+
+
+typedef struct _machine_adc_obj_t {
+    mp_obj_base_t base;
+} mimxrt_sdcard_obj_t;
+
+
+STATIC mp_obj_t sdcard_obj_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+    return MP_OBJ_FROM_PTR(mp_const_none);
+}
+
+// init()
+STATIC mp_obj_t machine_sdcard_init(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+	// TODO: Implement init function
+	return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_sdcard_init_obj, 1, machine_sdcard_init);
+
+// deinit()
+STATIC mp_obj_t machine_sdcard_deinit (mp_obj_t self_in) {
+    // TODO: Implement deinit function
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_sdcard_deinit_obj, machine_sdcard_deinit);
+
+// readblocks(block_num, buf, [offset])
+STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self, mp_obj_t block_num, mp_obj_t buf) {
+    // TODO: Implement machine_sdcard_readblocks function
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_readblocks_obj, machine_sdcard_readblocks);
+
+// writeblocks(block_num, buf, [offset])
+STATIC mp_obj_t machine_sdcard_writeblocks(mp_obj_t self, mp_obj_t block_num, mp_obj_t buf) {
+    // TODO: Implement machine_sdcard_writeblocks function
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_writeblocks_obj, machine_sdcard_writeblocks);
+
+// ioctl(op, arg)
+STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_in) {
+    mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    mp_int_t cmd = mp_obj_get_int(cmd_in);
+    status_t status;
+    switch (cmd) {
+        case MP_BLOCKDEV_IOCTL_INIT:
+        case MP_BLOCKDEV_IOCTL_DEINIT:
+        case MP_BLOCKDEV_IOCTL_SYNC:
+            return MP_OBJ_NEW_SMALL_INT(0);
+        case MP_BLOCKDEV_IOCTL_BLOCK_COUNT:
+            // TODO: Return number of bytes
+        case MP_BLOCKDEV_IOCTL_BLOCK_SIZE:
+            // TODO: Return size of block
+        default: // unknown command
+            return MP_OBJ_NEW_SMALL_INT(-1); // error
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_ioctl_obj, machine_sdcard_ioctl);
+
+STATIC const mp_rom_map_elem_t sdcard_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_init), 		MP_ROM_PTR(&machine_sdcard_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit), 		MP_ROM_PTR(&machine_sdcard_deinit_obj) },
+    // block device protocol
+    { MP_ROM_QSTR(MP_QSTR_readblocks), 	MP_ROM_PTR(&machine_sdcard_readblocks_obj) },
+    { MP_ROM_QSTR(MP_QSTR_writeblocks), MP_ROM_PTR(&machine_sdcard_writeblocks_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ioctl), 		MP_ROM_PTR(&machine_sdcard_ioctl_obj) },
+};
+STATIC MP_DEFINE_CONST_DICT(sdcard_locals_dict, sdcard_locals_dict_table);
+
+const mp_obj_type_t machine_sdcard_type = {
+    { &mp_type_type },
+    .name = MP_QSTR_SDCard,
+    .make_new = sdcard_obj_make_new,
+    .locals_dict = (mp_obj_dict_t* )&sdcard_locals_dict,	
+};
+
+void machine_sdcard_init0(void)
+{
+	return;
+}
