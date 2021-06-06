@@ -53,7 +53,7 @@ STATIC const mp_arg_t allowed_args[] = {
 };
 
 
-STATIC void machine_sdcard_init_helper(const mimxrt_sdcard_obj_t* self, const mp_arg_val_t *args) {
+STATIC void machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
     // Initialize pins
 
     // TODO: Implement APi for pin.c to initialize a GPIO for an ALT function
@@ -65,32 +65,32 @@ STATIC void machine_sdcard_init_helper(const mimxrt_sdcard_obj_t* self, const mp
     // GPIO_SD_B0_01 | ALT0 | USDHC1_DATA3 | SD1_D3    | CD/DAT3
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_01_USDHC1_DATA3,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_01_USDHC1_DATA3, 0x10B0u);
-    
+
     // GPIO_SD_B0_02 | ALT0 | USDHC1_CMD   | SD1_CMD   | CMD
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_02_USDHC1_CMD,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_02_USDHC1_CMD, 0x10B0u);
-    
+
     // GPIO_SD_B0_03 | ALT0 | USDHC1_CLK   | SD1_CLK   | CLK
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_03_USDHC1_CLK,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_03_USDHC1_CLK, 0x10B0u);
-    
+
     // GPIO_SD_B0_04 | ALT0 | USDHC1_DATA0 | SD1_D0    | DAT0
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_04_USDHC1_DATA0,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_04_USDHC1_DATA0, 0x10B0u);
-    
+
     // GPIO_SD_B0_05 | ALT0 | USDHC1_DATA1 | SD1_D1    | DAT1
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_05_USDHC1_DATA1,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_05_USDHC1_DATA1, 0x10B0u);
-    
+
     // GPIO_SD_B0_06 | ALT0 | USDHC1_CD_B  | SD_CD_SW  | DETECT
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_06_USDHC1_CD_B,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_06_USDHC1_CD_B, 0x10B0u);
 
     // Initialize USDHC
     const usdhc_config_t config = {
-        .endianMode          = kUSDHC_EndianModeLittle,
-        .dataTimeout         = 0xFU,
-        .readWatermarkLevel  = 0x80U,
+        .endianMode = kUSDHC_EndianModeLittle,
+        .dataTimeout = 0xFU,
+        .readWatermarkLevel = 0x80U,
         .writeWatermarkLevel = 0x80U,
     };
 
@@ -106,7 +106,7 @@ STATIC mp_obj_t sdcard_obj_make_new(const mp_obj_type_t *type, size_t n_args, si
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    const mimxrt_sdcard_obj_t* self = &mimxrt_sdcard_objs[(args[0].u_int - 1)];
+    const mimxrt_sdcard_obj_t *self = &mimxrt_sdcard_objs[(args[0].u_int - 1)];
     machine_sdcard_init_helper(self, args);
     return MP_OBJ_FROM_PTR(self);
 }
@@ -123,7 +123,7 @@ STATIC mp_obj_t machine_sdcard_init(size_t n_args, const mp_obj_t *pos_args, mp_
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_sdcard_init_obj, 1, machine_sdcard_init);
 
 // deinit()
-STATIC mp_obj_t machine_sdcard_deinit (mp_obj_t self_in) {
+STATIC mp_obj_t machine_sdcard_deinit(mp_obj_t self_in) {
     // TODO: Implement deinit function
     return mp_const_none;
 }
@@ -133,20 +133,20 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_sdcard_deinit_obj, machine_sdcard_deini
 STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self_in, mp_obj_t block_num, mp_obj_t buf) {
     // TODO: Implement machine_sdcard_readblocks function
 
-    const mimxrt_sdcard_obj_t* self = MP_OBJ_TO_PTR(self_in);
+    const mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
-    //usdhc_command_t command = {
-    //uint32_t index;                          /*!< Command index */
-    //uint32_t argument;                       /*!< Command argument */
-    //usdhc_card_command_type_t type;          /*!< Command type */
-    //usdhc_card_response_type_t responseType; /*!< Command response type */
-    //uint32_t response[4U];                   /*!< Response for this command */
-    //uint32_t responseErrorFlags;             /*!< response error flag, the flag which need to check
+    // usdhc_command_t command = {
+    // uint32_t index;                          /*!< Command index */
+    // uint32_t argument;                       /*!< Command argument */
+    // usdhc_card_command_type_t type;          /*!< Command type */
+    // usdhc_card_response_type_t responseType; /*!< Command response type */
+    // uint32_t response[4U];                   /*!< Response for this command */
+    // uint32_t responseErrorFlags;             /*!< response error flag, the flag which need to check
     //                                             the command reponse*/
-    //uint32_t flags;                          /*!< Cmd flags */
-    //};
+    // uint32_t flags;                          /*!< Cmd flags */
+    // };
 
-    //USDHC_SendCommand(self->sdcard, &command);
+    // USDHC_SendCommand(self->sdcard, &command);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_readblocks_obj, machine_sdcard_readblocks);
@@ -160,7 +160,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_writeblocks_obj, machine_sdcard_
 
 // ioctl(op, arg)
 STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_in) {
-    //mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    // mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t cmd = mp_obj_get_int(cmd_in);
     switch (cmd) {
         case MP_BLOCKDEV_IOCTL_INIT:
@@ -168,9 +168,9 @@ STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t
         case MP_BLOCKDEV_IOCTL_SYNC:
             return MP_OBJ_NEW_SMALL_INT(0);
         case MP_BLOCKDEV_IOCTL_BLOCK_COUNT:
-            // TODO: Return number of bytes
+        // TODO: Return number of bytes
         case MP_BLOCKDEV_IOCTL_BLOCK_SIZE:
-            // TODO: Return size of block
+        // TODO: Return size of block
         default: // unknown command
             return MP_OBJ_NEW_SMALL_INT(-1); // error
     }
@@ -191,10 +191,9 @@ const mp_obj_type_t machine_sdcard_type = {
     { &mp_type_type },
     .name = MP_QSTR_SDCard,
     .make_new = sdcard_obj_make_new,
-    .locals_dict = (mp_obj_dict_t* )&sdcard_locals_dict,
+    .locals_dict = (mp_obj_dict_t *)&sdcard_locals_dict,
 };
 
-void machine_sdcard_init0(void)
-{
+void machine_sdcard_init0(void) {
     return;
 }
