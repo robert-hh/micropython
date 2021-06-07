@@ -134,19 +134,39 @@ STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self_in, mp_obj_t block_num, 
     // TODO: Implement machine_sdcard_readblocks function
 
     const mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    usdhc_command_t command;
 
-    // usdhc_command_t command = {
-    // uint32_t index;                          /*!< Command index */
-    // uint32_t argument;                       /*!< Command argument */
-    // usdhc_card_command_type_t type;          /*!< Command type */
-    // usdhc_card_response_type_t responseType; /*!< Command response type */
-    // uint32_t response[4U];                   /*!< Response for this command */
-    // uint32_t responseErrorFlags;             /*!< response error flag, the flag which need to check
-    //                                             the command reponse*/
-    // uint32_t flags;                          /*!< Cmd flags */
-    // };
+    // Enable card insertion interrupt
+    self->sdcard->INT_STATUS_EN |= USDHC_INT_STATUS_EN_CINSSEN(1);
 
-    // USDHC_SendCommand(self->sdcard, &command);
+    // Wait for card insertion
+    while(!(self->sdcard->INT_STATUS & USDHC_INT_STATUS_CINS(1))) {};
+    self->sdcard->INT_STATUS_EN &= ~USDHC_INT_STATUS_EN_CINSSEN(1);
+
+    // Reset Card
+    self->sdcard->SYS_CTRL |= USDHC_SYS_CTRL_RSTA(1);
+    self->sdcard->SYS_CTRL |= USDHC_SYS_CTRL_INITA(1);
+
+    command.index = 0;  // CMD0 - GO_IDLE_STATE
+    command.argument = 0UL;
+    command.type = kCARD_CommandTypeNormal;
+    command.responseType = kCARD_ResponseTypeNone;
+    USDHC_SendCommand(self->sdcard, &command);
+
+
+    // Perform voltage validation
+    command.index = 55; // CMD55 - APP_CMD
+    command.argument = 0UL;
+    command.type = kCARD_CommandTypeNormal;
+    command.responseType = kCARD_ResponseTypeR1;
+    USDHC_SendCommand(self->sdcard, &command);
+
+    command.index = 41; // ACMD41 - SD_APP_OP_COND
+    command.argument = 0UL;
+    command.type = kCARD_CommandTypeNormal;
+    command.responseType = kCARD_ResponseTypeR3;
+    USDHC_SendCommand(self->sdcard, &command);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_readblocks_obj, machine_sdcard_readblocks);
