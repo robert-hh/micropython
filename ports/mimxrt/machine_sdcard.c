@@ -132,41 +132,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_sdcard_deinit_obj, machine_sdcard_deini
 // readblocks(block_num, buf, [offset])
 STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self_in, mp_obj_t block_num, mp_obj_t buf) {
     // TODO: Implement machine_sdcard_readblocks function
-
-    const mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    usdhc_command_t command;
-
-    // Enable card insertion interrupt
-    self->sdcard->INT_STATUS_EN |= USDHC_INT_STATUS_EN_CINSSEN(1);
-
-    // Wait for card insertion
-    while(!(self->sdcard->INT_STATUS & USDHC_INT_STATUS_CINS(1))) {};
-    self->sdcard->INT_STATUS_EN &= ~USDHC_INT_STATUS_EN_CINSSEN(1);
-
-    // Reset Card
-    self->sdcard->SYS_CTRL |= USDHC_SYS_CTRL_RSTA(1);
-    self->sdcard->SYS_CTRL |= USDHC_SYS_CTRL_INITA(1);
-
-    command.index = 0;  // CMD0 - GO_IDLE_STATE
-    command.argument = 0UL;
-    command.type = kCARD_CommandTypeNormal;
-    command.responseType = kCARD_ResponseTypeNone;
-    USDHC_SendCommand(self->sdcard, &command);
-
-
-    // Perform voltage validation
-    command.index = 55; // CMD55 - APP_CMD
-    command.argument = 0UL;
-    command.type = kCARD_CommandTypeNormal;
-    command.responseType = kCARD_ResponseTypeR1;
-    USDHC_SendCommand(self->sdcard, &command);
-
-    command.index = 41; // ACMD41 - SD_APP_OP_COND
-    command.argument = 0UL;
-    command.type = kCARD_CommandTypeNormal;
-    command.responseType = kCARD_ResponseTypeR3;
-    USDHC_SendCommand(self->sdcard, &command);
-
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_readblocks_obj, machine_sdcard_readblocks);
@@ -180,10 +145,79 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_writeblocks_obj, machine_sdcard_
 
 // ioctl(op, arg)
 STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_in) {
-    // mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    const mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t cmd = mp_obj_get_int(cmd_in);
+
+
+    usdhc_transfer_t transfer;
+    usdhc_command_t command;
+
+
     switch (cmd) {
         case MP_BLOCKDEV_IOCTL_INIT:
+            transfer.data = NULL;
+            transfer.command = &command;
+
+            // Enable card insertion interrupt
+            self->sdcard->INT_STATUS_EN |= USDHC_INT_STATUS_EN_CINSSEN(1);
+
+            // Wait for card insertion
+            // while(!(self->sdcard->INT_STATUS & USDHC_INT_STATUS_CINS(1))) {};
+            self->sdcard->INT_STATUS_EN &= ~USDHC_INT_STATUS_EN_CINSSEN(1);
+
+            // Reset Card
+            self->sdcard->SYS_CTRL |= USDHC_SYS_CTRL_RSTA(1);
+            self->sdcard->SYS_CTRL |= USDHC_SYS_CTRL_INITA(1);
+
+            command.index = 0;  // CMD0 - GO_IDLE_STATE
+            command.argument = 0UL;
+            command.type = kCARD_CommandTypeNormal;
+            command.responseType = kCARD_ResponseTypeNone;
+            USDHC_TransferBlocking(self->sdcard, NULL, &transfer);
+            mp_printf(&mp_plat_print, "SDCard - Command 0 issued - GO_IDLE_STATE");
+
+            // Perform voltage validation
+            command.index = 55; // CMD55 - APP_CMD
+            command.argument = 0UL;
+            command.type = kCARD_CommandTypeNormal;
+            command.responseType = kCARD_ResponseTypeR1;
+            USDHC_TransferBlocking(self->sdcard, NULL, &transfer);
+            mp_printf(&mp_plat_print, "SDCard - Command 55 issued - APP_CMD");
+
+            command.index = 41; // ACMD41 - SD_APP_OP_COND
+            command.argument = 0UL;
+            command.type = kCARD_CommandTypeNormal;
+            command.responseType = kCARD_ResponseTypeR3;
+            USDHC_TransferBlocking(self->sdcard, NULL, &transfer);
+            mp_printf(&mp_plat_print, "SDCard - Command 41 issued - SD_APP_OP_COND");
+            mp_printf(&mp_plat_print, "\tR[0] - %#04X", command.response[0]);
+            mp_printf(&mp_plat_print, "\tR[1] - %#04X", command.response[1]);
+            mp_printf(&mp_plat_print, "\tR[2] - %#04X", command.response[2]);
+            mp_printf(&mp_plat_print, "\tR[3] - %#04X", command.response[3]);
+
+            command.index = 2; // CMD2 - ALL_SEND_CID
+            command.argument = 0UL;
+            command.type = kCARD_CommandTypeNormal;
+            command.responseType = kCARD_ResponseTypeR2;
+            USDHC_TransferBlocking(self->sdcard, NULL, &transfer);
+            USDHC_TransferBlocking(self->sdcard, NULL, &transfer);
+            mp_printf(&mp_plat_print, "SDCard - Command 2 issued - ALL_SEND_CID");
+            mp_printf(&mp_plat_print, "\tR[0] - %#04X", command.response[0]);
+            mp_printf(&mp_plat_print, "\tR[1] - %#04X", command.response[1]);
+            mp_printf(&mp_plat_print, "\tR[2] - %#04X", command.response[2]);
+            mp_printf(&mp_plat_print, "\tR[3] - %#04X", command.response[3]);
+
+            command.index = 3; // CMD3 - SEND_RELATIVE_ADDR
+            command.argument = 0UL;
+            command.type = kCARD_CommandTypeNormal;
+            command.responseType = kCARD_ResponseTypeR1;
+            USDHC_TransferBlocking(self->sdcard, NULL, &transfer);
+            USDHC_TransferBlocking(self->sdcard, NULL, &transfer);
+            mp_printf(&mp_plat_print, "SDCard - Command 3 issued - SEND_RELATIVE_ADDR");
+            mp_printf(&mp_plat_print, "\tR[0] - %#04X", command.response[0]);
+            mp_printf(&mp_plat_print, "\tR[1] - %#04X", command.response[1]);
+            mp_printf(&mp_plat_print, "\tR[2] - %#04X", command.response[2]);
+            mp_printf(&mp_plat_print, "\tR[3] - %#04X", command.response[3]);
         case MP_BLOCKDEV_IOCTL_DEINIT:
         case MP_BLOCKDEV_IOCTL_SYNC:
             return MP_OBJ_NEW_SMALL_INT(0);
