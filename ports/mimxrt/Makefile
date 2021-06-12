@@ -56,7 +56,7 @@ INC += -I$(TOP)/lib/tinyusb/hw
 INC += -I$(TOP)/lib/tinyusb/hw/bsp/teensy_40
 
 CFLAGS_MCU = -mtune=cortex-m7 -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-d16
-CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 -nostdlib -mthumb $(CFLAGS_MCU)
+CFLAGS += $(INC) -Wall -Wdouble-promotion -Wfloat-conversion -std=c99 -nostdlib -mthumb $(CFLAGS_MCU)
 CFLAGS += -DCPU_$(MCU_SERIES) -DCPU_$(MCU_VARIANT)
 CFLAGS += -DXIP_EXTERNAL_FLASH=1 \
 	-DXIP_BOOT_HEADER_ENABLE=1 \
@@ -91,7 +91,7 @@ CFLAGS += -O0 -ggdb
 LDFLAGS += --gc-sections
 CFLAGS += -fdata-sections -ffunction-sections
 else
-CFLAGS += -Os -DNDEBUG
+CFLAGS += -Os -DNDEBUG -Werror 
 LDFLAGS += --gc-sections
 CFLAGS += -fdata-sections -ffunction-sections
 endif
