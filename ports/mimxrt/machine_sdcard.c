@@ -409,6 +409,19 @@ STATIC void machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_06_USDHC1_CD_B,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_06_USDHC1_CD_B, 0x10B0u);
 
+
+    // TODO: Remove debug clock output
+    IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B1_03_CCM_CLKO2, 0U);
+    IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B1_03_CCM_CLKO2, 0x10B0u);
+
+    mp_printf(&mp_plat_print, "Current clock of PFD2: %dHz\n", CLOCK_GetSysPfdFreq(kCLOCK_Pfd2));
+    mp_printf(&mp_plat_print, "USDHC1_CLK_ROOT: %dHz\n", CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3);
+
+    CCM->CCOSR |= CCM_CCOSR_CLKO2_SEL(0b00011);  // usdhc1_clk_root
+    CCM->CCOSR |= CCM_CCOSR_CLKO2_DIV(0b000);    // divide by 1
+    CCM->CCOSR |= CCM_CCOSR_CLKO2_EN(0b1);       // CCM_CLKO2 enabled
+
+
     // Initialize USDHC
     const usdhc_config_t config = {
         .endianMode = kUSDHC_EndianModeLittle,
@@ -418,7 +431,8 @@ STATIC void machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp
     };
 
     USDHC_Init(self->sdcard, &config);
-    USDHC_SetSdClock(self->sdcard, 132000000UL, 300000UL);
+    uint32_t usdhc_clk = USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 300000UL);
+    mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 300000UL);
     USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth1Bit);
 }
 
