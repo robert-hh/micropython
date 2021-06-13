@@ -537,6 +537,10 @@ STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t
             uint32_t rca = sdcard_cmd_set_rel_add(self->sdcard);
             mp_printf(&mp_plat_print, "RCA received - 0x%04X\n", rca);
 
+            // Stand-by State (stby) reached
+            uint32_t usdhc_clk = USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 20000000UL);
+            mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 20000000UL);
+
             cid_t cid = sdcard_cmd_send_cid(self->sdcard, rca);
             mp_printf(&mp_plat_print, "CID of RCA referenced card received:\n\t[3]0x%08X\n\t[2]0x%08X\n\t[1]0x%08X\n\t[0]0x%08X\n", cid.cid[3],cid.cid[2],cid.cid[1],cid.cid[0]);
             sdcard_print_cid(cid);
