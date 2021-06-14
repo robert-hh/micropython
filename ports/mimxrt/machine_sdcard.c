@@ -28,6 +28,7 @@
 #include "py/runtime.h"
 #include "extmod/vfs.h"
 #include "fsl_iomuxc.h"
+#include "fsl_cache.h"
 #include "fsl_usdhc.h"
 
 #include "ticks.h"
@@ -41,6 +42,9 @@
 #define SD_SWITCH_1_8V_CAPACITY            ((uint32_t)0x01000000U)
 #define SDMMC_MAX_VOLT_TRIAL               ((uint32_t)0x0000FFFFU)
 
+#define BOARD_SDMMC_HOST_DMA_DESCRIPTOR_BUFFER_SIZE (32U)
+#define BOARD_SDMMC_DATA_BUFFER_ALIGN_SIZE (32U)
+#define FSL_SDMMC_DEFAULT_BLOCK_SIZE (512U)
 
 typedef struct _machine_adc_obj_t {
     mp_obj_base_t base;
@@ -56,6 +60,82 @@ typedef struct _csd_t {
     uint32_t csd[4];
 } csd_t;
 
+
+enum
+{
+    SdCmd_GoIdleState        = 0U,
+    SdCmd_AllSendCid         = 2U,
+    SdCmd_SendRelAddr        = 3U,
+    SdCmd_SetDsr             = 4U,
+    SdCmd_SelectCard         = 7U,
+    SdCmd_SendIfCond         = 8U,
+    SdCmd_SendCsd            = 9U,
+    SdCmd_SendCid            = 10U,
+    SdCmd_StopTransmission   = 12U,
+    SdCmd_SendStatus         = 13U,
+    SdCmd_GoInactiveState    = 15U,
+    SdCmd_SetBlockLength     = 16U,
+    SdCmd_ReadSingleBlock    = 17U,
+    SdCmd_ReadMultipleBlock  = 18U,
+    SdCmd_SetBlockCount      = 23U,
+    SdCmd_WriteSingleBlock   = 24U,
+    SdCmd_WriteMultipleBlock = 25U,
+    SdCmd_ProgramCsd         = 27U,
+    SdCmd_SetWriteProtect    = 28U,
+    SdCmd_ClearWriteProtect  = 29U,
+    SdCmd_SendWriteProtect   = 30U,
+    SdCmd_Erase              = 38U,
+    SdCmd_LockUnlock         = 42U,
+    SdCmd_ApplicationCommand = 55U,
+    SdCmd_GeneralCommand     = 56U,
+    SdCmd_ReadOcr            = 58U,
+    SdAcmd_SendOpCond        = 41U,
+};
+
+enum
+{
+    kSDMMC_R1OutOfRangeFlag                  = 31, /*!< Out of range status bit */
+    kSDMMC_R1AddressErrorFlag                = 30, /*!< Address error status bit */
+    kSDMMC_R1BlockLengthErrorFlag            = 29, /*!< Block length error status bit */
+    kSDMMC_R1EraseSequenceErrorFlag          = 28, /*!< Erase sequence error status bit */
+    kSDMMC_R1EraseParameterErrorFlag         = 27, /*!< Erase parameter error status bit */
+    kSDMMC_R1WriteProtectViolationFlag       = 26, /*!< Write protection violation status bit */
+    kSDMMC_R1CardIsLockedFlag                = 25, /*!< Card locked status bit */
+    kSDMMC_R1LockUnlockFailedFlag            = 24, /*!< lock/unlock error status bit */
+    kSDMMC_R1CommandCrcErrorFlag             = 23, /*!< CRC error status bit */
+    kSDMMC_R1IllegalCommandFlag              = 22, /*!< Illegal command status bit */
+    kSDMMC_R1CardEccFailedFlag               = 21, /*!< Card ecc error status bit */
+    kSDMMC_R1CardControllerErrorFlag         = 20, /*!< Internal card controller error status bit */
+    kSDMMC_R1ErrorFlag                       = 19, /*!< A general or an unknown error status bit */
+    kSDMMC_R1CidCsdOverwriteFlag             = 16, /*!< Cid/csd overwrite status bit */
+    kSDMMC_R1WriteProtectEraseSkipFlag       = 15, /*!< Write protection erase skip status bit */
+    kSDMMC_R1CardEccDisabledFlag             = 14, /*!< Card ecc disabled status bit */
+    kSDMMC_R1EraseResetFlag                  = 13, /*!< Erase reset status bit */
+    kSDMMC_R1ReadyForDataFlag                = 8,  /*!< Ready for data status bit */
+    kSDMMC_R1SwitchErrorFlag                 = 7,  /*!< Switch error status bit */
+    kSDMMC_R1ApplicationCommandFlag          = 5,  /*!< Application command enabled status bit */
+    kSDMMC_R1AuthenticationSequenceErrorFlag = 3,  /*!< error in the sequence of authentication process */
+};
+
+#define SDMMC_MASK(bit) (1U << (bit))
+
+#define SDMMC_R1_ALL_ERROR_FLAG                                                                      \
+    (SDMMC_MASK(kSDMMC_R1OutOfRangeFlag) | SDMMC_MASK(kSDMMC_R1AddressErrorFlag) |                   \
+    SDMMC_MASK(kSDMMC_R1BlockLengthErrorFlag) | SDMMC_MASK(kSDMMC_R1EraseSequenceErrorFlag) |       \
+    SDMMC_MASK(kSDMMC_R1EraseParameterErrorFlag) | SDMMC_MASK(kSDMMC_R1WriteProtectViolationFlag) | \
+    SDMMC_MASK(kSDMMC_R1CardIsLockedFlag) | SDMMC_MASK(kSDMMC_R1LockUnlockFailedFlag) |             \
+    SDMMC_MASK(kSDMMC_R1CommandCrcErrorFlag) | SDMMC_MASK(kSDMMC_R1IllegalCommandFlag) |            \
+    SDMMC_MASK(kSDMMC_R1CardEccFailedFlag) | SDMMC_MASK(kSDMMC_R1CardControllerErrorFlag) |         \
+    SDMMC_MASK(kSDMMC_R1ErrorFlag) | SDMMC_MASK(kSDMMC_R1CidCsdOverwriteFlag) |                     \
+    SDMMC_MASK(kSDMMC_R1AuthenticationSequenceErrorFlag))
+
+
+AT_NONCACHEABLE_SECTION_ALIGN(static uint32_t s_sdmmcHostDmaBuffer[BOARD_SDMMC_HOST_DMA_DESCRIPTOR_BUFFER_SIZE], 4U);
+
+#if defined SDMMCHOST_ENABLE_CACHE_LINE_ALIGN_TRANSFER && SDMMCHOST_ENABLE_CACHE_LINE_ALIGN_TRANSFER
+/* two cache line length for sdmmc host driver maintain unalign transfer */
+SDK_ALIGN(static uint8_t s_sdmmcCacheLineAlignBuffer[BOARD_SDMMC_DATA_BUFFER_ALIGN_SIZE * 2U], BOARD_SDMMC_DATA_BUFFER_ALIGN_SIZE);
+#endif
 
 STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[1] = {
     {
@@ -118,7 +198,7 @@ static void sdcard_check_status(status_t status, uint8_t command) {
 static void sdcard_cmd_go_idle_state(USDHC_Type *base) {
     status_t status;
     usdhc_command_t command = {
-        .index = 0,
+        .index = SdCmd_GoIdleState,
         .argument = 0UL,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeNone,
@@ -128,13 +208,13 @@ static void sdcard_cmd_go_idle_state(USDHC_Type *base) {
         .command = &command,
     };
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 0);
+    sdcard_check_status(status, SdCmd_GoIdleState);
 }
 
 static uint32_t sdcard_cmd_oper_cond(USDHC_Type *base) {
     status_t status;
     usdhc_command_t command = {
-        .index = 8,
+        .index = SdCmd_SendIfCond,
         .argument = 0x000001AAU,       // 2.7-3.3V range and 0xAA check pattern
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR7,
@@ -145,14 +225,14 @@ static uint32_t sdcard_cmd_oper_cond(USDHC_Type *base) {
     };
 
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 8);
+    sdcard_check_status(status, SdCmd_SendIfCond);
     return command.response[0];
 }
 
 static uint32_t sdcard_cmd_app_cmd(USDHC_Type *base) {
     status_t status;
     usdhc_command_t command = {
-        .index = 55,
+        .index = SdCmd_ApplicationCommand,
         .argument = 0UL,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR1,
@@ -163,14 +243,14 @@ static uint32_t sdcard_cmd_app_cmd(USDHC_Type *base) {
     };
 
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 55);
+    sdcard_check_status(status, SdCmd_ApplicationCommand);
     return command.response[0];
 }
 
 static uint32_t sdcard_cmd_sd_app_op_cond(USDHC_Type *base, uint32_t argument) {
     status_t status;
     usdhc_command_t command = {
-        .index = 41,
+        .index = SdAcmd_SendOpCond,
         .argument = argument,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR3,
@@ -182,7 +262,7 @@ static uint32_t sdcard_cmd_sd_app_op_cond(USDHC_Type *base, uint32_t argument) {
     };
 
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 41);
+    sdcard_check_status(status, SdAcmd_SendOpCond);
     return command.response[0];
 }
 
@@ -190,7 +270,7 @@ static cid_t sdcard_cmd_all_send_cid(USDHC_Type *base) {
     status_t status;
     cid_t cid;
     usdhc_command_t command = {
-        .index = 2,
+        .index = SdCmd_AllSendCid,
         .argument = 0UL,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR2,
@@ -201,7 +281,7 @@ static cid_t sdcard_cmd_all_send_cid(USDHC_Type *base) {
     };
 
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 2);
+    sdcard_check_status(status, SdCmd_AllSendCid);
     // --
     cid.cid[0] = command.response[0];
     cid.cid[1] = command.response[1];
@@ -215,7 +295,7 @@ static cid_t sdcard_cmd_send_cid(USDHC_Type *base, uint32_t rca) {
     status_t status;
     cid_t cid;
     usdhc_command_t command = {
-        .index = 10,
+        .index = SdCmd_SendCid,
         .argument = (rca << 16),
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR2,
@@ -226,7 +306,7 @@ static cid_t sdcard_cmd_send_cid(USDHC_Type *base, uint32_t rca) {
     };
 
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 10);
+    sdcard_check_status(status, SdCmd_SendCid);
     // --
     cid.cid[0] = command.response[0];
     cid.cid[1] = command.response[1];
@@ -239,7 +319,7 @@ static cid_t sdcard_cmd_send_cid(USDHC_Type *base, uint32_t rca) {
 static uint32_t sdcard_cmd_set_rel_add(USDHC_Type *base) {
     status_t status;
     usdhc_command_t command = {
-        .index = 3,
+        .index = SdCmd_SendRelAddr,
         .argument = 0UL,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR6,
@@ -250,7 +330,7 @@ static uint32_t sdcard_cmd_set_rel_add(USDHC_Type *base) {
     };
 
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 3);
+    sdcard_check_status(status, SdCmd_SendRelAddr);
     return 0xFFFFFFFF & (command.response[0] >> 16);
 }
 
@@ -258,7 +338,7 @@ static csd_t sdcard_cmd_send_csd(USDHC_Type *base, uint32_t rca) {
     status_t status;
     csd_t csd;
     usdhc_command_t command = {
-        .index = 9,
+        .index = SdCmd_SendCsd,
         .argument = (rca << 16),
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR2,
@@ -269,7 +349,7 @@ static csd_t sdcard_cmd_send_csd(USDHC_Type *base, uint32_t rca) {
     };
 
     status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, 9);
+    sdcard_check_status(status, SdCmd_SendCsd);
     // --
     csd.csd[0] = command.response[0];
     csd.csd[1] = command.response[1];
@@ -278,7 +358,6 @@ static csd_t sdcard_cmd_send_csd(USDHC_Type *base, uint32_t rca) {
     // --
     return csd;
 }
-
 
 static void sdcard_transfer_command(USDHC_Type *base, usdhc_command_t *command) {
     status_t status;
@@ -366,6 +445,130 @@ static void sdcard_transfer_command(USDHC_Type *base, usdhc_command_t *command) 
 }
 
 
+
+static status_t sdcard_read(USDHC_Type *base, uint8_t *buffer, uint32_t start_block, size_t block_size, uint32_t block_count) {
+
+    // Todo: check card busy
+
+    // Todo: check/read different behaviour for cards with high capacity for block_size checks !!
+
+    usdhc_handle_t handle;
+
+
+    usdhc_data_t data = {
+        .enableAutoCommand12 = true,
+        .enableAutoCommand23 = false,
+        .enableIgnoreError = false,
+        .dataType = kUSDHC_TransferDataNormal,
+        .blockSize = block_size,
+        .blockCount = block_count,
+        .rxData = (uint32_t *)buffer,
+        .txData = NULL,
+    };
+
+    usdhc_command_t command = {
+        .index = (block_count == 1U) ? (uint32_t)SdCmd_ReadSingleBlock : (uint32_t)SdCmd_ReadMultipleBlock,
+        .argument = start_block,
+        .type = kCARD_CommandTypeNormal,
+        .responseType = kCARD_ResponseTypeR1,
+        .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
+    };
+
+    usdhc_transfer_t transfer = {
+        .data = &data,
+        .command = &command,
+    };
+
+    usdhc_adma_config_t dmaConfig = {
+        .dmaMode = kUSDHC_DmaModeAdma2,
+        #if !(defined(FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN) && FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN)
+        .burstLen = kUSDHC_EnBurstLenForINCR,
+        #endif
+        .admaTable = s_sdmmcHostDmaBuffer,
+        .admaTableWords = BOARD_SDMMC_HOST_DMA_DESCRIPTOR_BUFFER_SIZE,
+    };
+
+
+    DCACHE_CleanByRange((uint32_t)data.rxData, (data.blockSize * data.blockCount));
+    return USDHC_TransferNonBlocking(base, &handle, &dmaConfig, &transfer);
+}
+
+
+
+
+// static status_t SD_Write(sd_card_t *card,
+//                          const uint8_t *buffer,
+//                          uint32_t startBlock,
+//                          uint32_t blockSize,
+//                          uint32_t blockCount,
+//                          uint32_t *writtenBlocks)
+// {
+//     assert(card != NULL);
+//     assert(buffer != NULL);
+//     assert(blockCount != 0U);
+//     assert(blockSize == FSL_SDMMC_DEFAULT_BLOCK_SIZE);
+
+//     sdmmchost_transfer_t content = {0};
+//     sdmmchost_cmd_t command      = {0};
+//     sdmmchost_data_t data        = {0};
+//     status_t error;
+
+//     if ((((card->flags & (uint32_t)kSD_SupportHighCapacityFlag) != 0U) && (blockSize != 512U)) ||
+//         (blockSize > card->blockSize) || (blockSize > SDMMCHOST_SUPPORT_MAX_BLOCK_LENGTH) || ((blockSize % 4U) != 0U))
+//     {
+//         SDMMC_LOG("\r\nError: write with parameter, block size %d is not support", blockSize);
+//         return kStatus_SDMMC_CardNotSupport;
+//     }
+
+//     /* check card status for not busy*/
+//     if (kStatus_Success != SD_PollingCardStatusBusy(card, false, SD_CARD_ACCESS_WAIT_IDLE_TIMEOUT))
+//     {
+//         return kStatus_SDMMC_WaitWriteCompleteFailed;
+//     }
+
+//     data.enableAutoCommand12   = true;
+//     data.blockSize             = blockSize;
+//     command.responseType       = kCARD_ResponseTypeR1;
+//     command.responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG;
+
+//     command.index    = (blockCount == 1U) ? (uint32_t)kSDMMC_WriteSingleBlock : (uint32_t)kSDMMC_WriteMultipleBlock;
+//     command.argument = startBlock;
+//     if (0U == (card->flags & (uint32_t)kSD_SupportHighCapacityFlag))
+//     {
+//         command.argument *= data.blockSize;
+//     }
+
+//     *writtenBlocks  = blockCount;
+//     data.blockCount = blockCount;
+//     data.txData     = (const uint32_t *)(uint32_t)buffer;
+
+//     content.command = &command;
+//     content.data    = &data;
+
+//     error = SD_Transfer(card, &content, 3U);
+//     if (error != kStatus_Success)
+//     {
+//         error = SD_SendWriteSuccessBlocks(card, writtenBlocks);
+//         /* check the successfully written block */
+//         if (error == kStatus_Success)
+//         {
+//             if (*writtenBlocks != 0U)
+//             {
+//                 /* written success, but not all the blocks are written */
+//                 error = kStatus_Success;
+//             }
+//         }
+//         SDMMC_LOG("\r\nWarning: write failed with block count %d, successed %d", blockCount, *writtenBlocks);
+//     }
+
+//     return error;
+// }
+
+
+
+
+
+
 static void sdcard_print_cid(cid_t cid) {
     mp_printf(&mp_plat_print, "\tManufacturer ID\n");
     mp_printf(&mp_plat_print, "\tOEM/Application ID\n");
@@ -374,7 +577,6 @@ static void sdcard_print_cid(cid_t cid) {
     mp_printf(&mp_plat_print, "\tProduct serial number: 0x%08X\n", (cid.cid[1] << 16 | cid.cid[0] >> 16));
     mp_printf(&mp_plat_print, "\tManufacturing date: %d.%d\n", ((cid.cid[0] >> 8) & 0xF), ((cid.cid[0] >> 12) & 0xFF) + 2000);
 }
-
 
 STATIC void machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
     // Initialize pins
@@ -436,7 +638,6 @@ STATIC void machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp
     USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth1Bit);
 }
 
-
 STATIC mp_obj_t sdcard_obj_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
@@ -469,9 +670,14 @@ STATIC mp_obj_t machine_sdcard_deinit(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_sdcard_deinit_obj, machine_sdcard_deinit);
 
 // readblocks(block_num, buf, [offset])
-STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self_in, mp_obj_t block_num, mp_obj_t buf) {
-    // TODO: Implement machine_sdcard_readblocks function
-    return mp_const_none;
+STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self_in, mp_obj_t _block_num, mp_obj_t _buf) {
+    mp_buffer_info_t bufinfo;
+    mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    uint32_t block_start = mp_obj_get_int(_block_num) * FSL_SDMMC_DEFAULT_BLOCK_SIZE;
+    mp_get_buffer_raise(_buf, &bufinfo, MP_BUFFER_WRITE);
+
+    status_t status = sdcard_read(self->sdcard, bufinfo.buf, block_start, FSL_SDMMC_DEFAULT_BLOCK_SIZE, bufinfo.len);
+    return MP_OBJ_NEW_SMALL_INT(status);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_readblocks_obj, machine_sdcard_readblocks);
 
