@@ -1,16 +1,18 @@
 Port of MicroPython to NXP iMX RT 10xx
 ======================================
 
-Currently supports Teensy 4.0 and the i.MX RT1010 EVK board.
+Currently supports Teensy 4.0,  Teensy 4.1, i.MX RT1010, i.MX RT1020,
+i.MX RT1050, i.MX RT1060 and i.MX RT1064 EVK board.
 
 Features:
   - REPL over USB VCP
-  - machine.Pin
-
-Known issues:
-  - pyboard.py doesn't work with files larger than 64 bytes
-  - machine.Pin class currently does not support GPIOMUX option of
-    i.MX RT101x variants
+  - VSF flash file system
+  - machine module with the classes Pin, ADC, RTC, Timer, SoftI2C, SoftSPI, UART, Signal
+  - Onewire
+  - DS18X20
+  - math and cmath
+  - uasyncio
+  - most MicroPython core classes and methods
 
 TODO:
   - Enable TCM
