@@ -27,6 +27,7 @@
 #include "py/runtime.h"
 #include "modmimxrt.h"
 #include "py/mperrno.h"
+#include "drivers/dht/dht.h"
 #include "hal/flexspi_nor_flash.h"
 
 extern status_t flash_erase_block(uint32_t erase_addr);
@@ -94,6 +95,8 @@ STATIC const mp_rom_map_elem_t mimxrt_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_flash_erase), MP_ROM_PTR(&mimxrt_flash_erase_obj) },
     { MP_ROM_QSTR(MP_QSTR_flash_size), MP_ROM_PTR(&mimxrt_flash_size_obj) },
     { MP_ROM_QSTR(MP_QSTR_flash_user_start), MP_ROM_PTR(&mimxrt_flash_user_start_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_dht_readinto), MP_ROM_PTR(&dht_readinto_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(mimxrt_module_globals, mimxrt_module_globals_table);
 
