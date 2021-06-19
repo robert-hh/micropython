@@ -167,6 +167,7 @@ SRC_C = \
 	shared/runtime/sys_stdio_mphal.c \
 	shared/timeutils/timeutils.c \
 	drivers/bus/softspi.c \
+	drivers/dht/dht.c \
 	extmod/modonewire.c \
 	$(SRC_TINYUSB_C) \
 	$(SRC_HAL_IMX_C) \
