@@ -13,7 +13,8 @@
 #define MICROPY_HW_NUM_PIN_IRQS (3 * 32)
 
 // Define mapping logical UART # to hardware UART #
-// D3/D5   LPUART1  Not usable, Since D3 is blocked.
+// RX/TX   HW-UART    Logical I2C
+// D3/D5   LPUART1    Not usable, Since D3 is blocked.
 // D0/D1   LPUART2 -> 1
 // D6/D9   LPUART3 -> 2
 // D10/D12 LPUART5 -> 3
@@ -33,7 +34,13 @@
     { 0 }, { 0 }, \
     { IOMUXC_GPIO_SD_B1_02_LPUART8_TX }, { IOMUXC_GPIO_SD_B1_03_LPUART8_RX },
 
-#define MICROPY_HW_I2C_INDEX   { 4, 2, 1 }
+// Define mapping logical I2C # to hardware I2C #
+// SDA/SCL  HW-I2C    Logical I2C
+// D14/D15  LPI2C4 ->    0
+// A4/A5    LPI2C1 ->    1
+// D0/D1    LPI2C2 ->    2
+
+#define MICROPY_HW_I2C_INDEX   { 4, 1, 2 }
 
 #define IOMUX_TABLE_I2C \
     { IOMUXC_GPIO_AD_B1_14_LPI2C1_SCL }, { IOMUXC_GPIO_AD_B1_15_LPI2C1_SDA }, \

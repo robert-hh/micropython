@@ -33,7 +33,9 @@
 #include "fsl_iomuxc.h"
 #include "fsl_lpi2c.h"
 
-#define DEFAULT_I2C_FREQ (400000)
+#define DEFAULT_I2C_FREQ        (400000)
+#define DEFAULT_I2C_DRIVE       (6)
+
 // Select USB1 PLL (480 MHz) as master lpi2c clock source
 #define LPI2C_CLOCK_SOURCE_SELECT (0U)
 // Clock divider for master lpi2c clock source
@@ -48,11 +50,8 @@ typedef struct _machine_i2c_obj_t {
     LPI2C_Type *i2c_inst;
     uint8_t i2c_id;
     uint8_t i2c_hw_id;
-    bool transfer_busy;
-    bool transfer_error;
-    bool nack_flag;
-    lpi2c_master_config_t *master_config;
     uint8_t mode;
+    lpi2c_master_config_t *master_config;
 } machine_i2c_obj_t;
 
 typedef struct _iomux_table_t {
@@ -74,15 +73,17 @@ static const iomux_table_t iomux_table[] = {
 #define SCL (iomux_table[index])
 #define SDA (iomux_table[index + 1])
 
-bool lpi2c_set_iomux(int8_t i2c) {
-    int index = i2c * 2;
+bool lpi2c_set_iomux(int8_t hw_i2c, uint8_t drive) {
+    int index = (hw_i2c - 1) * 2;
 
     if (SCL.muxRegister != 0) {
         IOMUXC_SetPinMux(SCL.muxRegister, SCL.muxMode, SCL.inputRegister, SCL.inputDaisy, SCL.configRegister, 1U);
-        IOMUXC_SetPinConfig(SCL.muxRegister, SCL.muxMode, SCL.inputRegister, SCL.inputDaisy, SCL.configRegister, 0xD8B0u);
+        IOMUXC_SetPinConfig(SCL.muxRegister, SCL.muxMode, SCL.inputRegister, SCL.inputDaisy, SCL.configRegister,
+            0xD880u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
 
         IOMUXC_SetPinMux(SDA.muxRegister, SDA.muxMode, SDA.inputRegister, SDA.inputDaisy, SDA.configRegister, 1U);
-        IOMUXC_SetPinConfig(SDA.muxRegister, SDA.muxMode, SDA.inputRegister, SDA.inputDaisy, SDA.configRegister, 0xD8B0u);
+        IOMUXC_SetPinConfig(SDA.muxRegister, SDA.muxMode, SDA.inputRegister, SDA.inputDaisy, SDA.configRegister,
+            0xD880u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
         return true;
     } else {
         return false;
@@ -92,15 +93,16 @@ bool lpi2c_set_iomux(int8_t i2c) {
 
 STATIC void machine_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_i2c_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    mp_printf(print, "I2C(%u, freq=%u",
+    mp_printf(print, "I2C(%u, freq=%u)",
         self->i2c_id, self->master_config->baudRate_Hz);
 }
 
 mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    enum { ARG_id, ARG_freq, ARG_scl, ARG_sda };
+    enum { ARG_id, ARG_freq, ARG_drive};
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id, MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_freq, MP_ARG_INT, {.u_int = DEFAULT_I2C_FREQ} },
+        { MP_QSTR_drive, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_I2C_DRIVE} },
     };
 
     static bool clk_init = true;
@@ -123,16 +125,20 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     self->i2c_inst = i2c_base_ptr_table[self->i2c_hw_id];
     self->mode = 0;
 
+    uint8_t drive = args[ARG_drive].u_int;
+    if (drive < 1 || drive > 7) {
+        drive = DEFAULT_I2C_DRIVE;
+    }
+
     if (clk_init) {
         clk_init = false;
-        /*Set clock source for LPI2C*/
+        // Set clock source for LPI2C
         CLOCK_SetMux(kCLOCK_Lpi2cMux, LPI2C_CLOCK_SOURCE_SELECT); // USB1 PLL (480 MHz)
         CLOCK_SetDiv(kCLOCK_Lpi2cDiv, LPI2C_CLOCK_SOURCE_DIVIDER);
-
    }
- 
+
     // Initialise the I2C peripheral if any arguments given, or it was not initialised previously.
-    lpi2c_set_iomux(self->i2c_id);
+    lpi2c_set_iomux(self->i2c_hw_id, drive);
     self->master_config = m_new_obj(lpi2c_master_config_t);
     LPI2C_MasterGetDefaultConfig(self->master_config);
     // Initialise the I2C peripheral.
@@ -142,55 +148,36 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     return MP_OBJ_FROM_PTR(self);
 }
 
-static void lpi2c_master_callback(LPI2C_Type *base, lpi2c_master_handle_t *handle, status_t status, void *self_in) {
-    machine_i2c_obj_t *self = (machine_i2c_obj_t *)self_in;
-
-    if (status == kStatus_LPI2C_Nak) {
-        self->nack_flag = true;
-    } else {
-        self->transfer_busy = false;
-        self->transfer_error = (status != kStatus_Success);
-    }
-}
-
 STATIC int machine_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, size_t len, uint8_t *buf, unsigned int flags) {
     machine_i2c_obj_t *self = (machine_i2c_obj_t *)self_in;
     status_t ret;
+    uint8_t null_buff[1] = {0};
     lpi2c_master_transfer_t masterXfer = {0};
-    lpi2c_master_handle_t g_master_handle;
-    LPI2C_MasterTransferCreateHandle(self->i2c_inst, &g_master_handle, lpi2c_master_callback, self);
 
     if (flags & MP_MACHINE_I2C_FLAG_READ) {
-        masterXfer.slaveAddress = I2C_MASTER_SLAVE_ADDR_7BIT;
         masterXfer.direction = kLPI2C_Read;
-        masterXfer.subaddress = (uint32_t)addr;
-        masterXfer.subaddressSize = 1;
-        masterXfer.data = buf;
-        masterXfer.dataSize = len;
-        masterXfer.flags = kLPI2C_TransferDefaultFlag;
-        self->transfer_busy = true;
-        self->nack_flag = false;
     } else {
-        masterXfer.slaveAddress = I2C_MASTER_SLAVE_ADDR_7BIT;
         masterXfer.direction = kLPI2C_Write;
-        masterXfer.subaddress = (uint32_t)addr;
-        masterXfer.subaddressSize = 1;
-        masterXfer.data = buf;
-        masterXfer.dataSize = len;
-        masterXfer.flags = kLPI2C_TransferDefaultFlag;
-        self->transfer_busy = true;
-        self->nack_flag = false;
     }
-    /* Send master non-blocking data to slave */
-    ret = LPI2C_MasterTransferNonBlocking(self->i2c_inst, &g_master_handle, &masterXfer);
-    if (ret != kStatus_Success) {
+    masterXfer.slaveAddress = addr;
+    masterXfer.data = buf;
+    masterXfer.dataSize = len;
+    if (flags & MP_MACHINE_I2C_FLAG_STOP) {
+        masterXfer.flags = kLPI2C_TransferDefaultFlag;
+    } else {
+        masterXfer.flags = kLPI2C_TransferNoStopFlag;
+    }
+
+    // Send master data to slave in blocking mode
+    ret = LPI2C_MasterTransferBlocking(self->i2c_inst, &masterXfer);
+
+    if (ret == kStatus_Success) {
+        return len;
+    } else if (ret == kStatus_LPI2C_Nak) {
+        return -MP_ENODEV;
+    } else {
         return -MP_EIO;
     }
-    /*  Wait for transfer completed. */
-    while (self->transfer_busy && !self->nack_flag) {
-        MICROPY_EVENT_POLL_HOOK
-    }
-    return self->nack_flag ? -MP_EIO : len;
 }
 
 STATIC const mp_machine_i2c_p_t machine_i2c_p = {
