@@ -151,7 +151,6 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
 STATIC int machine_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, size_t len, uint8_t *buf, unsigned int flags) {
     machine_i2c_obj_t *self = (machine_i2c_obj_t *)self_in;
     status_t ret;
-    uint8_t null_buff[1] = {0};
     lpi2c_master_transfer_t masterXfer = {0};
 
     if (flags & MP_MACHINE_I2C_FLAG_READ) {
@@ -170,6 +169,11 @@ STATIC int machine_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, si
 
     // Send master data to slave in blocking mode
     ret = LPI2C_MasterTransferBlocking(self->i2c_inst, &masterXfer);
+
+    // Transfer will not send a stop in case of errors. so do it now.
+    if (flags & MP_MACHINE_I2C_FLAG_STOP && ret != kStatus_Success) { 
+        LPI2C_MasterStop(self->i2c_inst);
+    };
 
     if (ret == kStatus_Success) {
         return len;
