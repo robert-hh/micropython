@@ -34,7 +34,7 @@
     { 0 }, { 0 }, \
     { IOMUXC_GPIO_SD_B1_02_LPUART8_TX }, { IOMUXC_GPIO_SD_B1_03_LPUART8_RX },
 
-// Define mapping logical I2C # to hardware I2C #
+// Define mapping hardware I2C # to logical I2C #
 // SDA/SCL  HW-I2C    Logical I2C
 // D14/D15  LPI2C4 ->    0
 // A4/A5    LPI2C1 ->    1
