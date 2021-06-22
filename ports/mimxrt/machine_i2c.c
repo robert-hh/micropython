@@ -135,7 +135,7 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         // Set clock source for LPI2C
         CLOCK_SetMux(kCLOCK_Lpi2cMux, LPI2C_CLOCK_SOURCE_SELECT); // USB1 PLL (480 MHz)
         CLOCK_SetDiv(kCLOCK_Lpi2cDiv, LPI2C_CLOCK_SOURCE_DIVIDER);
-   }
+    }
 
     // Initialise the I2C peripheral if any arguments given, or it was not initialised previously.
     lpi2c_set_iomux(self->i2c_hw_id, drive);
@@ -173,7 +173,7 @@ STATIC int machine_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, si
     // Transfer will not send a stop in case of errors. so do it now.
     if (flags & MP_MACHINE_I2C_FLAG_STOP && ret != kStatus_Success) { 
         LPI2C_MasterStop(self->i2c_inst);
-    };
+    }
 
     if (ret == kStatus_Success) {
         return len;
