@@ -213,12 +213,12 @@ static void decode_csd(mimxrt_sdcard_obj_t *sdcard, csd_t *csd) {
     sdcard->block_len = (1U << (csd->read_bl_len));
     sdcard->block_count = ((csd->c_size + 1U) << (csd->c_size_mult + 2U));
 
-    // if (sdcard->block_len != FSL_SDMMC_DEFAULT_BLOCK_SIZE)
-    // {
-    //     sdcard->block_count = (sdcard->block_count * sdcard->block_len);
-    //     sdcard->block_len  = FSL_SDMMC_DEFAULT_BLOCK_SIZE;
-    //     sdcard->block_count = (sdcard->block_count / sdcard->block_len);
-    // }
+    if (sdcard->block_len != FSL_SDMMC_DEFAULT_BLOCK_SIZE)
+    {
+        sdcard->block_count = (sdcard->block_count * sdcard->block_len);
+        sdcard->block_len  = FSL_SDMMC_DEFAULT_BLOCK_SIZE;
+        sdcard->block_count = (sdcard->block_count / sdcard->block_len);
+    }
 }
 
 static void sdcard_check_status(status_t status, uint8_t command) {
@@ -587,29 +587,21 @@ static uint32_t sdcard_cmd_set_blocklen(USDHC_Type *base, uint32_t block_size) {
     return command.response[0];
 }
 
-static status_t sdcard_read(USDHC_Type *base, uint32_t *buffer, uint32_t start_block, size_t block_size, uint32_t block_count) {
-
-    // Todo: check card busy
-
-    // Todo: check/read different behaviour for cards with high capacity for block_size checks !!
-
-    usdhc_handle_t handle;
-
-
+static status_t sdcard_read(mimxrt_sdcard_obj_t *sdcard, uint8_t *buffer, uint32_t block_num, uint32_t block_count) {
     usdhc_data_t data = {
         .enableAutoCommand12 = true,
         .enableAutoCommand23 = false,
         .enableIgnoreError = false,
         .dataType = kUSDHC_TransferDataNormal,
-        .blockSize = block_size,
+        .blockSize = sdcard->block_len,
         .blockCount = block_count,
-        .rxData = buffer,
+        .rxData = (uint32_t *) buffer,
         .txData = NULL,
     };
 
     usdhc_command_t command = {
         .index = (block_count == 1U) ? (uint32_t)SdCmd_ReadSingleBlock : (uint32_t)SdCmd_ReadMultipleBlock,
-        .argument = 2,
+        .argument = block_num,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR1,
         .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
@@ -620,45 +612,31 @@ static status_t sdcard_read(USDHC_Type *base, uint32_t *buffer, uint32_t start_b
         .command = &command,
     };
 
-    usdhc_adma_config_t dmaConfig = {
-        .dmaMode = kUSDHC_DmaModeAdma2,
-        #if !(defined(FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN) && FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN)
-        .burstLen = kUSDHC_EnBurstLenForINCR,
-        #endif
-        .admaTable = s_sdmmcHostDmaBuffer,
-        .admaTableWords = BOARD_SDMMC_HOST_DMA_DESCRIPTOR_BUFFER_SIZE,
-    };
-
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status_t status = USDHC_TransferBlocking(base, NULL, &transfer);
+
+    status_t status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
+    
     sdcard_check_status(status, command.index);
     sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
+    
     return status;
 }
 
-static status_t sdcard_write(USDHC_Type *base, uint32_t *buffer, uint32_t start_block, size_t block_size, uint32_t block_count) {
-
-    // Todo: check card busy
-
-    // Todo: check/read different behaviour for cards with high capacity for block_size checks !!
-
-    usdhc_handle_t handle;
-
-
+static status_t sdcard_write(mimxrt_sdcard_obj_t *sdcard, uint8_t *buffer, uint32_t block_num, uint32_t block_count) {
     usdhc_data_t data = {
         .enableAutoCommand12 = true,
         .enableAutoCommand23 = false,
         .enableIgnoreError = false,
         .dataType = kUSDHC_TransferDataNormal,
-        .blockSize = block_size,
+        .blockSize = sdcard->block_len,
         .blockCount = block_count,
         .rxData = NULL,
-        .txData = buffer,
+        .txData = (uint32_t *) buffer,
     };
 
     usdhc_command_t command = {
         .index = (block_count == 1U) ? (uint32_t)SdCmd_WriteSingleBlock : (uint32_t)SdCmd_WriteMultipleBlock,
-        .argument = 2,
+        .argument = block_num,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR1,
         .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
@@ -669,19 +647,13 @@ static status_t sdcard_write(USDHC_Type *base, uint32_t *buffer, uint32_t start_
         .command = &command,
     };
 
-    usdhc_adma_config_t dmaConfig = {
-        .dmaMode = kUSDHC_DmaModeAdma2,
-        #if !(defined(FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN) && FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN)
-        .burstLen = kUSDHC_EnBurstLenForINCR,
-        #endif
-        .admaTable = s_sdmmcHostDmaBuffer,
-        .admaTableWords = BOARD_SDMMC_HOST_DMA_DESCRIPTOR_BUFFER_SIZE,
-    };
-
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status_t status = USDHC_TransferBlocking(base, NULL, &transfer);
+    
+    status_t status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
+    
     sdcard_check_status(status, command.index);
     sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
+    
     return status;
 }
 
@@ -790,21 +762,11 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_sdcard_deinit_obj, machine_sdcard_deini
 STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self_in, mp_obj_t _block_num, mp_obj_t _buf) {
     mp_buffer_info_t bufinfo;
     mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    uint32_t block_start = mp_obj_get_int(_block_num) * FSL_SDMMC_DEFAULT_BLOCK_SIZE;
     mp_get_buffer_raise(_buf, &bufinfo, MP_BUFFER_WRITE);
     // ---
-    uint32_t temp_block_size = FSL_SDMMC_DEFAULT_BLOCK_SIZE;
-    uint32_t temp_block_start = 0U;  // SDHC and SDXC use block unit addressing (512 Bytes)!
-    uint32_t temp_block_count = 1U;
+    sdcard_cmd_set_blocklen(self->sdcard, FSL_SDMMC_DEFAULT_BLOCK_SIZE);
+    status_t status = sdcard_read(self, bufinfo.buf, mp_obj_get_int(_block_num), bufinfo.len / FSL_SDMMC_DEFAULT_BLOCK_SIZE);
     // ---
-    sdcard_cmd_set_blocklen(self->sdcard, temp_block_size);
-    status_t status = sdcard_read(self->sdcard, &sdcard_read_buffer[0], temp_block_start, temp_block_size, temp_block_count);
-
-    for (int i = 0; i < 32; ++i)
-    {
-        mp_printf(&mp_plat_print, "0x%08X\n", sdcard_read_buffer[i]);
-    }
-
     return MP_OBJ_NEW_SMALL_INT(status);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_readblocks_obj, machine_sdcard_readblocks);
@@ -813,21 +775,11 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_readblocks_obj, machine_sdcard_r
 STATIC mp_obj_t machine_sdcard_writeblocks(mp_obj_t self_in, mp_obj_t _block_num, mp_obj_t _buf) {
     mp_buffer_info_t bufinfo;
     mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    uint32_t block_start = mp_obj_get_int(_block_num) * FSL_SDMMC_DEFAULT_BLOCK_SIZE;
     mp_get_buffer_raise(_buf, &bufinfo, MP_BUFFER_WRITE);
     // ---
-    uint32_t temp_block_size = FSL_SDMMC_DEFAULT_BLOCK_SIZE;
-    uint32_t temp_block_start = 0U;  // SDHC and SDXC use block unit addressing (512 Bytes)!
-    uint32_t temp_block_count = 1U;
+    sdcard_cmd_set_blocklen(self->sdcard, FSL_SDMMC_DEFAULT_BLOCK_SIZE);
+    status_t status = sdcard_write(self, bufinfo.buf, mp_obj_get_int(_block_num), bufinfo.len / FSL_SDMMC_DEFAULT_BLOCK_SIZE);
     // ---
-    for (int i = 0; i < 32; ++i)
-    {
-        sdcard_write_buffer[i] = 0xDEADBEEF;
-    }
-    // ---
-    sdcard_cmd_set_blocklen(self->sdcard, temp_block_size);
-    status_t status = sdcard_write(self->sdcard, &sdcard_write_buffer[0], temp_block_start, temp_block_size, temp_block_count);
-
     return MP_OBJ_NEW_SMALL_INT(status);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_writeblocks_obj, machine_sdcard_writeblocks);
@@ -836,7 +788,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_writeblocks_obj, machine_sdcard_
 STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_in) {
     mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t cmd = mp_obj_get_int(cmd_in);
-    mp_int_t
     // ---
     bool valid_voltage = false;
     uint32_t count = 0UL;
@@ -847,12 +798,14 @@ STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t
             // Reset Card
             if (USDHC_Reset(self->sdcard, (USDHC_SYS_CTRL_RSTA_MASK | USDHC_SYS_CTRL_RSTC_MASK | USDHC_SYS_CTRL_RSTD_MASK), 2048) == false) {
                 mp_printf(&mp_plat_print, "USDHC_Reset timed out!\n");
+                return MP_OBJ_NEW_SMALL_INT(-1); // error
             } else {
                 mp_printf(&mp_plat_print, "USDHC_Reset performed\n");
             }
 
-            if (USDHC_SetCardActive(self->sdcard, 4096) == false) { // TODO: remove timeout check or change to calculated value based on CLK frequency
+            if (USDHC_SetCardActive(self->sdcard, 8192) == false) { // TODO: remove timeout check or change to calculated value based on CLK frequency
                 mp_printf(&mp_plat_print, "USDHC_SetCardActive timed out!\n");
+                return MP_OBJ_NEW_SMALL_INT(-1); // error
             } else {
                 mp_printf(&mp_plat_print, "USDHC_SetCardActive performed\n");
             }
@@ -877,12 +830,12 @@ STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t
 
             if (count >= SDMMC_MAX_VOLT_TRIAL) {
                 mp_printf(&mp_plat_print, "Invalid voltage range!\n");
+                return MP_OBJ_NEW_SMALL_INT(-1); // error
             } else {
                 mp_printf(&mp_plat_print, "Voltage validation performed (%d cycles)\n", count);
             }
 
             cid_t cid_all = sdcard_cmd_all_send_cid(self->sdcard);
-            // mp_printf(&mp_plat_print, "CID of all cards received:\n\t[3]0x%08X\n\t[2]0x%08X\n\t[1]0x%08X\n\t[0]0x%08X\n", cid_all.cid[3],cid_all.cid[2],cid_all.cid[1],cid_all.cid[0]);
             sdcard_print_cid(cid_all);
 
             self->rca = sdcard_cmd_set_rel_add(self->sdcard);
@@ -893,11 +846,10 @@ STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t
             mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 20000000UL);
 
             cid_t cid = sdcard_cmd_send_cid(self->sdcard, self->rca);
-            // mp_printf(&mp_plat_print, "CID of RCA referenced card received:\n\t[3]0x%08X\n\t[2]0x%08X\n\t[1]0x%08X\n\t[0]0x%08X\n", cid.cid[3],cid.cid[2],cid.cid[1],cid.cid[0]);
             sdcard_print_cid(cid);
 
             csd_t csd = sdcard_cmd_send_csd(self->sdcard, self->rca);
-            decode_csd(self->sdcard, &csd);
+            decode_csd(self, &csd);
 
             sdcard_cmd_select_card(self->sdcard, self->rca);
             return MP_OBJ_NEW_SMALL_INT(0);
@@ -907,17 +859,16 @@ STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t
             return MP_OBJ_NEW_SMALL_INT(0);
         }
         case MP_BLOCKDEV_IOCTL_BLOCK_COUNT: {
-            return MP_OBJ_NEW_SMALL_INT(sdcard->block_count);
+            return MP_OBJ_NEW_SMALL_INT(self->block_count);
         }
         case MP_BLOCKDEV_IOCTL_BLOCK_SIZE: {
-            return MP_OBJ_NEW_SMALL_INT(sdcard->block_len);
+            return MP_OBJ_NEW_SMALL_INT(self->block_len);
         }
         default: // unknown command
         {
             return MP_OBJ_NEW_SMALL_INT(-1); // error
         }
     }
-    return response;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_ioctl_obj, machine_sdcard_ioctl);
 
