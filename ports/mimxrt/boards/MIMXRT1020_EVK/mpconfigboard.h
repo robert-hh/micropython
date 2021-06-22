@@ -13,7 +13,7 @@
 #define MICROPY_HW_NUM_PIN_IRQS (3 * 32)
 
 // Define mapping logical UART # to hardware UART #
-// RX/TX   HW-UART    Logical I2C
+// RX/TX   HW-UART    Logical UART
 // D3/D5   LPUART1    Not usable, Since D3 is blocked.
 // D0/D1   LPUART2 -> 1
 // D6/D9   LPUART3 -> 2

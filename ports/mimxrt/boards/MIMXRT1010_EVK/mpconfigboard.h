@@ -24,3 +24,15 @@
     { 0 }, { 0 }, \
     { IOMUXC_GPIO_08_LPUART3_TXD }, { IOMUXC_GPIO_AD_07_LPUART3_RXD }, \
     { IOMUXC_GPIO_AD_02_LPUART4_TXD }, { IOMUXC_GPIO_AD_01_LPUART4_RXD },
+
+// Define mapping hardware I2C # to logical I2C #
+// SDA/SCL  HW-I2C    Logical I2C
+// D14/D15  LPI2C1 ->    0
+// D0/D1    LPI2C2 ->    1
+// D6/D7    LPI2C2 ->    1   Alternatively possible GPIO_AD_01, GPIO_AD_02
+
+#define MICROPY_HW_I2C_INDEX   { 1, 2 }
+
+#define IOMUX_TABLE_I2C \
+    { IOMUXC_GPIO_02_LPI2C1_SCL }, { IOMUXC_GPIO_01_LPI2C1_SDA }, \
+    { IOMUXC_GPIO_10_LPI2C2_SCL }, { IOMUXC_GPIO_09_LPI2C2_SDA },

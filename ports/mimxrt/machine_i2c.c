@@ -64,9 +64,7 @@ typedef struct _iomux_table_t {
 
 STATIC const uint8_t i2c_index_table[] = MICROPY_HW_I2C_INDEX;
 STATIC LPI2C_Type *i2c_base_ptr_table[] = LPI2C_BASE_PTRS;
-static const iomux_table_t iomux_table[] = {
-    IOMUX_TABLE_I2C
-};
+static const iomux_table_t iomux_table[] = { IOMUX_TABLE_I2C };
 
 #define MICROPY_HW_I2C_NUM     (sizeof(i2c_index_table) / sizeof(i2c_index_table)[0])
 
@@ -89,7 +87,6 @@ bool lpi2c_set_iomux(int8_t hw_i2c, uint8_t drive) {
         return false;
     }
 }
-
 
 STATIC void machine_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_i2c_obj_t *self = MP_OBJ_TO_PTR(self_in);
@@ -171,7 +168,7 @@ STATIC int machine_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, si
     ret = LPI2C_MasterTransferBlocking(self->i2c_inst, &masterXfer);
 
     // Transfer will not send a stop in case of errors. so do it now.
-    if (flags & MP_MACHINE_I2C_FLAG_STOP && ret != kStatus_Success) { 
+    if (flags & MP_MACHINE_I2C_FLAG_STOP && ret != kStatus_Success) {
         LPI2C_MasterStop(self->i2c_inst);
     }
 
