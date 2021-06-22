@@ -41,7 +41,7 @@ the firmware.bin or firmware.hex file.
 Once firmware versions are provided by MicroPyhgton, you can download the
 most recent MicroPython firmware .hex or .bin file to load onto your
 i.MXRT device. You can download it from the 
-`MicroPython downloads page <https://micropython.org/download#MIMXRT>`_.
+`MicroPython downloads page <https://micropython.org/download/all>`_.
 From here, you have 2 main choices:
 
 * Stable firmware builds
