@@ -197,10 +197,10 @@ The highest supported baudrate is 500000.
 Hardware SPI bus
 ----------------
 
-There are four hardware SPI channels that allow faster transmission
-rates (up to 33Mhz). The SPI signals are fixed assigned to GPIO pins.
+There are up to four hardware SPI channels that allow faster transmission
+rates (up to 90Mhz). The SPI signals are fixed assigned to GPIO pins.
 It depends on the board design, which SPI's signals are exposed to
-the user, as detailed in the table below. 
+the user, as detailed in the table below.
 The signal order in the table is CS, MOSI, MISO and CLK.
 
 ================    ===============  ===========  ==========
@@ -219,17 +219,20 @@ MIXMXRT1064-EVK     D10/D11/D12/D13       -            -
 Hardware SPI is accessed via the :ref:`machine.SPI <machine.SPI>` class and
 has the same methods as software SPI above::
 
-    from machine import Pin, SPI
+    from machine import SPI
 
     spi = SPI(0, 10000000)
-    spi = SPI(1, 10000000, mode=SPI.SLAVE)
+    spi.write('Hello World')
 
-The default mode is MASTER mode. As part of the ongoing change of descriptors, 
-CONTROLLER and PERIPHERAL can be used instead of MASTER and SLAVE.
+Notes:
 
-Note: Even is the highest supported baud rate at the moment is 33 Mhz, setting
-      a baudrate will not always result in exactly that frequency,
-      especially at high baudrates.
+1. Even if the highest supported baud rate at the moment is 90 Mhz,
+setting a baudrate will not always result in exactly that
+frequency, especially at high baudrates.
+
+2. Sending at 90 MHz is possible, but in the tests receiving
+only worked up to 45 MHz.
+
 
 Software I2C bus
 ----------------
@@ -251,6 +254,35 @@ accessed via the :ref:`machine.SoftI2C <machine.SoftI2C>` class::
 
 The highest supported freq is 400000.
 
+Hardware I2C bus
+----------------
+
+There are up to four hardware I2C channels that allow faster transmission
+rates and support the full I2C protocol. The I2C signals are fixed assigned to GPIO pins.
+It depends on the board design, which I2C's signals are exposed to
+the user, as detailed in the table below.
+The signal order in the table is SDA, SCL.
+
+================    =======  =====  =====
+Board / Pin         I2C0     I2C1   I2C2
+================    =======  =====  =====
+Teensy 4.0          18/19    17/16  25/24
+Teensy 4.1          18/19    17/16  25/24
+MIXMXRT1010-EVK     D14/D15  D0/D1   -
+MIXMXRT1020-EVK     D14/D15  A4/A5  D0/D1
+MIXMXRT1050-EVK     D14/D15  D1/D0    -
+MIXMXRT1060-EVK     D14/D15  D1/D0    -
+MIXMXRT1064-EVK     D14/D15  D1/D0    -
+================    =======  =====  =====
+
+
+Hardware I2C is accessed via the :ref:`machine.I2C <machine.I2C>` class and
+has the same methods as software SPI above::
+
+    from machine import I2C
+
+    i2c = I"C(0, 400_000)
+    i2c.writeto(0x76, b"Hello World")
 
 Real time clock (RTC)
 ---------------------

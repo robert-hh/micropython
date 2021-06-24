@@ -17,6 +17,39 @@ NXP IMXRT1020-EVK and the Teensy 4.0 and Teensy 4.1 development boards are taken
 as reference for the port (for example, testing is performed on them).
 For any board you are using please make sure you have a datasheet, schematics
 and other reference materials so you can look up any board-specific functions.
+ 
+The following boards are supported by the port out of the box:
+
+- MIMXRT1010-EVK
+- MIMXRT1020-EVK
+- MIMXRT1050-EVK
+- MIMXRT1060-EVK
+- MIMXRT1064-EVK
+- Teensy 4.0
+- Teensy 4.1
+
+Supported MCUs
+--------------
+
++-------------+--------------------+-------------------------+
+| Product     | CPU                | Memory                  |
++=============+====================+=========================+
+| i.MX RT1064 | Cortex-M7 @600 MHz | 1 MB SRAM, 4 MB Flash   |
++-------------+--------------------+-------------------------+
+| i.MX RT1060 | Cortex-M7 @600 MHz | 1 MB SRAM               |
++-------------+--------------------+-------------------------+
+| i.MX RT1062 | Cortex-M7 @600 MHz | 1 MB SRAM               |
++-------------+--------------------+-------------------------+
+| i.MX RT1050 | Cortex-M7 @600 MHz | 512 kB SRAM             |
++-------------+--------------------+-------------------------+
+| i.MX RT1020 | Cortex-M7 @500 MHz | 256 kB SRAM             |
++-------------+--------------------+-------------------------+
+| i.MX RT1010 | Cortex-M7 @500 MHz | 128 kB SRAM             |
++-------------+--------------------+-------------------------+
+
+Note
+    Most of the controllers do not have internal flash memory. Therefore
+    their flash capacity is dependant on an external flash chip!
 
 To make a generic MIMXRT port and support as many boards as possible the
 following design and implementation decision were made:
@@ -65,3 +98,4 @@ i.MX RT 1062 block diagram.
 
 
 For more information see the i.MXRT datasheets or reference manuals.
+
