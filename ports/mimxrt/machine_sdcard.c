@@ -194,7 +194,7 @@ enum
 enum
 {
     SDCARD_ACMD_SD_SEND_OP_COND     = 41U,
-}
+};
 
 
 

@@ -35,6 +35,8 @@
 #include "genhdr/mpversion.h"
 #include "fsl_trng.h"
 
+extern const mp_obj_type_t mp_fat_vfs_type;
+
 STATIC const qstr os_uname_info_fields[] = {
     MP_QSTR_sysname, MP_QSTR_nodename,
     MP_QSTR_release, MP_QSTR_version, MP_QSTR_machine
