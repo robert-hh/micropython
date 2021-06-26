@@ -36,7 +36,7 @@ Supported MCUs
 +=============+====================+=========================+
 | i.MX RT1064 | Cortex-M7 @600 MHz | 1 MB SRAM, 4 MB Flash   |
 +-------------+--------------------+-------------------------+
-| i.MX RT1060 | Cortex-M7 @600 MHz | 1 MB SRAM               |
+| i.MX RT1061 | Cortex-M7 @600 MHz | 1 MB SRAM               |
 +-------------+--------------------+-------------------------+
 | i.MX RT1062 | Cortex-M7 @600 MHz | 1 MB SRAM               |
 +-------------+--------------------+-------------------------+
@@ -72,30 +72,24 @@ For your convenience, a few technical specifications are provided below:
 
 * Architecture: ARM Cortex M7
 * CPU frequency: up to 600MHz
-* Total RAM available: up to 1 MByte (part of it reserved for system)
+* Total RAM available: up to 1 MByte (see table)
 * BootROM: 96KB
 * External FlashROM: code and data, via SPI Flash; usual size 2 - 8 MB
   Some boards provide additional external RAM and SPI flash.
 * GPIO: up to 124 (GPIOs are multiplexed with other functions, including
   external FlashROM, UART, etc.)
 * UART: 4 or 8 RX/TX UART. Hardware handshaking is supported by the MCU,
-  but the board used for testing do not expose the signals.
-* SPI: 2 or 4 low power SPI interfaces
-* I2C: 2 or 4 low power I2C interfaces (bitbang implementation available on any pins)
+  but the boards used for testing do not expose the signals.
+* SPI: 2 or 4 low power SPI interfaces (software implementation available on every pin)
+* I2C: 2 or 4 low power I2C interfaces (software implementation available on every pin)
 * I2S: 3 I2S interfaces
 * ADC: one or two 12-bit SAR ADC converters
 * Ethernet controller
 * Programming: using BootROM bootloader from USB - due to external FlashROM
   and always-available BootROM bootloader, the MIMXRT is not brickable
 
-The lower numbers apply to the i.MXRT 101x MCU.
+The lower numbers for UART, SPI and I2C apply to the i.MXRT 101x MCU.
 
-.. image:: img/block_diagram.jpg
-    :alt: IMXRT1062 block diagram
-    :width: 640px
-
-i.MX RT 1062 block diagram.
-
-
-For more information see the i.MXRT datasheets or reference manuals.
+For more information see the i.MXRT datasheets or reference manuals. NXP provides
+excellent software support trough  it's SDK packages.
 

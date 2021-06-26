@@ -65,10 +65,14 @@ button on the board. Then you can uload the firmware with the command:
 
 teensy_loader_cli --mcu=imxrt1062 -v -w firmware.hex
 
-The IMXRT10xx-EVK have a second USB port. Connecting that to your it will register
+The IMXRT10xx-EVK have a second USB port connectted to a support MCU.
+Connecting that USB port to your PC will register
 a disk drive with the name of the board. Just copy the firmware.bin file to this
 drive. That will start the flashing procedure. You will know that the flash
 was complete, if that drive disappears and reappears.
+If you decided to install the very useful Segger open-SDA firmware on that
+sidekick MCU, then you have to use the debugger software to upload the IMXRT firmware.
+
 
 
 Serial prompt
