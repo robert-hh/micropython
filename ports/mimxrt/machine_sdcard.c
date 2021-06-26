@@ -42,52 +42,49 @@
 #define SDMMC_MAX_VOLT_TRIAL        ((uint32_t)0x0000FFFFU)
 #define SDMMC_DEFAULT_BLOCK_SIZE    (512U)
 
+// Error
+#define SDCARD_STATUS_OUT_OF_RANGE_SHIFT        (31U)
+#define SDCARD_STATUS_ADDRESS_ERROR_SHIFT       (30U)
+#define SDCARD_STATUS_BLOCK_LEN_ERROR_SHIFT     (29U)
+#define SDCARD_STATUS_ERASE_SEQ_ERROR_SHIFT     (28U)
+#define SDCARD_STATUS_ERASE_PARAM_SHIFT         (27U)
+#define SDCARD_STATUS_WP_VIOLATION_SHIFT        (26U)
+#define SDCARD_STATUS_LOCK_UNLOCK_FAILED_SHIFT  (24U)
+#define SDCARD_STATUS_COM_CRC_ERROR_SHIFT       (23U)
+#define SDCARD_STATUS_ILLEGAL_COMMAND_SHIFT     (22U)
+#define SDCARD_STATUS_CARD_ECC_FAILED_SHIFT     (21U)
+#define SDCARD_STATUS_CC_ERROR_SHIFT            (20U)
+#define SDCARD_STATUS_ERROR_SHIFT               (19U)
+#define SDCARD_STATUS_CSD_OVERWRITE_SHIFT       (16U)
+#define SDCARD_STATUS_WP_ERASE_SKIP_SHIFT       (15U)
+#define SDCARD_STATUS_AUTH_SEQ_ERR_SHIFT        (3U)
 
-#define SDCARD_R1_ERR_FLAG_OOR_SHIFT                      (31U)
-#define SDCARD_R1_ERR_FLAG_ADR_ERR_SHIFT                  (30U)
-#define SDCARD_R1_ERR_FLAG_BLK_LEN_ERR_SHIFT              (29U)
-#define SDCARD_R1_ERR_FLAG_ERASE_SEQ_ERR_SHIFT            (28U)
-#define SDCARD_R1_ERR_FLAG_ERASE_PARAM_ERR_SHIFT          (27U)
-#define SDCARD_R1_ERR_FLAG_WR_PROTECT_VIOLATION_SHIFT     (26U)
-#define SDCARD_R1_ERR_FLAG_CARD_IS_LOCKED_SHIFT           (25U)
-#define SDCARD_R1_ERR_FLAG_LOCK_UNLOCK_FAILED_SHIFT       (24U)
-#define SDCARD_R1_ERR_FLAG_CMD_CRC_ERR_SHIFT              (23U)
-#define SDCARD_R1_ERR_FLAG_ILLEGAL_CMD_SHIFT              (22U)
-#define SDCARD_R1_ERR_FLAG_CARD_ECC_FAILURE_SHIFT         (21U)
-#define SDCARD_R1_ERR_FLAG_CARD_CTRL_ERR_SHIFT            (20U)
-#define SDCARD_R1_ERR_FLAG_ERR_SHIFT                      (19U)
-#define SDCARD_R1_ERR_FLAG_CID_CSD_OVERWRITE_SHIFT        (16U)
-#define SDCARD_R1_ERR_FLAG_WR_PROTECT_ERASE_SKIP_SHIFT    (15U)
-#define SDCARD_R1_ERR_FLAG_CARD_ECC_DISABLE_SHIFT         (14U)
-#define SDCARD_R1_ERR_FLAG_ERASE_RESET_SHIFT              (13U)
-#define SDCARD_R1_ERR_FLAG_READY_FOR_DATA_SHIFT           (8U)
-#define SDCARD_R1_ERR_FLAG_SWITCH_ERR_SHIFT               (7U)
-#define SDCARD_R1_ERR_FLAG_APP_CMD_SHIFT                  (5U)
-#define SDCARD_R1_ERR_FLAG_AUTH_SEQ_ERR_SHIFT             (3U)
+// Status Flags
+#define SDCARD_STATUS_CARD_IS_LOCKED_SHIFT      (25U)
+#define SDCARD_STATUS_CARD_ECC_DISABLED_SHIFT   (14U)
+#define SDCARD_STATUS_ERASE_RESET_SHIFT         (13U)
+#define SDCARD_STATUS_READY_FOR_DATA_SHIFT      (8U)
+#define SDCARD_STATUS_FX_EVENT_SHIFT            (6U)
+#define SDCARD_STATUS_APP_CMD_SHIFT             (5U)
+
 
 #define SDMMC_MASK(bit) (1U << (bit))
 #define SDMMC_R1_ALL_ERROR_FLAG \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_OOR_SHIFT))                      | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_ADR_ERR_SHIFT))                  | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_BLK_LEN_ERR_SHIFT))              | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_ERASE_SEQ_ERR_SHIFT))            | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_ERASE_PARAM_ERR_SHIFT))          | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_WR_PROTECT_VIOLATION_SHIFT))     | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_CARD_IS_LOCKED_SHIFT))           | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_LOCK_UNLOCK_FAILED_SHIFT))       | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_CMD_CRC_ERR_SHIFT))              | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_ILLEGAL_CMD_SHIFT))              | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_CARD_ECC_FAILURE_SHIFT))         | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_CARD_CTRL_ERR_SHIFT))            | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_ERR_SHIFT))                      | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_CID_CSD_OVERWRITE_SHIFT))        | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_WR_PROTECT_ERASE_SKIP_SHIFT))    | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_CARD_ECC_DISABLE_SHIFT))         | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_ERASE_RESET_SHIFT))              | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_READY_FOR_DATA_SHIFT))           | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_SWITCH_ERR_SHIFT))               | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_APP_CMD_SHIFT))                  | \
-            (SDMMC_MASK(SDCARD_R1_ERR_FLAG_AUTH_SEQ_ERR_SHIFT))
+            (SDMMC_MASK(SDCARD_STATUS_OUT_OF_RANGE_SHIFT))          | \
+            (SDMMC_MASK(SDCARD_STATUS_ADDRESS_ERROR_SHIFT))         | \
+            (SDMMC_MASK(SDCARD_STATUS_BLOCK_LEN_ERROR_SHIFT))       | \
+            (SDMMC_MASK(SDCARD_STATUS_ERASE_SEQ_ERROR_SHIFT))       | \
+            (SDMMC_MASK(SDCARD_STATUS_ERASE_PARAM_SHIFT))           | \
+            (SDMMC_MASK(SDCARD_STATUS_WP_VIOLATION_SHIFT))          | \
+            (SDMMC_MASK(SDCARD_STATUS_LOCK_UNLOCK_FAILED_SHIFT))    | \
+            (SDMMC_MASK(SDCARD_STATUS_COM_CRC_ERROR_SHIFT))         | \
+            (SDMMC_MASK(SDCARD_STATUS_ILLEGAL_COMMAND_SHIFT))       | \
+            (SDMMC_MASK(SDCARD_STATUS_CARD_ECC_FAILED_SHIFT))       | \
+            (SDMMC_MASK(SDCARD_STATUS_CC_ERROR_SHIFT))              | \
+            (SDMMC_MASK(SDCARD_STATUS_ERROR_SHIFT))                 | \
+            (SDMMC_MASK(SDCARD_STATUS_CSD_OVERWRITE_SHIFT))         | \
+            (SDMMC_MASK(SDCARD_STATUS_WP_ERASE_SKIP_SHIFT))         | \
+            (SDMMC_MASK(SDCARD_STATUS_AUTH_SEQ_ERR_SHIFT))
 
 #define SDMMC_R1_CURRENT_STATE(x) (((x) & 0x00001E00U) >> 9U)
 
@@ -95,6 +92,7 @@
 typedef struct _mimxrt_sdcard_obj_t {
     mp_obj_base_t base;
     USDHC_Type *sdcard;
+    bool initialized;
     uint32_t rca;
     uint16_t block_len;
     uint32_t block_count;
@@ -202,6 +200,7 @@ STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[1] = {
     {
         .base.type = &machine_sdcard_type,
         .sdcard = USDHC1,
+        .initialized = false,
         .rca = 0x0UL,
         .block_len = SDMMC_DEFAULT_BLOCK_SIZE,
         .block_count = 0UL,
@@ -457,6 +456,27 @@ static cid_t sdcard_cmd_send_cid(USDHC_Type *base, uint32_t rca) {
     return cid;
 }
 
+static uint32_t sdcard_send_status(USDHC_Type *base, uint32_t rca) {
+    status_t status;
+    usdhc_command_t command = {
+        .index = SDCARD_CMD_SEND_STATUS,
+        .argument = (rca << 16),
+        .type = kCARD_CommandTypeNormal,
+        .responseType = kCARD_ResponseTypeR1,
+        .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
+    };
+    usdhc_transfer_t transfer = {
+        .data = NULL,
+        .command = &command,
+    };
+
+    mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
+    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    sdcard_check_status(status, SDCARD_CMD_SEND_STATUS);
+    sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
+    return command.response[0];
+}
+
 static uint32_t sdcard_cmd_set_rel_add(USDHC_Type *base) {
     status_t status;
     usdhc_command_t command = {
@@ -670,7 +690,140 @@ static void sdcard_print_cid(cid_t cid) {
     mp_printf(&mp_plat_print, "\tManufacturing date: %d.%d\n", (cid.mdt & 0xF), ((cid.mdt >> 4) & 0xFF) + 2000);
 }
 
+static void sdcard_print_csd(csd_t csd) {
+    mp_printf(&mp_plat_print, "\tFILE_FORMAT: 0x%08X\n", csd.file_format);
+    mp_printf(&mp_plat_print, "\tTEMP_WRITE_PROTECT: 0x%08X\n", csd.temp_write_protect);
+    mp_printf(&mp_plat_print, "\tPERM_WRITE_PROTECCT: 0x%08X\n", csd.perm_write_protecct);
+    mp_printf(&mp_plat_print, "\tCOPY: 0x%08X\n", csd.copy);
+    mp_printf(&mp_plat_print, "\tFILE_FORMAT_GRP: 0x%08X\n", csd.file_format_grp);
+    mp_printf(&mp_plat_print, "\tWRITE_BL_PARTIAL: 0x%08X\n", csd.write_bl_partial);
+    mp_printf(&mp_plat_print, "\tWRITE_BL_LEN: 0x%08X\n", csd.write_bl_len);
+    mp_printf(&mp_plat_print, "\tR2W_FACTOR: 0x%08X\n", csd.r2w_factor);
+    mp_printf(&mp_plat_print, "\tWR_GRP_ENABLE: 0x%08X\n", csd.wr_grp_enable);
+    mp_printf(&mp_plat_print, "\tWP_GRP_SIZE: 0x%08X\n", csd.wp_grp_size);
+    mp_printf(&mp_plat_print, "\tSECTOR_SIZE: 0x%08X\n", csd.sector_size);
+    mp_printf(&mp_plat_print, "\tERASE_BLK_EN: 0x%08X\n", csd.erase_blk_en);
+    mp_printf(&mp_plat_print, "\tC_SIZE_MULT: 0x%08X\n", csd.c_size_mult);
+    mp_printf(&mp_plat_print, "\tVDD_W_CURR_MAX: 0x%08X\n", csd.vdd_w_curr_max);
+    mp_printf(&mp_plat_print, "\tVDD_W_CURR_MIN: 0x%08X\n", csd.vdd_w_curr_min);
+    mp_printf(&mp_plat_print, "\tVDD_R_CURR_MAX: 0x%08X\n", csd.vdd_r_curr_max);
+    mp_printf(&mp_plat_print, "\tVDD_R_CURR_MIN: 0x%08X\n", csd.vdd_r_curr_min);
+    mp_printf(&mp_plat_print, "\tC_SIZE: 0x%08X\n", csd.c_size);
+    mp_printf(&mp_plat_print, "\tDSR_IMP: 0x%08X\n", csd.dsr_imp);
+    mp_printf(&mp_plat_print, "\tREAD_BLK_MISALIGN: 0x%08X\n", csd.read_blk_misalign);
+    mp_printf(&mp_plat_print, "\tWRITE_BLK_MISALIGN: 0x%08X\n", csd.write_blk_misalign);
+    mp_printf(&mp_plat_print, "\tREAD_BL_PARTIAL: 0x%08X\n", csd.read_bl_partial);
+    mp_printf(&mp_plat_print, "\tREAD_BL_LEN: 0x%08X\n", csd.read_bl_len);
+    mp_printf(&mp_plat_print, "\tCCC: 0x%08X\n", csd.ccc);
+    mp_printf(&mp_plat_print, "\tTRAN_SPEED: 0x%08X\n", csd.tran_speed);
+    mp_printf(&mp_plat_print, "\tNSAC: 0x%08X\n", csd.nsac);
+    mp_printf(&mp_plat_print, "\tTAAC: 0x%08X\n", csd.taac);
+    mp_printf(&mp_plat_print, "\tCSD_STRUCTURE: 0x%08X\n", csd.csd_structure);
+}
+
+
+
+
+
+static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
+    if(self->initialized)
+    {
+        return true;
+    }
+
+    bool valid_voltage = false;
+    uint32_t count = 0UL;
+    uint32_t response;
+
+    // Reset Card
+    if (USDHC_Reset(self->sdcard, (USDHC_SYS_CTRL_RSTA_MASK | USDHC_SYS_CTRL_RSTC_MASK | USDHC_SYS_CTRL_RSTD_MASK), 2048) == false) {
+        mp_printf(&mp_plat_print, "USDHC_Reset timed out!\n");
+        return MP_OBJ_NEW_SMALL_INT(-1); // error
+    } else {
+        mp_printf(&mp_plat_print, "USDHC_Reset performed\n");
+    }
+
+    if (USDHC_SetCardActive(self->sdcard, 8192) == false) { // TODO: remove timeout check or change to calculated value based on CLK frequency
+        mp_printf(&mp_plat_print, "USDHC_SetCardActive timed out!\n");
+        return MP_OBJ_NEW_SMALL_INT(-1); // error
+    } else {
+        mp_printf(&mp_plat_print, "USDHC_SetCardActive performed\n");
+    }
+
+
+    sdcard_cmd_go_idle_state(self->sdcard);
+    sdcard_cmd_oper_cond(self->sdcard);
+
+    // Perform voltage validation
+    while ((count < SDMMC_MAX_VOLT_TRIAL) && (valid_voltage == 0U)) {
+        sdcard_cmd_app_cmd(self->sdcard);
+        response = sdcard_cmd_sd_app_op_cond(self->sdcard, (uint32_t)(SDMMC_VOLTAGE_WINDOW_SD | SDMMC_HIGH_CAPACITY | SD_SWITCH_1_8V_CAPACITY));
+
+        /* Get operating voltage*/
+        valid_voltage = (((response >> 31U) == 1U) ? true : false);
+        count++;
+
+        if (!(count % 10000)) {
+            mp_printf(&mp_plat_print, "\t%d Voltage validation cycles executed\n", count);
+        }
+    }
+
+    if (count >= SDMMC_MAX_VOLT_TRIAL) {
+        mp_printf(&mp_plat_print, "Invalid voltage range!\n");
+        return MP_OBJ_NEW_SMALL_INT(-1); // error
+    } else {
+        mp_printf(&mp_plat_print, "Voltage validation performed (%d cycles)\n", count);
+    }
+
+    // ===
+    // Ready State
+    // ===
+    cid_t cid_all = sdcard_cmd_all_send_cid(self->sdcard);
+    sdcard_print_cid(cid_all);
+
+    // ===
+    // Identification State
+    // ===
+    self->rca = sdcard_cmd_set_rel_add(self->sdcard);
+    mp_printf(&mp_plat_print, "RCA received - 0x%04X\n", self->rca);
+    self->rca = sdcard_cmd_set_rel_add(self->sdcard);
+    mp_printf(&mp_plat_print, "RCA received - 0x%04X\n", self->rca);
+
+    // ===
+    // Standby State
+    // ===
+    uint32_t usdhc_clk = USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 20000000UL);
+    mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 20000000UL);
+
+    csd_t csd = sdcard_cmd_send_csd(self->sdcard, self->rca);
+    decode_csd(self, &csd);
+    sdcard_print_csd(csd);
+
+    cid_t cid = sdcard_cmd_send_cid(self->sdcard, self->rca);
+    sdcard_print_cid(cid);
+
+    // ===
+    // Transfer State
+    // ===
+    sdcard_cmd_select_card(self->sdcard, self->rca);
+
+    self->initialized = true;
+
+    return true;
+}
+
+
+
+
+
+
+
 STATIC int machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
+    if(self->initialized)
+    {
+        return 1;
+    }
+
     // Initialize pins
 
     // TODO: Implement APi for pin.c to initialize a GPIO for an ALT function
@@ -799,70 +952,13 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_sdcard_writeblocks_obj, machine_sdcard_
 STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_in) {
     mimxrt_sdcard_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t cmd = mp_obj_get_int(cmd_in);
-    // ---
-    bool valid_voltage = false;
-    uint32_t count = 0UL;
-    uint32_t response;
-    // ---
+
     switch (cmd) {
         case MP_BLOCKDEV_IOCTL_INIT: {
-            // Reset Card
-            if (USDHC_Reset(self->sdcard, (USDHC_SYS_CTRL_RSTA_MASK | USDHC_SYS_CTRL_RSTC_MASK | USDHC_SYS_CTRL_RSTD_MASK), 2048) == false) {
-                mp_printf(&mp_plat_print, "USDHC_Reset timed out!\n");
-                return MP_OBJ_NEW_SMALL_INT(-1); // error
-            } else {
-                mp_printf(&mp_plat_print, "USDHC_Reset performed\n");
+            if(!sdcard_power_on(self))
+            {
+                return MP_OBJ_NEW_SMALL_INT(-1);  // Initialization failed
             }
-
-            if (USDHC_SetCardActive(self->sdcard, 8192) == false) { // TODO: remove timeout check or change to calculated value based on CLK frequency
-                mp_printf(&mp_plat_print, "USDHC_SetCardActive timed out!\n");
-                return MP_OBJ_NEW_SMALL_INT(-1); // error
-            } else {
-                mp_printf(&mp_plat_print, "USDHC_SetCardActive performed\n");
-            }
-
-
-            sdcard_cmd_go_idle_state(self->sdcard);
-            sdcard_cmd_oper_cond(self->sdcard);
-
-            // Perform voltage validation
-            while ((count < SDMMC_MAX_VOLT_TRIAL) && (valid_voltage == 0U)) {
-                sdcard_cmd_app_cmd(self->sdcard);
-                response = sdcard_cmd_sd_app_op_cond(self->sdcard, (uint32_t)(SDMMC_VOLTAGE_WINDOW_SD | SDMMC_HIGH_CAPACITY | SD_SWITCH_1_8V_CAPACITY));
-
-                /* Get operating voltage*/
-                valid_voltage = (((response >> 31U) == 1U) ? true : false);
-                count++;
-
-                if (!(count % 10000)) {
-                    mp_printf(&mp_plat_print, "\t%d Voltage validation cycles executed\n", count);
-                }
-            }
-
-            if (count >= SDMMC_MAX_VOLT_TRIAL) {
-                mp_printf(&mp_plat_print, "Invalid voltage range!\n");
-                return MP_OBJ_NEW_SMALL_INT(-1); // error
-            } else {
-                mp_printf(&mp_plat_print, "Voltage validation performed (%d cycles)\n", count);
-            }
-
-            cid_t cid_all = sdcard_cmd_all_send_cid(self->sdcard);
-            sdcard_print_cid(cid_all);
-
-            self->rca = sdcard_cmd_set_rel_add(self->sdcard);
-            mp_printf(&mp_plat_print, "RCA received - 0x%04X\n", self->rca);
-
-            // Stand-by State (stby) reached
-            uint32_t usdhc_clk = USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 20000000UL);
-            mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 20000000UL);
-
-            cid_t cid = sdcard_cmd_send_cid(self->sdcard, self->rca);
-            sdcard_print_cid(cid);
-
-            csd_t csd = sdcard_cmd_send_csd(self->sdcard, self->rca);
-            decode_csd(self, &csd);
-
-            sdcard_cmd_select_card(self->sdcard, self->rca);
             return MP_OBJ_NEW_SMALL_INT(0);
         }
         case MP_BLOCKDEV_IOCTL_DEINIT:
