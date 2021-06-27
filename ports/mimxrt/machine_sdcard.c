@@ -39,7 +39,7 @@
 #define SDMMC_VOLTAGE_WINDOW_SD     (0x80100000U)
 #define SDMMC_HIGH_CAPACITY         (0x40000000U)
 #define SD_SWITCH_1_8V_CAPACITY     ((uint32_t)0x01000000U)
-#define SDMMC_MAX_VOLT_TRIAL        ((uint32_t)0x0000FFFFU)
+#define SDMMC_MAX_VOLT_TRIAL        ((uint32_t)0x000000FFU)
 #define SDMMC_DEFAULT_BLOCK_SIZE    (512U)
 
 // Error
@@ -93,6 +93,7 @@ typedef struct _mimxrt_sdcard_obj_t {
     mp_obj_base_t base;
     USDHC_Type *sdcard;
     bool initialized;
+    bool inserted;
     uint32_t rca;
     uint16_t block_len;
     uint32_t block_count;
@@ -201,6 +202,7 @@ STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[1] = {
         .base.type = &machine_sdcard_type,
         .sdcard = USDHC1,
         .initialized = false,
+        .inserted = true,
         .rca = 0x0UL,
         .block_len = SDMMC_DEFAULT_BLOCK_SIZE,
         .block_count = 0UL,
@@ -313,7 +315,7 @@ static void sdcard_card_status(uint8_t current_state) {
     }
 }
 
-static void sdcard_cmd_go_idle_state(USDHC_Type *base) {
+static bool sdcard_cmd_go_idle_state(USDHC_Type *base) {
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_CMD_GO_IDLE_STATE,
@@ -329,9 +331,18 @@ static void sdcard_cmd_go_idle_state(USDHC_Type *base) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_GO_IDLE_STATE);
+
+    if(status == kStatus_Success)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
-static uint32_t sdcard_cmd_oper_cond(USDHC_Type *base) {
+static bool sdcard_cmd_oper_cond(USDHC_Type *base, uint32_t *oper_cond) {
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_CMD_SEND_IF_COND,
@@ -347,7 +358,17 @@ static uint32_t sdcard_cmd_oper_cond(USDHC_Type *base) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_IF_COND);
-    return command.response[0];
+    
+    if (status == kStatus_Success)
+    {
+        *oper_cond = command.response[0];
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+
 }
 
 static uint32_t sdcard_cmd_app_cmd(USDHC_Type *base) {
@@ -390,9 +411,8 @@ static uint32_t sdcard_cmd_sd_app_op_cond(USDHC_Type *base, uint32_t argument) {
     return command.response[0];
 }
 
-static cid_t sdcard_cmd_all_send_cid(USDHC_Type *base) {
+static bool sdcard_cmd_all_send_cid(USDHC_Type *base, cid_t *cid) {
     status_t status;
-    cid_t cid;
     usdhc_command_t command = {
         .index = SDCARD_CMD_ALL_SEND_CID,
         .argument = 0UL,
@@ -407,25 +427,29 @@ static cid_t sdcard_cmd_all_send_cid(USDHC_Type *base) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_ALL_SEND_CID);
-    // --
-    cid.mdt = (uint16_t)((command.response[0] & 0xFFF00U) >> 8U);
-    cid.psn = (uint32_t)(((command.response[1] & 0xFFFFFFU) << 8U) | ((command.response[0] & 0xFF000000U) >> 24U));
-    cid.prv = (uint8_t)((command.response[1] & 0xFF000000U) >> 24U);
-    cid.pnm[0] = (char)(command.response[2] & 0xFFU);
-    cid.pnm[1] = (char)((command.response[2] & 0xFF00U) >> 8U);
-    cid.pnm[2] = (char)((command.response[2] & 0xFF0000U) >> 16U);
-    cid.pnm[3] = (char)((command.response[2] & 0xFF000000U) >> 24U);
-    cid.pnm[4] = (char)(command.response[3] & 0xFFU);
-    cid.pnm[5] = '\0';
-    cid.oid = (uint16_t)((command.response[3] & 0xFFFF00U) >> 8U);
-    cid.mid = (uint8_t)((command.response[3] & 0xFF000000U) >> 24U);
-    // --
-    return cid;
+    
+    if(status == kStatus_Success) {
+        cid->mdt = (uint16_t)((command.response[0] & 0xFFF00U) >> 8U);
+        cid->psn = (uint32_t)(((command.response[1] & 0xFFFFFFU) << 8U) | ((command.response[0] & 0xFF000000U) >> 24U));
+        cid->prv = (uint8_t)((command.response[1] & 0xFF000000U) >> 24U);
+        cid->pnm[0] = (char)(command.response[2] & 0xFFU);
+        cid->pnm[1] = (char)((command.response[2] & 0xFF00U) >> 8U);
+        cid->pnm[2] = (char)((command.response[2] & 0xFF0000U) >> 16U);
+        cid->pnm[3] = (char)((command.response[2] & 0xFF000000U) >> 24U);
+        cid->pnm[4] = (char)(command.response[3] & 0xFFU);
+        cid->pnm[5] = '\0';
+        cid->oid = (uint16_t)((command.response[3] & 0xFFFF00U) >> 8U);
+        cid->mid = (uint8_t)((command.response[3] & 0xFF000000U) >> 24U);  
+        return true;      
+    }
+    else
+    {
+        return false;
+    }
 }
 
-static cid_t sdcard_cmd_send_cid(USDHC_Type *base, uint32_t rca) {
+static bool sdcard_cmd_send_cid(USDHC_Type *base, const uint32_t rca, cid_t *cid) {
     status_t status;
-    cid_t cid;
     usdhc_command_t command = {
         .index = SDCARD_CMD_SEND_CID,
         .argument = (rca << 16),
@@ -440,20 +464,25 @@ static cid_t sdcard_cmd_send_cid(USDHC_Type *base, uint32_t rca) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_CID);
-    // --
-    cid.mdt = (uint16_t)((command.response[0] & 0xFFF00U) >> 8U);
-    cid.psn = (uint32_t)(((command.response[1] & 0xFFFFFFU) << 8U) | ((command.response[0] & 0xFF000000U) >> 24U));
-    cid.prv = (uint8_t)((command.response[1] & 0xFF000000U) >> 24U);
-    cid.pnm[0] = (char)(command.response[2] & 0xFFU);
-    cid.pnm[1] = (char)((command.response[2] & 0xFF00U) >> 8U);
-    cid.pnm[2] = (char)((command.response[2] & 0xFF0000U) >> 16U);
-    cid.pnm[3] = (char)((command.response[2] & 0xFF000000U) >> 24U);
-    cid.pnm[4] = (char)(command.response[3] & 0xFFU);
-    cid.pnm[5] = '\0';
-    cid.oid = (uint16_t)((command.response[3] & 0xFFFF00U) >> 8U);
-    cid.mid = (uint8_t)((command.response[3] & 0xFF000000U) >> 24U);
-    // --
-    return cid;
+
+    if(status == kStatus_Success) {
+        cid->mdt = (uint16_t)((command.response[0] & 0xFFF00U) >> 8U);
+        cid->psn = (uint32_t)(((command.response[1] & 0xFFFFFFU) << 8U) | ((command.response[0] & 0xFF000000U) >> 24U));
+        cid->prv = (uint8_t)((command.response[1] & 0xFF000000U) >> 24U);
+        cid->pnm[0] = (char)(command.response[2] & 0xFFU);
+        cid->pnm[1] = (char)((command.response[2] & 0xFF00U) >> 8U);
+        cid->pnm[2] = (char)((command.response[2] & 0xFF0000U) >> 16U);
+        cid->pnm[3] = (char)((command.response[2] & 0xFF000000U) >> 24U);
+        cid->pnm[4] = (char)(command.response[3] & 0xFFU);
+        cid->pnm[5] = '\0';
+        cid->oid = (uint16_t)((command.response[3] & 0xFFFF00U) >> 8U);
+        cid->mid = (uint8_t)((command.response[3] & 0xFF000000U) >> 24U);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 static uint32_t sdcard_send_status(USDHC_Type *base, uint32_t rca) {
@@ -477,7 +506,7 @@ static uint32_t sdcard_send_status(USDHC_Type *base, uint32_t rca) {
     return command.response[0];
 }
 
-static uint32_t sdcard_cmd_set_rel_add(USDHC_Type *base) {
+static bool sdcard_cmd_set_rel_add(USDHC_Type *base, uint32_t *rca) {
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_CMD_SEND_REL_ADDR,
@@ -493,12 +522,20 @@ static uint32_t sdcard_cmd_set_rel_add(USDHC_Type *base) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_REL_ADDR);
-    return 0xFFFFFFFF & (command.response[0] >> 16);
+    
+    if (status == kStatus_Success)
+    {
+        *rca = 0xFFFFFFFF & (command.response[0] >> 16);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
-static csd_t sdcard_cmd_send_csd(USDHC_Type *base, uint32_t rca) {
+static bool sdcard_cmd_send_csd(USDHC_Type *base, const uint32_t rca, csd_t *csd) {
     status_t status;
-    csd_t csd;
     usdhc_command_t command = {
         .index = SDCARD_CMD_SEND_CSD,
         .argument = (rca << 16),
@@ -513,44 +550,51 @@ static csd_t sdcard_cmd_send_csd(USDHC_Type *base, uint32_t rca) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_CSD);
-    // --
-    csd.csd_structure = 0x3 & (command.response[3] >> 30);
-    csd.taac = 0xFF & (command.response[3] >> 16);
-    csd.nsac = 0xFF & (command.response[3] >> 8);
-    csd.tran_speed = 0xFF & (command.response[3]);
+    
+    if (status == kStatus_Success)
+    {
+        csd->csd_structure = 0x3 & (command.response[3] >> 30);
+        csd->taac = 0xFF & (command.response[3] >> 16);
+        csd->nsac = 0xFF & (command.response[3] >> 8);
+        csd->tran_speed = 0xFF & (command.response[3]);
 
-    csd.ccc = 0xFFF & (command.response[2] >> 20);
-    csd.read_bl_len = 0xF & (command.response[2] >> 16);
-    csd.read_bl_partial = 0x1 & (command.response[2] >> 15);
-    csd.write_blk_misalign = 0x1 & (command.response[2] >> 14);
-    csd.read_blk_misalign = 0x1 & (command.response[2] >> 13);
-    csd.dsr_imp = 0x1 & (command.response[2] >> 12);
-    csd.c_size = (0x3FF & (command.response[2] << 2)) |
-        (0x3 & (command.response[1] >> 30));
+        csd->ccc = 0xFFF & (command.response[2] >> 20);
+        csd->read_bl_len = 0xF & (command.response[2] >> 16);
+        csd->read_bl_partial = 0x1 & (command.response[2] >> 15);
+        csd->write_blk_misalign = 0x1 & (command.response[2] >> 14);
+        csd->read_blk_misalign = 0x1 & (command.response[2] >> 13);
+        csd->dsr_imp = 0x1 & (command.response[2] >> 12);
+        csd->c_size = (0x3FF & (command.response[2] << 2)) |
+            (0x3 & (command.response[1] >> 30));
 
-    csd.vdd_r_curr_min = 0x7 & (command.response[1] >> 27);
-    csd.vdd_r_curr_max = 0x7 & (command.response[1] >> 24);
-    csd.vdd_w_curr_min = 0x7 & (command.response[1] >> 21);
-    csd.vdd_w_curr_max = 0x7 & (command.response[1] >> 18);
-    csd.c_size_mult = 0x7 & (command.response[1] >> 15);
-    csd.erase_blk_en = 0x1 & (command.response[1] >> 14);
-    csd.sector_size = 0x7F & (command.response[1] >> 7);
-    csd.wp_grp_size = 0x7F & (command.response[1]);
+        csd->vdd_r_curr_min = 0x7 & (command.response[1] >> 27);
+        csd->vdd_r_curr_max = 0x7 & (command.response[1] >> 24);
+        csd->vdd_w_curr_min = 0x7 & (command.response[1] >> 21);
+        csd->vdd_w_curr_max = 0x7 & (command.response[1] >> 18);
+        csd->c_size_mult = 0x7 & (command.response[1] >> 15);
+        csd->erase_blk_en = 0x1 & (command.response[1] >> 14);
+        csd->sector_size = 0x7F & (command.response[1] >> 7);
+        csd->wp_grp_size = 0x7F & (command.response[1]);
 
-    csd.wr_grp_enable = 0x1 & (command.response[0] >> 31);
-    csd.r2w_factor = 0x7 & (command.response[0] >> 26);
-    csd.write_bl_len = 0xF & (command.response[0] >> 22);
-    csd.write_bl_partial = 0x1 & (command.response[0] >> 21);
-    csd.file_format_grp = 0x1 & (command.response[0] >> 15);
-    csd.copy = 0x1 & (command.response[0] >> 14);
-    csd.perm_write_protecct = 0x1 & (command.response[0] >> 13);
-    csd.temp_write_protect = 0x1 & (command.response[0] >> 12);
-    csd.file_format = 0x3 & (command.response[0] >> 10);
-    // --
-    return csd;
+        csd->wr_grp_enable = 0x1 & (command.response[0] >> 31);
+        csd->r2w_factor = 0x7 & (command.response[0] >> 26);
+        csd->write_bl_len = 0xF & (command.response[0] >> 22);
+        csd->write_bl_partial = 0x1 & (command.response[0] >> 21);
+        csd->file_format_grp = 0x1 & (command.response[0] >> 15);
+        csd->copy = 0x1 & (command.response[0] >> 14);
+        csd->perm_write_protecct = 0x1 & (command.response[0] >> 13);
+        csd->temp_write_protect = 0x1 & (command.response[0] >> 12);
+        csd->file_format = 0x3 & (command.response[0] >> 10);
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
-static uint32_t sdcard_cmd_select_card(USDHC_Type *base, uint32_t rca) {
+static bool sdcard_cmd_select_card(USDHC_Type *base, const uint32_t rca) {
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_CMD_SELECT_CARD,
@@ -566,8 +610,15 @@ static uint32_t sdcard_cmd_select_card(USDHC_Type *base, uint32_t rca) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SELECT_CARD);
-    sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
-    return command.response[0];
+
+    if(status == kStatus_Success) {
+        sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 static uint32_t sdcard_cmd_stop_transmission(USDHC_Type *base) {
@@ -680,113 +731,133 @@ static status_t sdcard_write(mimxrt_sdcard_obj_t *sdcard, uint8_t *buffer, uint3
     return status;
 }
 
-
-static void sdcard_print_cid(cid_t cid) {
-    mp_printf(&mp_plat_print, "\tManufacturer ID: %d\n", cid.mid);
-    mp_printf(&mp_plat_print, "\tOEM/Application ID: %d\n", cid.oid);
-    mp_printf(&mp_plat_print, "\tProduct name: %s\n", cid.pnm);
-    mp_printf(&mp_plat_print, "\tProduct revision: 0x%02X\n", cid.prv);
-    mp_printf(&mp_plat_print, "\tProduct serial number: 0x%08X\n", cid.psn);
-    mp_printf(&mp_plat_print, "\tManufacturing date: %d.%d\n", (cid.mdt & 0xF), ((cid.mdt >> 4) & 0xFF) + 2000);
+static void sdcard_print_cid(cid_t *cid) {
+    mp_printf(&mp_plat_print, "\tManufacturer ID: %d\n", cid->mid);
+    mp_printf(&mp_plat_print, "\tOEM/Application ID: %d\n", cid->oid);
+    mp_printf(&mp_plat_print, "\tProduct name: %s\n", cid->pnm);
+    mp_printf(&mp_plat_print, "\tProduct revision: 0x%02X\n", cid->prv);
+    mp_printf(&mp_plat_print, "\tProduct serial number: 0x%08X\n", cid->psn);
+    mp_printf(&mp_plat_print, "\tManufacturing date: %d.%d\n", (cid->mdt & 0xF), ((cid->mdt >> 4) & 0xFF) + 2000);
 }
 
-static void sdcard_print_csd(csd_t csd) {
-    mp_printf(&mp_plat_print, "\tFILE_FORMAT: 0x%08X\n", csd.file_format);
-    mp_printf(&mp_plat_print, "\tTEMP_WRITE_PROTECT: 0x%08X\n", csd.temp_write_protect);
-    mp_printf(&mp_plat_print, "\tPERM_WRITE_PROTECCT: 0x%08X\n", csd.perm_write_protecct);
-    mp_printf(&mp_plat_print, "\tCOPY: 0x%08X\n", csd.copy);
-    mp_printf(&mp_plat_print, "\tFILE_FORMAT_GRP: 0x%08X\n", csd.file_format_grp);
-    mp_printf(&mp_plat_print, "\tWRITE_BL_PARTIAL: 0x%08X\n", csd.write_bl_partial);
-    mp_printf(&mp_plat_print, "\tWRITE_BL_LEN: 0x%08X\n", csd.write_bl_len);
-    mp_printf(&mp_plat_print, "\tR2W_FACTOR: 0x%08X\n", csd.r2w_factor);
-    mp_printf(&mp_plat_print, "\tWR_GRP_ENABLE: 0x%08X\n", csd.wr_grp_enable);
-    mp_printf(&mp_plat_print, "\tWP_GRP_SIZE: 0x%08X\n", csd.wp_grp_size);
-    mp_printf(&mp_plat_print, "\tSECTOR_SIZE: 0x%08X\n", csd.sector_size);
-    mp_printf(&mp_plat_print, "\tERASE_BLK_EN: 0x%08X\n", csd.erase_blk_en);
-    mp_printf(&mp_plat_print, "\tC_SIZE_MULT: 0x%08X\n", csd.c_size_mult);
-    mp_printf(&mp_plat_print, "\tVDD_W_CURR_MAX: 0x%08X\n", csd.vdd_w_curr_max);
-    mp_printf(&mp_plat_print, "\tVDD_W_CURR_MIN: 0x%08X\n", csd.vdd_w_curr_min);
-    mp_printf(&mp_plat_print, "\tVDD_R_CURR_MAX: 0x%08X\n", csd.vdd_r_curr_max);
-    mp_printf(&mp_plat_print, "\tVDD_R_CURR_MIN: 0x%08X\n", csd.vdd_r_curr_min);
-    mp_printf(&mp_plat_print, "\tC_SIZE: 0x%08X\n", csd.c_size);
-    mp_printf(&mp_plat_print, "\tDSR_IMP: 0x%08X\n", csd.dsr_imp);
-    mp_printf(&mp_plat_print, "\tREAD_BLK_MISALIGN: 0x%08X\n", csd.read_blk_misalign);
-    mp_printf(&mp_plat_print, "\tWRITE_BLK_MISALIGN: 0x%08X\n", csd.write_blk_misalign);
-    mp_printf(&mp_plat_print, "\tREAD_BL_PARTIAL: 0x%08X\n", csd.read_bl_partial);
-    mp_printf(&mp_plat_print, "\tREAD_BL_LEN: 0x%08X\n", csd.read_bl_len);
-    mp_printf(&mp_plat_print, "\tCCC: 0x%08X\n", csd.ccc);
-    mp_printf(&mp_plat_print, "\tTRAN_SPEED: 0x%08X\n", csd.tran_speed);
-    mp_printf(&mp_plat_print, "\tNSAC: 0x%08X\n", csd.nsac);
-    mp_printf(&mp_plat_print, "\tTAAC: 0x%08X\n", csd.taac);
-    mp_printf(&mp_plat_print, "\tCSD_STRUCTURE: 0x%08X\n", csd.csd_structure);
+static void sdcard_print_csd(csd_t *csd) {
+    mp_printf(&mp_plat_print, "\tFILE_FORMAT: 0x%08X\n", csd->file_format);
+    mp_printf(&mp_plat_print, "\tTEMP_WRITE_PROTECT: 0x%08X\n", csd->temp_write_protect);
+    mp_printf(&mp_plat_print, "\tPERM_WRITE_PROTECCT: 0x%08X\n", csd->perm_write_protecct);
+    mp_printf(&mp_plat_print, "\tCOPY: 0x%08X\n", csd->copy);
+    mp_printf(&mp_plat_print, "\tFILE_FORMAT_GRP: 0x%08X\n", csd->file_format_grp);
+    mp_printf(&mp_plat_print, "\tWRITE_BL_PARTIAL: 0x%08X\n", csd->write_bl_partial);
+    mp_printf(&mp_plat_print, "\tWRITE_BL_LEN: 0x%08X\n", csd->write_bl_len);
+    mp_printf(&mp_plat_print, "\tR2W_FACTOR: 0x%08X\n", csd->r2w_factor);
+    mp_printf(&mp_plat_print, "\tWR_GRP_ENABLE: 0x%08X\n", csd->wr_grp_enable);
+    mp_printf(&mp_plat_print, "\tWP_GRP_SIZE: 0x%08X\n", csd->wp_grp_size);
+    mp_printf(&mp_plat_print, "\tSECTOR_SIZE: 0x%08X\n", csd->sector_size);
+    mp_printf(&mp_plat_print, "\tERASE_BLK_EN: 0x%08X\n", csd->erase_blk_en);
+    mp_printf(&mp_plat_print, "\tC_SIZE_MULT: 0x%08X\n", csd->c_size_mult);
+    mp_printf(&mp_plat_print, "\tVDD_W_CURR_MAX: 0x%08X\n", csd->vdd_w_curr_max);
+    mp_printf(&mp_plat_print, "\tVDD_W_CURR_MIN: 0x%08X\n", csd->vdd_w_curr_min);
+    mp_printf(&mp_plat_print, "\tVDD_R_CURR_MAX: 0x%08X\n", csd->vdd_r_curr_max);
+    mp_printf(&mp_plat_print, "\tVDD_R_CURR_MIN: 0x%08X\n", csd->vdd_r_curr_min);
+    mp_printf(&mp_plat_print, "\tC_SIZE: 0x%08X\n", csd->c_size);
+    mp_printf(&mp_plat_print, "\tDSR_IMP: 0x%08X\n", csd->dsr_imp);
+    mp_printf(&mp_plat_print, "\tREAD_BLK_MISALIGN: 0x%08X\n", csd->read_blk_misalign);
+    mp_printf(&mp_plat_print, "\tWRITE_BLK_MISALIGN: 0x%08X\n", csd->write_blk_misalign);
+    mp_printf(&mp_plat_print, "\tREAD_BL_PARTIAL: 0x%08X\n", csd->read_bl_partial);
+    mp_printf(&mp_plat_print, "\tREAD_BL_LEN: 0x%08X\n", csd->read_bl_len);
+    mp_printf(&mp_plat_print, "\tCCC: 0x%08X\n", csd->ccc);
+    mp_printf(&mp_plat_print, "\tTRAN_SPEED: 0x%08X\n", csd->tran_speed);
+    mp_printf(&mp_plat_print, "\tNSAC: 0x%08X\n", csd->nsac);
+    mp_printf(&mp_plat_print, "\tTAAC: 0x%08X\n", csd->taac);
+    mp_printf(&mp_plat_print, "\tCSD_STRUCTURE: 0x%08X\n", csd->csd_structure);
 }
 
+static bool sdcard_reset(USDHC_Type *base) {
+    // TODO: Specify timeout
+    return USDHC_Reset(base, (USDHC_SYS_CTRL_RSTA_MASK | USDHC_SYS_CTRL_RSTC_MASK | USDHC_SYS_CTRL_RSTD_MASK), 2048);
+}
 
+static bool sdcard_set_active(USDHC_Type *base) {
+    // TODO: Specify timeout
+    return USDHC_SetCardActive(base, 8192);
+}
 
+static bool sdcard_volt_validation(USDHC_Type *base) {
+    bool valid_voltage = false;
+    uint32_t count = 0UL;
+    uint32_t response;
 
+    // Perform voltage validation
+    while ((count < SDMMC_MAX_VOLT_TRIAL) && (valid_voltage == false)) {
+        sdcard_cmd_app_cmd(base);
+        response = sdcard_cmd_sd_app_op_cond(base, (uint32_t)(SDMMC_VOLTAGE_WINDOW_SD | SDMMC_HIGH_CAPACITY | SD_SWITCH_1_8V_CAPACITY));
+
+        /* Get operating voltage*/
+        valid_voltage = (((response >> 31U) == 1U) ? true : false);
+        count++;
+    }
+
+    if (count >= SDMMC_MAX_VOLT_TRIAL) {
+        return false;
+    } else {
+        return true;
+    }    
+}
 
 static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
+    bool status = false;
+
+    // Check if card is already initialized and powered on
     if(self->initialized)
     {
         return true;
     }
 
-    bool valid_voltage = false;
-    uint32_t count = 0UL;
-    uint32_t response;
-
-    // Reset Card
-    if (USDHC_Reset(self->sdcard, (USDHC_SYS_CTRL_RSTA_MASK | USDHC_SYS_CTRL_RSTC_MASK | USDHC_SYS_CTRL_RSTD_MASK), 2048) == false) {
-        mp_printf(&mp_plat_print, "USDHC_Reset timed out!\n");
-        return MP_OBJ_NEW_SMALL_INT(-1); // error
-    } else {
-        mp_printf(&mp_plat_print, "USDHC_Reset performed\n");
+    // Start initialization process
+    status = sdcard_reset(self->sdcard);
+    if(!status) {
+        return false;
     }
 
-    if (USDHC_SetCardActive(self->sdcard, 8192) == false) { // TODO: remove timeout check or change to calculated value based on CLK frequency
-        mp_printf(&mp_plat_print, "USDHC_SetCardActive timed out!\n");
-        return MP_OBJ_NEW_SMALL_INT(-1); // error
-    } else {
-        mp_printf(&mp_plat_print, "USDHC_SetCardActive performed\n");
+    status = sdcard_set_active(self->sdcard);
+    if(!status) {
+        return false;
     }
 
-
-    sdcard_cmd_go_idle_state(self->sdcard);
-    sdcard_cmd_oper_cond(self->sdcard);
-
-    // Perform voltage validation
-    while ((count < SDMMC_MAX_VOLT_TRIAL) && (valid_voltage == 0U)) {
-        sdcard_cmd_app_cmd(self->sdcard);
-        response = sdcard_cmd_sd_app_op_cond(self->sdcard, (uint32_t)(SDMMC_VOLTAGE_WINDOW_SD | SDMMC_HIGH_CAPACITY | SD_SWITCH_1_8V_CAPACITY));
-
-        /* Get operating voltage*/
-        valid_voltage = (((response >> 31U) == 1U) ? true : false);
-        count++;
-
-        if (!(count % 10000)) {
-            mp_printf(&mp_plat_print, "\t%d Voltage validation cycles executed\n", count);
-        }
+    status = sdcard_cmd_go_idle_state(self->sdcard);
+    if(!status) {
+        return false;
     }
 
-    if (count >= SDMMC_MAX_VOLT_TRIAL) {
-        mp_printf(&mp_plat_print, "Invalid voltage range!\n");
-        return MP_OBJ_NEW_SMALL_INT(-1); // error
-    } else {
-        mp_printf(&mp_plat_print, "Voltage validation performed (%d cycles)\n", count);
+    uint32_t oper_cond;
+    status = sdcard_cmd_oper_cond(self->sdcard, &oper_cond);
+    if(!status) {
+        return false;
     }
+
+    status = sdcard_volt_validation(self->sdcard);
+    if(!status) {
+        return false;
+    }
+    // Todo: evaluate operation conditions
 
     // ===
     // Ready State
     // ===
-    cid_t cid_all = sdcard_cmd_all_send_cid(self->sdcard);
-    sdcard_print_cid(cid_all);
+    cid_t cid_all;
+    status = sdcard_cmd_all_send_cid(self->sdcard, &cid_all);
+    if(!status) {
+        return false;
+    }
+    sdcard_print_cid(&cid_all);
+    // Todo: handle multiple cid receptions if multiple cards available
 
     // ===
     // Identification State
     // ===
-    self->rca = sdcard_cmd_set_rel_add(self->sdcard);
-    mp_printf(&mp_plat_print, "RCA received - 0x%04X\n", self->rca);
-    self->rca = sdcard_cmd_set_rel_add(self->sdcard);
+    status = sdcard_cmd_set_rel_add(self->sdcard, &self->rca);
+    if(!status) {
+        return false;
+    }
     mp_printf(&mp_plat_print, "RCA received - 0x%04X\n", self->rca);
 
     // ===
@@ -795,30 +866,36 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
     uint32_t usdhc_clk = USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 20000000UL);
     mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 20000000UL);
 
-    csd_t csd = sdcard_cmd_send_csd(self->sdcard, self->rca);
+    csd_t csd;
+    status = sdcard_cmd_send_csd(self->sdcard, self->rca, &csd);
+    if(!status) {
+        return false;
+    }    
     decode_csd(self, &csd);
-    sdcard_print_csd(csd);
+    sdcard_print_csd(&csd);
 
-    cid_t cid = sdcard_cmd_send_cid(self->sdcard, self->rca);
-    sdcard_print_cid(cid);
+    cid_t cid;
+    status = sdcard_cmd_send_cid(self->sdcard, self->rca, &cid);
+    if(!status) {
+        return false;
+    }
+    sdcard_print_cid(&cid);
 
     // ===
     // Transfer State
     // ===
-    sdcard_cmd_select_card(self->sdcard, self->rca);
-
-    self->initialized = true;
-
-    return true;
+    status = sdcard_cmd_select_card(self->sdcard, self->rca);
+    if(!status) {
+        return false;
+    }
+    else {
+        self->initialized = true;
+        return true;
+    }    
 }
 
 
-
-
-
-
-
-STATIC int machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
+STATIC int machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
     if(self->initialized)
     {
         return 1;
@@ -882,6 +959,7 @@ STATIC int machine_sdcard_init_helper(const mimxrt_sdcard_obj_t *self, const mp_
         uint32_t usdhc_clk = USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 300000UL);
         mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 300000UL);
         USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth1Bit);
+        self->inserted = true;
         return 1;
     } else {
         return -1;
@@ -896,7 +974,7 @@ STATIC mp_obj_t sdcard_obj_make_new(const mp_obj_type_t *type, size_t n_args, si
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    const mimxrt_sdcard_obj_t *self = &mimxrt_sdcard_objs[(args[0].u_int - 1)];
+    mimxrt_sdcard_obj_t *self = &mimxrt_sdcard_objs[(args[0].u_int - 1)];
     if (machine_sdcard_init_helper(self, args)) {
         return MP_OBJ_FROM_PTR(self);
     } else {
@@ -998,4 +1076,9 @@ const mp_obj_type_t machine_sdcard_type = {
 
 void machine_sdcard_init0(void) {
     return;
+}
+
+
+void USDHC1_IRQHandler() {
+
 }
