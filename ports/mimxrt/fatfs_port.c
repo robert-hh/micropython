@@ -33,6 +33,6 @@ MP_WEAK DWORD get_fattime(void) {
 
     SNVS_LP_SRTC_GetDatetime(SNVS, &srtcDate);
 
-    return (((srtcDate.year - 1980) << 25) | (srtcDate.month << 21) | (srtcDate.day << 16) |
-               (srtcDate.hour << 11) | ((srtcDate.minute << 5) | (srtcDate.second / 2)));
+    return ((srtcDate.year - 1980) << 25) | (srtcDate.month << 21) | (srtcDate.day << 16) |
+           (srtcDate.hour << 11) | ((srtcDate.minute << 5) | (srtcDate.second / 2));
 }

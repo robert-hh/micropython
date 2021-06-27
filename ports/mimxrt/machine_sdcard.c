@@ -70,21 +70,21 @@
 
 #define SDMMC_MASK(bit) (1U << (bit))
 #define SDMMC_R1_ALL_ERROR_FLAG \
-            (SDMMC_MASK(SDCARD_STATUS_OUT_OF_RANGE_SHIFT))          | \
-            (SDMMC_MASK(SDCARD_STATUS_ADDRESS_ERROR_SHIFT))         | \
-            (SDMMC_MASK(SDCARD_STATUS_BLOCK_LEN_ERROR_SHIFT))       | \
-            (SDMMC_MASK(SDCARD_STATUS_ERASE_SEQ_ERROR_SHIFT))       | \
-            (SDMMC_MASK(SDCARD_STATUS_ERASE_PARAM_SHIFT))           | \
-            (SDMMC_MASK(SDCARD_STATUS_WP_VIOLATION_SHIFT))          | \
-            (SDMMC_MASK(SDCARD_STATUS_LOCK_UNLOCK_FAILED_SHIFT))    | \
-            (SDMMC_MASK(SDCARD_STATUS_COM_CRC_ERROR_SHIFT))         | \
-            (SDMMC_MASK(SDCARD_STATUS_ILLEGAL_COMMAND_SHIFT))       | \
-            (SDMMC_MASK(SDCARD_STATUS_CARD_ECC_FAILED_SHIFT))       | \
-            (SDMMC_MASK(SDCARD_STATUS_CC_ERROR_SHIFT))              | \
-            (SDMMC_MASK(SDCARD_STATUS_ERROR_SHIFT))                 | \
-            (SDMMC_MASK(SDCARD_STATUS_CSD_OVERWRITE_SHIFT))         | \
-            (SDMMC_MASK(SDCARD_STATUS_WP_ERASE_SKIP_SHIFT))         | \
-            (SDMMC_MASK(SDCARD_STATUS_AUTH_SEQ_ERR_SHIFT))
+    (SDMMC_MASK(SDCARD_STATUS_OUT_OF_RANGE_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_ADDRESS_ERROR_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_BLOCK_LEN_ERROR_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_ERASE_SEQ_ERROR_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_ERASE_PARAM_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_WP_VIOLATION_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_LOCK_UNLOCK_FAILED_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_COM_CRC_ERROR_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_ILLEGAL_COMMAND_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_CARD_ECC_FAILED_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_CC_ERROR_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_ERROR_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_CSD_OVERWRITE_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_WP_ERASE_SKIP_SHIFT)) | \
+    (SDMMC_MASK(SDCARD_STATUS_AUTH_SEQ_ERR_SHIFT))
 
 #define SDMMC_R1_CURRENT_STATE(x) (((x) & 0x00001E00U) >> 9U)
 
@@ -197,7 +197,7 @@ enum
 
 
 
-STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[1] = {
+STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[] = {
     {
         .base.type = &machine_sdcard_type,
         .sdcard = USDHC1,
@@ -332,12 +332,9 @@ static bool sdcard_cmd_go_idle_state(USDHC_Type *base) {
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_GO_IDLE_STATE);
 
-    if(status == kStatus_Success)
-    {
+    if (status == kStatus_Success) {
         return true;
-    }
-    else
-    {
+    } else {
         return false;
     }
 }
@@ -358,14 +355,11 @@ static bool sdcard_cmd_oper_cond(USDHC_Type *base, uint32_t *oper_cond) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_IF_COND);
-    
-    if (status == kStatus_Success)
-    {
+
+    if (status == kStatus_Success) {
         *oper_cond = command.response[0];
         return true;
-    }
-    else
-    {
+    } else {
         return false;
     }
 
@@ -427,8 +421,8 @@ static bool sdcard_cmd_all_send_cid(USDHC_Type *base, cid_t *cid) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_ALL_SEND_CID);
-    
-    if(status == kStatus_Success) {
+
+    if (status == kStatus_Success) {
         cid->mdt = (uint16_t)((command.response[0] & 0xFFF00U) >> 8U);
         cid->psn = (uint32_t)(((command.response[1] & 0xFFFFFFU) << 8U) | ((command.response[0] & 0xFF000000U) >> 24U));
         cid->prv = (uint8_t)((command.response[1] & 0xFF000000U) >> 24U);
@@ -439,11 +433,9 @@ static bool sdcard_cmd_all_send_cid(USDHC_Type *base, cid_t *cid) {
         cid->pnm[4] = (char)(command.response[3] & 0xFFU);
         cid->pnm[5] = '\0';
         cid->oid = (uint16_t)((command.response[3] & 0xFFFF00U) >> 8U);
-        cid->mid = (uint8_t)((command.response[3] & 0xFF000000U) >> 24U);  
-        return true;      
-    }
-    else
-    {
+        cid->mid = (uint8_t)((command.response[3] & 0xFF000000U) >> 24U);
+        return true;
+    } else {
         return false;
     }
 }
@@ -465,7 +457,7 @@ static bool sdcard_cmd_send_cid(USDHC_Type *base, const uint32_t rca, cid_t *cid
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_CID);
 
-    if(status == kStatus_Success) {
+    if (status == kStatus_Success) {
         cid->mdt = (uint16_t)((command.response[0] & 0xFFF00U) >> 8U);
         cid->psn = (uint32_t)(((command.response[1] & 0xFFFFFFU) << 8U) | ((command.response[0] & 0xFF000000U) >> 24U));
         cid->prv = (uint8_t)((command.response[1] & 0xFF000000U) >> 24U);
@@ -478,32 +470,9 @@ static bool sdcard_cmd_send_cid(USDHC_Type *base, const uint32_t rca, cid_t *cid
         cid->oid = (uint16_t)((command.response[3] & 0xFFFF00U) >> 8U);
         cid->mid = (uint8_t)((command.response[3] & 0xFF000000U) >> 24U);
         return true;
-    }
-    else
-    {
+    } else {
         return false;
     }
-}
-
-static uint32_t sdcard_send_status(USDHC_Type *base, uint32_t rca) {
-    status_t status;
-    usdhc_command_t command = {
-        .index = SDCARD_CMD_SEND_STATUS,
-        .argument = (rca << 16),
-        .type = kCARD_CommandTypeNormal,
-        .responseType = kCARD_ResponseTypeR1,
-        .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
-    };
-    usdhc_transfer_t transfer = {
-        .data = NULL,
-        .command = &command,
-    };
-
-    mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, SDCARD_CMD_SEND_STATUS);
-    sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
-    return command.response[0];
 }
 
 static bool sdcard_cmd_set_rel_add(USDHC_Type *base, uint32_t *rca) {
@@ -522,14 +491,11 @@ static bool sdcard_cmd_set_rel_add(USDHC_Type *base, uint32_t *rca) {
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_REL_ADDR);
-    
-    if (status == kStatus_Success)
-    {
+
+    if (status == kStatus_Success) {
         *rca = 0xFFFFFFFF & (command.response[0] >> 16);
         return true;
-    }
-    else
-    {
+    } else {
         return false;
     }
 }
@@ -550,9 +516,8 @@ static bool sdcard_cmd_send_csd(USDHC_Type *base, const uint32_t rca, csd_t *csd
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SEND_CSD);
-    
-    if (status == kStatus_Success)
-    {
+
+    if (status == kStatus_Success) {
         csd->csd_structure = 0x3 & (command.response[3] >> 30);
         csd->taac = 0xFF & (command.response[3] >> 16);
         csd->nsac = 0xFF & (command.response[3] >> 8);
@@ -587,9 +552,7 @@ static bool sdcard_cmd_send_csd(USDHC_Type *base, const uint32_t rca, csd_t *csd
         csd->file_format = 0x3 & (command.response[0] >> 10);
 
         return true;
-    }
-    else
-    {
+    } else {
         return false;
     }
 }
@@ -611,34 +574,12 @@ static bool sdcard_cmd_select_card(USDHC_Type *base, const uint32_t rca) {
     status = USDHC_TransferBlocking(base, NULL, &transfer);
     sdcard_check_status(status, SDCARD_CMD_SELECT_CARD);
 
-    if(status == kStatus_Success) {
+    if (status == kStatus_Success) {
         sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
         return true;
-    }
-    else
-    {
+    } else {
         return false;
     }
-}
-
-static uint32_t sdcard_cmd_stop_transmission(USDHC_Type *base) {
-    status_t status;
-    usdhc_command_t command = {
-        .index = SDCARD_CMD_STOP_TRANSMISSION,
-        .argument = 0UL,
-        .type = kCARD_CommandTypeNormal,
-        .responseType = kCARD_ResponseTypeR1b,
-        .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
-    };
-    usdhc_transfer_t transfer = {
-        .data = NULL,
-        .command = &command,
-    };
-    mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
-    sdcard_check_status(status, SDCARD_CMD_STOP_TRANSMISSION);
-    sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
-    return command.response[0];
 }
 
 static uint32_t sdcard_cmd_set_blocklen(USDHC_Type *base, uint32_t block_size) {
@@ -800,42 +741,41 @@ static bool sdcard_volt_validation(USDHC_Type *base) {
         return false;
     } else {
         return true;
-    }    
+    }
 }
 
 static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
     bool status = false;
 
     // Check if card is already initialized and powered on
-    if(self->initialized)
-    {
+    if (self->initialized) {
         return true;
     }
 
     // Start initialization process
     status = sdcard_reset(self->sdcard);
-    if(!status) {
+    if (!status) {
         return false;
     }
 
     status = sdcard_set_active(self->sdcard);
-    if(!status) {
+    if (!status) {
         return false;
     }
 
     status = sdcard_cmd_go_idle_state(self->sdcard);
-    if(!status) {
+    if (!status) {
         return false;
     }
 
     uint32_t oper_cond;
     status = sdcard_cmd_oper_cond(self->sdcard, &oper_cond);
-    if(!status) {
+    if (!status) {
         return false;
     }
 
     status = sdcard_volt_validation(self->sdcard);
-    if(!status) {
+    if (!status) {
         return false;
     }
     // Todo: evaluate operation conditions
@@ -845,7 +785,7 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
     // ===
     cid_t cid_all;
     status = sdcard_cmd_all_send_cid(self->sdcard, &cid_all);
-    if(!status) {
+    if (!status) {
         return false;
     }
     sdcard_print_cid(&cid_all);
@@ -855,7 +795,7 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
     // Identification State
     // ===
     status = sdcard_cmd_set_rel_add(self->sdcard, &self->rca);
-    if(!status) {
+    if (!status) {
         return false;
     }
     mp_printf(&mp_plat_print, "RCA received - 0x%04X\n", self->rca);
@@ -868,15 +808,15 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
 
     csd_t csd;
     status = sdcard_cmd_send_csd(self->sdcard, self->rca, &csd);
-    if(!status) {
+    if (!status) {
         return false;
-    }    
+    }
     decode_csd(self, &csd);
     sdcard_print_csd(&csd);
 
     cid_t cid;
     status = sdcard_cmd_send_cid(self->sdcard, self->rca, &cid);
-    if(!status) {
+    if (!status) {
         return false;
     }
     sdcard_print_cid(&cid);
@@ -885,19 +825,21 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
     // Transfer State
     // ===
     status = sdcard_cmd_select_card(self->sdcard, self->rca);
-    if(!status) {
+    if (!status) {
         return false;
-    }
-    else {
+    } else {
         self->initialized = true;
         return true;
-    }    
+    }
+}
+
+static bool sdcard_power_off(mimxrt_sdcard_obj_t *self) {
+    return true;
 }
 
 
 STATIC int machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
-    if(self->initialized)
-    {
+    if (self->initialized) {
         return 1;
     }
 
@@ -933,32 +875,24 @@ STATIC int machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_va
     IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B0_06_USDHC1_CD_B,0U);
     IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B0_06_USDHC1_CD_B, 0x10B0u);
 
-
-    // TODO: Remove debug clock output
-    IOMUXC_SetPinMux(IOMUXC_GPIO_SD_B1_03_CCM_CLKO2, 0U);
-    IOMUXC_SetPinConfig(IOMUXC_GPIO_SD_B1_03_CCM_CLKO2, 0x10B0u);
-
     mp_printf(&mp_plat_print, "Current clock of PFD2: %dHz\n", CLOCK_GetSysPfdFreq(kCLOCK_Pfd2));
     mp_printf(&mp_plat_print, "USDHC1_CLK_ROOT: %dHz\n", CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3);
-
-    CCM->CCOSR |= CCM_CCOSR_CLKO2_SEL(0b00011);  // usdhc1_clk_root
-    CCM->CCOSR |= CCM_CCOSR_CLKO2_DIV(0b000);    // divide by 1
-    CCM->CCOSR |= CCM_CCOSR_CLKO2_EN(0b1);       // CCM_CLKO2 enabled
 
 
     // Initialize USDHC
     const usdhc_config_t config = {
         .endianMode = kUSDHC_EndianModeLittle,
         .dataTimeout = 0xFU,
-        .readWatermarkLevel = 16U,
-        .writeWatermarkLevel = 16U,
+        .readWatermarkLevel = 16U,  // Todo: Configure meaningfull watermark level
+        .writeWatermarkLevel = 16U,  // Todo: Configure meaningfull watermark level
     };
 
     USDHC_Init(self->sdcard, &config);
     if (USDHC_DetectCardInsert(self->sdcard)) {
         uint32_t usdhc_clk = USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 300000UL);
-        mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 300000UL);
         USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth1Bit);
+
+        mp_printf(&mp_plat_print, "Actual USDHC clock: %dHz (%dHz)\n", usdhc_clk, 300000UL);
         self->inserted = true;
         return 1;
     } else {
@@ -974,7 +908,16 @@ STATIC mp_obj_t sdcard_obj_make_new(const mp_obj_type_t *type, size_t n_args, si
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    mimxrt_sdcard_obj_t *self = &mimxrt_sdcard_objs[(args[0].u_int - 1)];
+    // Extract arguments
+    mp_int_t sdcard_id = args[SDCARD_INIT_ARG_ID].u_int;
+
+    if (!(1 <= sdcard_id && sdcard_id <= (sizeof(mimxrt_sdcard_objs) / sizeof(mimxrt_sdcard_obj_t)))) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "SDCard(%d) doesn't exist", sdcard_id));
+    }
+
+    mimxrt_sdcard_obj_t *self = &mimxrt_sdcard_objs[(sdcard_id - 1)];
+
+    // Initialize SDCard Host
     if (machine_sdcard_init_helper(self, args)) {
         return MP_OBJ_FROM_PTR(self);
     } else {
@@ -988,6 +931,7 @@ STATIC mp_obj_t machine_sdcard_init(size_t n_args, const mp_obj_t *pos_args, mp_
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args) - 1];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
+    // Todo: make sure that there is a valid reason that a call to init would not change anything for an already initialized hsot
     machine_sdcard_init_helper(pos_args[0], args);
     return mp_const_none;
 }
@@ -1033,21 +977,33 @@ STATIC mp_obj_t machine_sdcard_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t
 
     switch (cmd) {
         case MP_BLOCKDEV_IOCTL_INIT: {
-            if(!sdcard_power_on(self))
-            {
+            if (!sdcard_power_on(self)) {
                 return MP_OBJ_NEW_SMALL_INT(-1);  // Initialization failed
             }
             return MP_OBJ_NEW_SMALL_INT(0);
         }
-        case MP_BLOCKDEV_IOCTL_DEINIT:
+        case MP_BLOCKDEV_IOCTL_DEINIT: {
+            if (!sdcard_power_off(self)) {
+                return MP_OBJ_NEW_SMALL_INT(-1);  // Deinitialization failed
+            }
+            return MP_OBJ_NEW_SMALL_INT(0);
+        }
         case MP_BLOCKDEV_IOCTL_SYNC: {
             return MP_OBJ_NEW_SMALL_INT(0);
         }
         case MP_BLOCKDEV_IOCTL_BLOCK_COUNT: {
-            return MP_OBJ_NEW_SMALL_INT(self->block_count);
+            if (!self->initialized) {
+                return MP_OBJ_NEW_SMALL_INT(-1);  // Card not initialized
+            } else {
+                return MP_OBJ_NEW_SMALL_INT(self->block_count);
+            }
         }
         case MP_BLOCKDEV_IOCTL_BLOCK_SIZE: {
-            return MP_OBJ_NEW_SMALL_INT(self->block_len);
+            if (!self->initialized) {
+                return MP_OBJ_NEW_SMALL_INT(-1);  // Card not initialized
+            } else {
+                return MP_OBJ_NEW_SMALL_INT(self->block_len);
+            }
         }
         default: // unknown command
         {
