@@ -32,6 +32,7 @@
 #include "fsl_usdhc.h"
 
 #include "ticks.h"
+#include "pin.h"
 #include "modmachine.h"
 
 
@@ -89,6 +90,11 @@
 #define SDMMC_R1_CURRENT_STATE(x) (((x) & 0x00001E00U) >> 9U)
 
 
+typedef struct _mimxrt_sdcard_pin_t {
+    const machine_pin_obj_t *pin;
+    uint8_t af_idx;
+} mimxrt_sdcard_pin_t;
+
 typedef struct _mimxrt_sdcard_obj_t {
     mp_obj_base_t base;
     USDHC_Type *sdcard;
@@ -97,6 +103,21 @@ typedef struct _mimxrt_sdcard_obj_t {
     uint32_t rca;
     uint16_t block_len;
     uint32_t block_count;
+    struct {
+        mimxrt_sdcard_pin_t wp;
+        mimxrt_sdcard_pin_t cmd;
+        mimxrt_sdcard_pin_t clk;
+        mimxrt_sdcard_pin_t cd_b;
+        mimxrt_sdcard_pin_t reset_b;
+        mimxrt_sdcard_pin_t data0;
+        mimxrt_sdcard_pin_t data1;
+        mimxrt_sdcard_pin_t data2;
+        mimxrt_sdcard_pin_t data3;
+        mimxrt_sdcard_pin_t data4;
+        mimxrt_sdcard_pin_t data5;
+        mimxrt_sdcard_pin_t data6;
+        mimxrt_sdcard_pin_t data7;
+    } pins;
 } mimxrt_sdcard_obj_t;
 
 typedef struct _cid_t {
@@ -198,6 +219,8 @@ enum
 
 
 STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[] = {
+
+    #if defined MICROPY_USDHC1 && USDHC1_AVAIL
     {
         .base.type = &machine_sdcard_type,
         .sdcard = USDHC1,
@@ -206,7 +229,9 @@ STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[] = {
         .rca = 0x0UL,
         .block_len = SDMMC_DEFAULT_BLOCK_SIZE,
         .block_count = 0UL,
+        .pins = MICROPY_USDHC1,
     }
+    #endif
 };
 
 STATIC const mp_arg_t allowed_args[] = {

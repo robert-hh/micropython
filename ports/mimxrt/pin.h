@@ -58,7 +58,8 @@ enum {
 };
 
 enum {
-    PIN_AF_MODE_ALT1 = 1,
+    PIN_AF_MODE_ALT0 = 0,
+    PIN_AF_MODE_ALT1,
     PIN_AF_MODE_ALT2,
     PIN_AF_MODE_ALT3,
     PIN_AF_MODE_ALT4,

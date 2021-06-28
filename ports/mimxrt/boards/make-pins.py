@@ -8,7 +8,7 @@ import sys
 import csv
 import re
 
-SUPPORTED_AFS = {"GPIO"}
+SUPPORTED_AFS = {"GPIO", "USDHC"}
 MAX_AF = 10  # AF0 .. AF9
 ADC_COL = 11
 
@@ -234,6 +234,36 @@ class Pins(object):
             hdr_file.write("extern const uint32_t num_board_pins;\n")
             hdr_file.write("extern const mp_obj_dict_t machine_pin_cpu_pins_locals_dict;\n")
             hdr_file.write("extern const mp_obj_dict_t machine_pin_board_pins_locals_dict;\n")
+
+            hdr_file.write("\n// Defines\n")
+            usdhcInstanceFactory(self.cpu_pins, hdr_file)
+
+
+def usdhcInstanceFactory(pins, output_file):
+    usdhc_pins = filter(lambda p: any([af for af in p.alt_fn if "USDHC" in af.af_str]), pins)
+
+    usdhc_instances = dict()
+    for pin in usdhc_pins:
+        for alt_fn in pin.alt_fn:
+            if "USDHC" in alt_fn.instance:
+                format_string = "#define {0}_{1} &pin_{0}, {2}"
+                if alt_fn.instance not in usdhc_instances:
+                    usdhc_instances[alt_fn.instance] = [
+                        format_string.format(pin.name, alt_fn.af_str, alt_fn.idx)
+                    ]
+                else:
+                    usdhc_instances[alt_fn.instance].append(
+                        format_string.format(pin.name, alt_fn.af_str, alt_fn.idx)
+                    )
+
+    if len(usdhc_instances):
+        output_file.write("#define USDHC_AVAIL (1)\n")
+
+    for k, v in usdhc_instances.items():
+        output_file.write(f"// {k}\n")
+        output_file.write(f"#define {k}_AVAIL (1)\n")
+        for i in v:
+            output_file.write(i + "\n")
 
 
 def main():
