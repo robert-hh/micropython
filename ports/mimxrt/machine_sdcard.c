@@ -214,6 +214,30 @@ STATIC const mp_arg_t allowed_args[] = {
 };
 
 
+static status_t sdcard_transfer_blocking(USDHC_Type *base, usdhc_adma_config_t *dmaConfig, usdhc_transfer_t *transfer, uint32_t timeout_ms) {
+    uint32_t ticks;
+    uint32_t ticks_start;
+    status_t status = USDHC_TransferBlocking(base, dmaConfig, transfer);
+
+    if (status == kStatus_Success) {
+        ticks_start = ticks_ms32();
+        do
+        {
+            ticks = ticks_ms32();
+        } while ((USDHC_GetPresentStatusFlags(base) & (kUSDHC_DataInhibitFlag | kUSDHC_CommandInhibitFlag)) &&
+            ((ticks - ticks_start) < timeout_ms));
+
+        if ((ticks - ticks_start) >= timeout_ms) {
+            return kStatus_Timeout;
+        } else {
+            return kStatus_Success;
+        }
+    } else {
+        return status;
+    }
+}
+
+
 static void decode_csd(mimxrt_sdcard_obj_t *sdcard, csd_t *csd) {
     sdcard->block_len = (1U << (csd->read_bl_len));
     sdcard->block_count = ((csd->c_size + 1U) << (csd->c_size_mult + 2U));
@@ -329,7 +353,7 @@ static bool sdcard_cmd_go_idle_state(USDHC_Type *base) {
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_GO_IDLE_STATE);
 
     if (status == kStatus_Success) {
@@ -353,7 +377,7 @@ static bool sdcard_cmd_oper_cond(USDHC_Type *base, uint32_t *oper_cond) {
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_SEND_IF_COND);
 
     if (status == kStatus_Success) {
@@ -379,7 +403,7 @@ static uint32_t sdcard_cmd_app_cmd(USDHC_Type *base) {
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_APP_CMD);
     sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
     return command.response[0];
@@ -400,7 +424,7 @@ static uint32_t sdcard_cmd_sd_app_op_cond(USDHC_Type *base, uint32_t argument) {
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_ACMD_SD_SEND_OP_COND);
     return command.response[0];
 }
@@ -419,7 +443,7 @@ static bool sdcard_cmd_all_send_cid(USDHC_Type *base, cid_t *cid) {
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_ALL_SEND_CID);
 
     if (status == kStatus_Success) {
@@ -454,7 +478,7 @@ static bool sdcard_cmd_send_cid(USDHC_Type *base, const uint32_t rca, cid_t *cid
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_SEND_CID);
 
     if (status == kStatus_Success) {
@@ -489,7 +513,7 @@ static bool sdcard_cmd_set_rel_add(USDHC_Type *base, uint32_t *rca) {
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_SEND_REL_ADDR);
 
     if (status == kStatus_Success) {
@@ -514,7 +538,7 @@ static bool sdcard_cmd_send_csd(USDHC_Type *base, const uint32_t rca, csd_t *csd
     };
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_SEND_CSD);
 
     if (status == kStatus_Success) {
@@ -571,7 +595,7 @@ static bool sdcard_cmd_select_card(USDHC_Type *base, const uint32_t rca) {
         .command = &command,
     };
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_SELECT_CARD);
 
     if (status == kStatus_Success) {
@@ -596,7 +620,7 @@ static uint32_t sdcard_cmd_set_blocklen(USDHC_Type *base, uint32_t block_size) {
         .command = &command,
     };
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
     sdcard_check_status(status, SDCARD_CMD_SET_BLOCKLENGTH);
     sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
     return command.response[0];
@@ -629,7 +653,7 @@ static status_t sdcard_read(mimxrt_sdcard_obj_t *sdcard, uint8_t *buffer, uint32
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
 
-    status_t status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
+    status_t status = sdcard_transfer_blocking(sdcard->sdcard, NULL, &transfer, 500);
 
     sdcard_check_status(status, command.index);
     sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
@@ -664,7 +688,7 @@ static status_t sdcard_write(mimxrt_sdcard_obj_t *sdcard, uint8_t *buffer, uint3
 
     mp_printf(&mp_plat_print, "CMD %d started\n", command.index);
 
-    status_t status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
+    status_t status = sdcard_transfer_blocking(sdcard->sdcard, NULL, &transfer, 500);
 
     sdcard_check_status(status, command.index);
     sdcard_card_status(SDMMC_R1_CURRENT_STATE(command.response[0]));
