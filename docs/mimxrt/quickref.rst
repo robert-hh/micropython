@@ -310,7 +310,8 @@ See :ref:`machine.SDCard <machine.SDCard>`. ::
     import machine, uos
 
     sd = machine.SDCard()
-    uos.mount(sd, "/sd")  # mount
+    fs = uos.VfsFat(sd)
+    uos.mount(fs, "/sd")  # mount
 
     uos.listdir('/sd')    # list directory contents
 
