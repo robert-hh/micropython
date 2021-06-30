@@ -15,8 +15,10 @@ except:
 os.mount(vfs, "/flash")
 
 sdcard = SDCard(1)
-try:
-    fat = os.VfsFat(sdcard)
+if sdcard:
+    try:
+        fat = os.VfsFat(sdcard)
+    except:
+        os.VfsFat.mkfs(sdcard)
+        fat = os.VfsFat(sdcard)
     os.mount(fat, "/sdcard")
-except:
-    print("Mounting SD card failed!")
