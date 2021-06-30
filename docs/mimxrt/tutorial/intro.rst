@@ -16,7 +16,7 @@ Requirements
 The first thing you need is a board with an i.MXRT chip.  The MicroPython
 software supports the i.MXRT chip itself and any board should work.  The main
 characteristic of a board is how the GPIO pins are connected to the outside
-world, and whether it includes a built-in USB-serial convertor to make the
+world, and whether it includes a built-in USB-serial converter to make the
 UART available to your PC.
 
 Names of pins will be given in this tutorial using the chip names (eg GPIO2)
@@ -35,7 +35,7 @@ Getting the firmware
 
 At the moment the MicroPython web site does not offer pre-built packages. So
 you have to build the firmware from the sources, as detailed in the README.md
-files of MicroPyton. The make procedure for the respecitive board will create
+files of MicroPyton. The make procedure for the respective board will create
 the firmware.bin or firmware.hex file.
 
 Once firmware versions are provided by MicroPyhgton, you can download the
@@ -55,25 +55,25 @@ features, there are daily builds.
 Deploying the firmware
 ----------------------
 
-Once you have the MicroPython firmware you need to load it onto your i.MXRT device.
-The exact procedure for these steps is highly dependent on the particular board
-and you will need to refer to its documentation for details.
+Once you have the MicroPython firmware you need to load it onto your
+i.MXRT device. The exact procedure for these steps is highly dependent
+on the particular board and you will need to refer to its documentation
+for details.
 
 For Teensy 4.0 and 4.1 you have to use the built-in loader together with the PC
 loader provided by PJRC. The built-in loader will be activated by pushing the
-button on the board. Then you can uload the firmware with the command:
+button on the board. Then you can upload the firmware with the command:
 
 teensy_loader_cli --mcu=imxrt1062 -v -w firmware.hex
 
-The IMXRT10xx-EVK have a second USB port connectted to a support MCU.
+The IMXRT10xx-EVK have a second USB port connected to a support MCU.
 Connecting that USB port to your PC will register
 a disk drive with the name of the board. Just copy the firmware.bin file to this
 drive. That will start the flashing procedure. You will know that the flash
 was complete, if that drive disappears and reappears.
 If you decided to install the very useful Segger open-SDA firmware on that
-sidekick MCU, then you have to use the debugger software to upload the IMXRT firmware.
-
-
+sidekick MCU, then you have to use the debugger software
+to upload the IMXRT firmware.
 
 Serial prompt
 -------------

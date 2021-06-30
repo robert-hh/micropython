@@ -128,7 +128,7 @@ See :ref:`machine.UART <machine.UART>`. ::
     uart1.read(5)         # read up to 5 bytes
 
 The i.MXRT has up to eight hardware UARTs, but not every board exposes all
-TX and RX pins for users. The pin assignment of uarts to pins is fixed.
+TX and RX pins for users. The pin assignment of UARTs to pins is fixed.
 The UARTs are numbered 1..8. The rx/tx pins are assigned according to the
 table below:
 
@@ -147,7 +147,7 @@ MIXMXRT1064-EVK   D0/D1    D7/D6    D8/D9    A1/A0      -        -        -     
 ADC (analog to digital conversion)
 ----------------------------------
 
-On the i.MXRT ADC functionality is available on Pins labelled 'Ann'.
+On the i.MXRT ADC functionality is available on Pins labeled 'Ann'.
 
 Use the :ref:`machine.ADC <machine.ADC>` class::
 
@@ -188,7 +188,7 @@ Software SPI (using bit-banging) works on all pins, and is accessed via the
     spi.write_readinto(b'1234', buf) # write to MOSI and read from MISO into the buffer
     spi.write_readinto(buf, buf) # write buf to MOSI and read MISO back into buf
 
-The highest supported baudrate is 500000.
+The highest supported baud rate is 500000.
 
 .. Warning::
    Currently *all* of ``sck``, ``mosi`` and ``miso`` *must* be specified when
@@ -227,8 +227,8 @@ has the same methods as software SPI above::
 Notes:
 
 1. Even if the highest supported baud rate at the moment is 90 Mhz,
-setting a baudrate will not always result in exactly that
-frequency, especially at high baudrates.
+setting a baud rate will not always result in exactly that
+frequency, especially at high baud rates.
 
 2. Sending at 90 MHz is possible, but in the tests receiving
 only worked up to 45 MHz.
@@ -281,7 +281,7 @@ has the same methods as software SPI above::
 
     from machine import I2C
 
-    i2c = I"C(0, 400_000)
+    i2c = I2C(0, 400_000)
     i2c.writeto(0x76, b"Hello World")
 
 Real time clock (RTC)
@@ -296,9 +296,9 @@ See :ref:`machine.RTC <machine.RTC>` ::
     rtc.datetime() # get date and time
     rtc.now() # return date and time in CPython format.
 
-The i.MXRT mcu supports battery backup of the RTC. By connecting a battery of 1.5-3.6V,
+The i.MXRT MCU supports battery backup of the RTC. By connecting a battery of 1.5-3.6V,
 time and date are maintained in the absence of the main power. The current drawn
-from the battery is ~20µA, which is rather high. A CR2032 coin cell would
+from the battery is ~20µA, which is rather high. A CR2032 coin cell will
 last for about one year.
 
 
@@ -366,6 +366,13 @@ The DHT driver is implemented in software and works on all pins::
     d.temperature() # eg. 23.6 (°C)
     d.humidity()    # eg. 41.3 (% RH)
 
+Be sure to have a 4.7k pull-up resistor on the data line. Some
+DHT module have that alreayd on their board.
 
-See the MicroPython forum for other community-supported alternatives
-to transfer files to an i.MXRT board.
+Transferring files
+------------------
+
+Files can be transferred to the i.MXRT for instance with the mpremote
+tool or using an SD card. See the MicroPython forum for other
+community-supported alternatives to transfer files to an i.MXRT board,
+like rshell or Thonny.
