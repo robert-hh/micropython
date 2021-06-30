@@ -49,7 +49,7 @@ Supported MCUs
 
 Note
     Most of the controllers do not have internal flash memory. Therefore
-    their flash capacity is dependant on an external flash chip!
+    their flash capacity is dependent on an external flash chip!
 
 To make a generic MIMXRT port and support as many boards as possible the
 following design and implementation decision were made:
@@ -91,5 +91,5 @@ For your convenience, a few technical specifications are provided below:
 The lower numbers for UART, SPI and I2C apply to the i.MXRT 101x MCU.
 
 For more information see the i.MXRT datasheets or reference manuals. NXP provides
-excellent software support trough  it's SDK packages.
+excellent software support trough it's SDK packages.
 
