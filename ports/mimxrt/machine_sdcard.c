@@ -196,28 +196,21 @@ STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[] = {
 };
 
 STATIC const mp_arg_t allowed_args[] = {
-    [SDCARD_INIT_ARG_ID]     { MP_QSTR_id, MP_ARG_INT, {.u_int = 0} },
+    [SDCARD_INIT_ARG_ID]     { MP_QSTR_id, MP_ARG_INT, {.u_int = 1} },
 };
 
 
 static status_t sdcard_transfer_blocking(USDHC_Type *base, usdhc_adma_config_t *dmaConfig, usdhc_transfer_t *transfer, uint32_t timeout_ms) {
-    uint32_t ticks;
-    uint32_t ticks_start;
     status_t status = USDHC_TransferBlocking(base, dmaConfig, transfer);
 
     if (status == kStatus_Success) {
-        ticks_start = ticks_ms32();
-        do
-        {
-            ticks = ticks_ms32();
-        } while ((USDHC_GetPresentStatusFlags(base) & (kUSDHC_DataInhibitFlag | kUSDHC_CommandInhibitFlag)) &&
-            ((ticks - ticks_start) < timeout_ms));
-
-        if ((ticks - ticks_start) >= timeout_ms) {
-            return kStatus_Timeout;
-        } else {
-            return kStatus_Success;
+        for (int i = 0; i < timeout_ms * 100; i++) {
+            if (!(USDHC_GetPresentStatusFlags(base) & (kUSDHC_DataInhibitFlag | kUSDHC_CommandInhibitFlag))) {
+                return kStatus_Success;
+            }
+            ticks_delay_us64(10);
         }
+        return kStatus_Timeout;
     } else {
         return status;
     }
@@ -681,7 +674,7 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
     // ===
     // Standby State
     // ===
-    (void)USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 20000000UL);
+    (void)USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 50000000UL);
 
     csd_t csd;
     status = sdcard_cmd_send_csd(self->sdcard, self->rca, &csd);
@@ -712,63 +705,72 @@ static bool sdcard_power_off(mimxrt_sdcard_obj_t *self) {
     return true;
 }
 
+static bool sdcard_detect(mimxrt_sdcard_obj_t *self) {
+    if (self->pins.cd_b.pin) {
+        return USDHC_DetectCardInsert(self->sdcard);
+    } else {
+        USDHC_CardDetectByData3(self->sdcard, true);
+        return (USDHC_GetPresentStatusFlags(self->sdcard) & USDHC_PRES_STATE_DLSL(8)) != 0;
+    }
+}
 
-STATIC int machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
+
+STATIC bool machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
     if (self->initialized) {
         return 1;
     }
 
     // Initialize pins
-
-    // TODO: Implement APi for pin.c to initialize a GPIO for an ALT function
-
-
     // GPIO_SD_B0_03 | ALT0 | USDHC1_CLK   | SD1_CLK   | CLK
     IOMUXC_SetPinMux(self->pins.clk.pin->muxRegister, self->pins.clk.af_idx, 0U, 0U, self->pins.clk.pin->configRegister, 0U);
-    IOMUXC_SetPinConfig(self->pins.clk.pin->muxRegister, self->pins.clk.af_idx, 0U, 0U, self->pins.clk.pin->configRegister, 0x10B0u);
+    IOMUXC_SetPinConfig(self->pins.clk.pin->muxRegister, self->pins.clk.af_idx, 0U, 0U, self->pins.clk.pin->configRegister, 0x017089u);
 
     // GPIO_SD_B0_02 | ALT0 | USDHC1_CMD   | SD1_CMD   | CMD
     IOMUXC_SetPinMux(self->pins.cmd.pin->muxRegister, self->pins.cmd.af_idx, 0U, 0U, self->pins.cmd.pin->configRegister, 0U);
-    IOMUXC_SetPinConfig(self->pins.cmd.pin->muxRegister, self->pins.cmd.af_idx, 0U, 0U, self->pins.cmd.pin->configRegister, 0x10B0u);
-
-    // GPIO_SD_B0_06 | ALT0 | USDHC1_CD_B  | SD_CD_SW  | DETECT
-    IOMUXC_SetPinMux(self->pins.cd_b.pin->muxRegister, self->pins.cd_b.af_idx, 0U, 0U, self->pins.cd_b.pin->configRegister, 0U);
-    IOMUXC_SetPinConfig(self->pins.cd_b.pin->muxRegister, self->pins.cd_b.af_idx, 0U, 0U, self->pins.cd_b.pin->configRegister, 0x10B0u);
-
+    IOMUXC_SetPinConfig(self->pins.cmd.pin->muxRegister, self->pins.cmd.af_idx, 0U, 0U, self->pins.cmd.pin->configRegister, 0x017089u);
 
     // GPIO_SD_B0_04 | ALT0 | USDHC1_DATA0 | SD1_D0    | DAT0
     IOMUXC_SetPinMux(self->pins.data0.pin->muxRegister, self->pins.data0.af_idx, 0U, 0U, self->pins.data0.pin->configRegister, 0U);
-    IOMUXC_SetPinConfig(self->pins.data0.pin->muxRegister, self->pins.data0.af_idx, 0U, 0U, self->pins.data0.pin->configRegister, 0x10B0u);
+    IOMUXC_SetPinConfig(self->pins.data0.pin->muxRegister, self->pins.data0.af_idx, 0U, 0U, self->pins.data0.pin->configRegister, 0x017089u);
 
     // GPIO_SD_B0_05 | ALT0 | USDHC1_DATA1 | SD1_D1    | DAT1
     IOMUXC_SetPinMux(self->pins.data1.pin->muxRegister, self->pins.data1.af_idx, 0U, 0U, self->pins.data1.pin->configRegister, 0U);
-    IOMUXC_SetPinConfig(self->pins.data1.pin->muxRegister, self->pins.data1.af_idx, 0U, 0U, self->pins.data1.pin->configRegister, 0x10B0u);
-
+    IOMUXC_SetPinConfig(self->pins.data1.pin->muxRegister, self->pins.data1.af_idx, 0U, 0U, self->pins.data1.pin->configRegister, 0x017089u);
 
     // GPIO_SD_B0_00 | ALT0 | USDHC1_DATA2 | SD1_D2    | DAT2
     IOMUXC_SetPinMux(self->pins.data2.pin->muxRegister, self->pins.data2.af_idx, 0U, 0U, self->pins.data2.pin->configRegister, 0U);
-    IOMUXC_SetPinConfig(self->pins.data2.pin->muxRegister, self->pins.data2.af_idx, 0U, 0U, self->pins.data2.pin->configRegister, 0x10B0u);
+    IOMUXC_SetPinConfig(self->pins.data2.pin->muxRegister, self->pins.data2.af_idx, 0U, 0U, self->pins.data2.pin->configRegister, 0x017089u);
 
-    // GPIO_SD_B0_01 | ALT0 | USDHC1_DATA3 | SD1_D3    | CD/DAT3
-    IOMUXC_SetPinMux(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0U);
-    IOMUXC_SetPinConfig(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0x10B0u);
+    if (self->pins.cd_b.pin) {  // Have card detect pin?
+        // GPIO_SD_B0_06 | ALT0 | USDHC1_CD_B  | SD_CD_SW  | DETECT
+        IOMUXC_SetPinMux(self->pins.cd_b.pin->muxRegister, self->pins.cd_b.af_idx, 0U, 0U, self->pins.cd_b.pin->configRegister, 0U);
+        IOMUXC_SetPinConfig(self->pins.cd_b.pin->muxRegister, self->pins.cd_b.af_idx, 0U, 0U, self->pins.cd_b.pin->configRegister, 0x017089u);
+
+        // GPIO_SD_B0_01 | ALT0 | USDHC1_DATA3 | SD1_D3    | CD/DAT3
+        IOMUXC_SetPinMux(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0U);
+        IOMUXC_SetPinConfig(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0x017089u);
+    } else { // No, use data3, which has to be pulled down then.
+        // GPIO_SD_B0_01 | ALT0 | USDHC1_DATA3 | SD1_D3    | CD/DAT3
+        IOMUXC_SetPinMux(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0U);
+        IOMUXC_SetPinConfig(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0x013089u);
+    }
 
     // Initialize USDHC
     const usdhc_config_t config = {
         .endianMode = kUSDHC_EndianModeLittle,
         .dataTimeout = 0xFU,
-        .readWatermarkLevel = 16U,  // Todo: Configure meaningfull watermark level
-        .writeWatermarkLevel = 16U,  // Todo: Configure meaningfull watermark level
+        .readWatermarkLevel = 128U,
+        .writeWatermarkLevel = 128U,
     };
 
     USDHC_Init(self->sdcard, &config);
-    if (USDHC_DetectCardInsert(self->sdcard)) {
+    if (sdcard_detect(self)) {
         (void)USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 300000UL);
         USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth1Bit);
         self->inserted = true;
-        return 1;
+        return true;
     } else {
-        return -1;
+        return false;
     }
 }
 
@@ -783,7 +785,7 @@ STATIC mp_obj_t sdcard_obj_make_new(const mp_obj_type_t *type, size_t n_args, si
     // Extract arguments
     mp_int_t sdcard_id = args[SDCARD_INIT_ARG_ID].u_int;
 
-    if (!(1 <= sdcard_id && sdcard_id <= (sizeof(mimxrt_sdcard_objs) / sizeof(mimxrt_sdcard_obj_t)))) {
+    if (!(1 <= sdcard_id && sdcard_id <= MP_ARRAY_SIZE(mimxrt_sdcard_objs))) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "SDCard(%d) doesn't exist", sdcard_id));
     }
 
@@ -793,7 +795,7 @@ STATIC mp_obj_t sdcard_obj_make_new(const mp_obj_type_t *type, size_t n_args, si
     if (machine_sdcard_init_helper(self, args)) {
         return MP_OBJ_FROM_PTR(self);
     } else {
-        return MP_OBJ_NULL;
+        return mp_const_none;
     }
 }
 
