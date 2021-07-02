@@ -38,16 +38,7 @@ The :mod:`machine` module::
 
     machine.freq()          # get the current frequency of the CPU
 
-The :mod:`mimxrt` module::
 
-    import mimxrt
-
-    # low level methods to interact with flash storage
-    mimxrt.flash_size()
-    mimxrt.flash_user_start()
-    mimxrt.flash_erase(sector_no)
-    mimxrt.flash_write(byte_offset, buffer)
-    mimxrt.flash_read(byte_offset, buffer)
 
 Delay and timing
 ----------------
