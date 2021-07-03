@@ -154,6 +154,7 @@ SRC_C = \
 	modmimxrt.c \
 	moduos.c \
 	mphalport.c \
+	systick.c \
 	hal/flexspi_nor_flash.c \
 	lib/mp-readline/readline.c \
 	lib/libc/string0.c \
