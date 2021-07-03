@@ -40,7 +40,6 @@
 #include "clock_config.h"
 #include "modmachine.h"
 
-volatile uint32_t systick_ms = 0;
 
 const uint8_t dcd_data[] = { 0x00 };
 
@@ -51,6 +50,9 @@ void board_init(void) {
 
     // Enable IOCON clock
     CLOCK_EnableClock(kCLOCK_Iomuxc);
+
+   // 1ms tick timer
+    SysTick_Config(SystemCoreClock / 1000);
 
     // ------------- USB0 ------------- //
 

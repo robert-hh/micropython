@@ -129,6 +129,13 @@ uint32_t trng_random_u32(void);
 #define MICROPY_PY_MACHINE_SPI              (1)
 #define MICROPY_PY_FRAMEBUF                 (1)
 
+// For regular code that wants to prevent "background tasks" from running.
+// These background tasks (LWIP, Bluetooth) run in PENDSV context.
+// ## todo: Check for the settings of the STM32 port ni irq.h
+#define MICROPY_PY_PENDSV_ENTER   uint32_t atomic_state = disable_irq();
+#define MICROPY_PY_PENDSV_REENTER atomic_state = disable_irq();
+#define MICROPY_PY_PENDSV_EXIT    enable_irq(atomic_state);
+
 // Use VfsLfs2's types for fileio/textio
 #define mp_type_fileio mp_type_vfs_lfs2_fileio
 #define mp_type_textio mp_type_vfs_lfs2_textio
@@ -159,6 +166,25 @@ extern const struct _mp_obj_module_t mp_module_mimxrt;
 extern const struct _mp_obj_module_t mp_module_onewire;
 extern const struct _mp_obj_module_t mp_module_uos;
 extern const struct _mp_obj_module_t mp_module_utime;
+extern const struct _mp_obj_module_t mp_module_usocket;
+extern const struct _mp_obj_module_t mp_module_network;
+
+#if MICROPY_PY_NETWORK
+#define NETWORK_BUILTIN_MODULE              { MP_ROM_QSTR(MP_QSTR_network), MP_ROM_PTR(&mp_module_network) },
+#else
+#define NETWORK_BUILTIN_MODULE
+#endif
+
+#if MICROPY_PY_USOCKET && MICROPY_PY_LWIP
+// usocket implementation provided by lwIP
+#define SOCKET_BUILTIN_MODULE               { MP_ROM_QSTR(MP_QSTR_usocket), MP_ROM_PTR(&mp_module_lwip) },
+#elif MICROPY_PY_USOCKET
+// usocket implementation provided by skeleton wrapper
+#define SOCKET_BUILTIN_MODULE               { MP_ROM_QSTR(MP_QSTR_usocket), MP_ROM_PTR(&mp_module_usocket) },
+#else
+// no usocket module
+#define SOCKET_BUILTIN_MODULE
+#endif
 
 #define MICROPY_PORT_BUILTIN_MODULES \
     { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
@@ -166,6 +192,8 @@ extern const struct _mp_obj_module_t mp_module_utime;
     { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_uos) }, \
     { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_utime) }, \
     { MP_ROM_QSTR(MP_QSTR__onewire), MP_ROM_PTR(&mp_module_onewire) }, \
+    SOCKET_BUILTIN_MODULE \
+    NETWORK_BUILTIN_MODULE \
 
 #define MICROPY_HW_PIT_NUM_CHANNELS 3
 
@@ -173,6 +201,8 @@ extern const struct _mp_obj_module_t mp_module_utime;
     const char *readline_hist[8]; \
     struct _machine_timer_obj_t *timer_table[MICROPY_HW_PIT_NUM_CHANNELS]; \
     void *machine_pin_irq_objects[MICROPY_HW_NUM_PIN_IRQS]; \
+    /* list of registered NICs */ \
+    mp_obj_list_t mod_network_nic_list; \
 
 #define MP_STATE_PORT MP_STATE_VM
 

@@ -24,7 +24,7 @@ MICROPY_VFS_LFS2 ?= 1
 # Include py core make definitions
 include $(TOP)/py/py.mk
 
-GIT_SUBMODULES = lib/tinyusb lib/nxp_driver
+GIT_SUBMODULES = lib/tinyusb lib/nxp_driver lib/lwip
 
 MCU_DIR = lib/nxp_driver/sdk/devices/$(MCU_SERIES)
 LD_FILES = boards/$(BOARD)/$(BOARD).ld boards/$(MCU_SERIES).ld boards/common.ld
@@ -54,10 +54,13 @@ INC += -I$(TOP)/$(MCU_DIR)/project_template
 INC += -I$(TOP)/lib/tinyusb/src
 INC += -I$(TOP)/lib/tinyusb/hw
 INC += -I$(TOP)/lib/tinyusb/hw/bsp/teensy_40
+INC += -Ilwip_inc
+INC += -I$(TOP)/lib/lwip/src/include
+INC += -Ihal/phy
 
 CFLAGS_MCU = -mtune=cortex-m7 -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-d16
 CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 -nostdlib -mthumb $(CFLAGS_MCU)
-CFLAGS += -DCPU_$(MCU_SERIES) -DCPU_$(MCU_VARIANT)
+CFLAGS += -DCPU_$(MCU_SERIES) -DCPU_$(MCU_VARIANT) -DBOARD_$(BOARD)
 CFLAGS += -DXIP_EXTERNAL_FLASH=1 \
 	-DXIP_BOOT_HEADER_ENABLE=1 \
 	-DCFG_TUSB_MCU=OPT_MCU_MIMXRT10XX \
@@ -156,6 +159,7 @@ SRC_C = \
 	modmimxrt.c \
 	moduos.c \
 	mphalport.c \
+	systick.c \
 	hal/flexspi_nor_flash.c \
 	shared/libc/printf.c \
 	shared/libc/string0.c \
@@ -166,10 +170,21 @@ SRC_C = \
 	shared/runtime/stdout_helpers.c \
 	shared/runtime/sys_stdio_mphal.c \
 	shared/timeutils/timeutils.c \
+	modusocket.c \
+	modnetwork.c \
+	network_lan.c \
+	eth.c \
+	netutils/netutils.c \
+	netutils/trace.c \
+	netutils/dhcpserver.c \
+	hal/phy/device/phyksz8081/fsl_phyksz8081.c \
+	hal/phy/mdio/enet/fsl_enet_mdio.c \
+	extmod/modlwip.c \
 	drivers/bus/softspi.c \
 	extmod/modonewire.c \
 	$(SRC_TINYUSB_C) \
 	$(SRC_HAL_IMX_C) \
+	$(SRC_ETH_C) \
 
 ifeq ($(MICROPY_FLOAT_IMPL),double)
 LIBM_SRC_C += $(addprefix lib/libm_dbl/,\
@@ -286,6 +301,10 @@ SRC_QSTR += \
 	shared/runtime/mpirq.c \
 	shared/runtime/sys_stdio_mphal.c \
 	extmod/modonewire.c \
+	extmod/modlwip.c \
+	modusocket.c \
+	modnetwork.c \
+	network_lan.c \
 	$(GEN_PINS_SRC) \
 
 OBJ += $(PY_O)

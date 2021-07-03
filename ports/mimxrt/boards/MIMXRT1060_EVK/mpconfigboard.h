@@ -53,3 +53,31 @@
     { IOMUXC_GPIO_AD_B1_00_LPI2C1_SCL }, { IOMUXC_GPIO_AD_B1_01_LPI2C1_SDA }, \
     { 0 }, { 0 }, \
     { IOMUXC_GPIO_AD_B1_07_LPI2C3_SCL }, { IOMUXC_GPIO_AD_B1_06_LPI2C3_SDA },
+
+// Network definitions
+#define MICROPY_PY_NETWORK                  (1)
+#define MICROPY_PY_USOCKET                  (1)
+#define MICROPY_PY_LWIP                     (1)
+#define MICROPY_HW_ETH_MDC                  (1)
+#define MICROPY_PY_LWIP_SOCK_RAW            (MICROPY_PY_LWIP)
+
+// Prevent the "LWIP task" from running.
+#define MICROPY_PY_LWIP_ENTER   MICROPY_PY_PENDSV_ENTER
+#define MICROPY_PY_LWIP_REENTER MICROPY_PY_PENDSV_REENTER
+#define MICROPY_PY_LWIP_EXIT    MICROPY_PY_PENDSV_EXIT
+
+// Etherner PIN definitions
+#define ENET_RESET_PIN      pin_GPIO_AD_B0_09
+#define ENET_INT_PIN        pin_GPIO_AD_B0_10
+
+#define IOMUX_TABLE_ENET \
+    { IOMUXC_GPIO_B1_10_ENET_TX_CLK }, \
+    { IOMUXC_GPIO_B1_04_ENET_RX_DATA00 }, \
+    { IOMUXC_GPIO_B1_05_ENET_RX_DATA01 }, \
+    { IOMUXC_GPIO_B1_06_ENET_RX_EN }, \
+    { IOMUXC_GPIO_B1_07_ENET_TX_DATA00 }, \
+    { IOMUXC_GPIO_B1_08_ENET_TX_DATA01 }, \
+    { IOMUXC_GPIO_B1_09_ENET_TX_EN }, \
+    { IOMUXC_GPIO_B1_11_ENET_RX_ER }, \
+    { IOMUXC_GPIO_EMC_41_ENET_MDIO }, \
+    { IOMUXC_GPIO_EMC_40_ENET_MDC },
