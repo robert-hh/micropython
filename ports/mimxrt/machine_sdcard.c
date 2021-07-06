@@ -178,6 +178,15 @@ enum
 };
 
 
+enum
+{
+    #if defined MICROPY_USDHC1 && USDHC1_AVAIL
+    USDHC1_SDCARD_OBJ_IDX,
+    #endif
+    #if defined MICROPY_USDHC2 && USDHC2_AVAIL
+    USDHC2_SDCARD_OBJ_IDX,
+    #endif
+};
 
 STATIC mimxrt_sdcard_obj_t mimxrt_sdcard_objs[] = {
 
@@ -715,6 +724,25 @@ static bool sdcard_detect(mimxrt_sdcard_obj_t *self) {
 }
 
 
+static void sdcard_card_inserted_callback(USDHC_Type *base, void *userData)
+{
+    (void) base;
+    mimxrt_sdcard_obj_t* sdcard = userData;
+    // ---
+    sdcard->inserted = true;
+}
+
+static void sdcard_card_removed_callback(USDHC_Type *base, void *userData)
+{
+    mimxrt_sdcard_obj_t* sdcard = userData;
+    // ---
+    (void) USDHC_SetSdClock(base, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 300000UL);
+    USDHC_SetDataBusWidth(base, kUSDHC_DataBusWidth1Bit);
+    sdcard->inserted = false;
+    sdcard->initialized = false;
+}
+
+
 STATIC bool machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_val_t *args) {
     if (self->initialized) {
         return 1;
@@ -745,14 +773,17 @@ STATIC bool machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_v
         // GPIO_SD_B0_06 | ALT0 | USDHC1_CD_B  | SD_CD_SW  | DETECT
         IOMUXC_SetPinMux(self->pins.cd_b.pin->muxRegister, self->pins.cd_b.af_idx, 0U, 0U, self->pins.cd_b.pin->configRegister, 0U);
         IOMUXC_SetPinConfig(self->pins.cd_b.pin->muxRegister, self->pins.cd_b.af_idx, 0U, 0U, self->pins.cd_b.pin->configRegister, 0x017089u);
-
         // GPIO_SD_B0_01 | ALT0 | USDHC1_DATA3 | SD1_D3    | CD/DAT3
         IOMUXC_SetPinMux(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0U);
         IOMUXC_SetPinConfig(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0x017089u);
+        
+        USDHC_CardDetectByData3(self->sdcard, false);
     } else { // No, use data3, which has to be pulled down then.
         // GPIO_SD_B0_01 | ALT0 | USDHC1_DATA3 | SD1_D3    | CD/DAT3
         IOMUXC_SetPinMux(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0U);
         IOMUXC_SetPinConfig(self->pins.data3.pin->muxRegister, self->pins.data3.af_idx, 0U, 0U, self->pins.data3.pin->configRegister, 0x013089u);
+
+        USDHC_CardDetectByData3(self->sdcard, true);
     }
 
     // Initialize USDHC
@@ -762,8 +793,8 @@ STATIC bool machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_v
         .readWatermarkLevel = 128U,
         .writeWatermarkLevel = 128U,
     };
-
     USDHC_Init(self->sdcard, &config);
+
     if (sdcard_detect(self)) {
         (void)USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 300000UL);
         USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth1Bit);
@@ -916,9 +947,4 @@ const mp_obj_type_t machine_sdcard_type = {
 
 void machine_sdcard_init0(void) {
     return;
-}
-
-
-void USDHC1_IRQHandler() {
-
 }
