@@ -104,6 +104,8 @@ typedef struct _mimxrt_sdcard_obj_t {
     uint32_t rca;
     uint16_t block_len;
     uint32_t block_count;
+    uint32_t status;
+    uint32_t oper_cond;
     struct {
         mimxrt_sdcard_pin_t cmd;
         mimxrt_sdcard_pin_t clk;
@@ -129,6 +131,10 @@ typedef struct _cid_t {
 typedef struct _csd_t {
     uint32_t data[4];
 } __attribute__((packed)) csd_t;
+
+typedef struct _csr_t {
+    uint32_t data[2];
+} __attribute__((packed)) csr_t;
 
 typedef enum _sdcard_state_t
 {
@@ -175,9 +181,9 @@ enum
 
 enum
 {
+    SDCARD_ACMD_SET_BUS_WIDTH       =  6U,
     SDCARD_ACMD_SD_SEND_OP_COND     = 41U,
 };
-
 
 enum
 {
@@ -329,11 +335,11 @@ static bool sdcard_cmd_oper_cond(USDHC_Type *base, uint32_t *oper_cond) {
     }
 }
 
-static bool sdcard_cmd_app_cmd(USDHC_Type *base) {
+static bool sdcard_cmd_app_cmd(mimxrt_sdcard_obj_t *sdcard, const uint32_t rca) {
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_CMD_APP_CMD,
-        .argument = 0UL,
+        .argument = (rca << 16),
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR1,
     };
@@ -342,16 +348,21 @@ static bool sdcard_cmd_app_cmd(USDHC_Type *base) {
         .command = &command,
     };
 
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
 
     if (status == kStatus_Success) {
+        sdcard->status = command.response[0];
         return true;
     } else {
         return false;
     }
 }
 
-static bool sdcard_cmd_sd_app_op_cond(USDHC_Type *base, uint32_t argument, uint32_t *oper_cond) {
+static bool sdcard_cmd_sd_app_op_cond(mimxrt_sdcard_obj_t *sdcard, uint32_t argument) {
+    if (!sdcard_cmd_app_cmd(sdcard, 0UL)) {
+        return false;
+    }
+
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_ACMD_SD_SEND_OP_COND,
@@ -365,10 +376,10 @@ static bool sdcard_cmd_sd_app_op_cond(USDHC_Type *base, uint32_t argument, uint3
         .command = &command,
     };
 
-    status = sdcard_transfer_blocking(base, NULL, &transfer, 250);
+    status = sdcard_transfer_blocking(sdcard->sdcard, NULL, &transfer, 250);
 
     if (status == kStatus_Success) {
-        *oper_cond = command.response[0];
+        sdcard->oper_cond = command.response[0];
         return true;
     } else {
         return false;
@@ -490,11 +501,11 @@ static bool sdcard_cmd_send_csd(USDHC_Type *base, const uint32_t rca, csd_t *csd
     }
 }
 
-static bool sdcard_cmd_select_card(USDHC_Type *base, const uint32_t rca) {
+static bool sdcard_cmd_select_card(mimxrt_sdcard_obj_t *sdcard) {
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_CMD_SELECT_CARD,
-        .argument = (rca << 16),
+        .argument = (sdcard->rca << 16),
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR1b,
         .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
@@ -503,20 +514,21 @@ static bool sdcard_cmd_select_card(USDHC_Type *base, const uint32_t rca) {
         .data = NULL,
         .command = &command,
     };
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
 
     if (status == kStatus_Success) {
+        sdcard->status = command.response[0];
         return true;
     } else {
         return false;
     }
 }
 
-static bool sdcard_cmd_set_blocklen(USDHC_Type *base, uint32_t block_size) {
+static bool sdcard_cmd_set_blocklen(mimxrt_sdcard_obj_t *sdcard) {
     status_t status;
     usdhc_command_t command = {
         .index = SDCARD_CMD_SET_BLOCKLENGTH,
-        .argument = block_size,
+        .argument = sdcard->block_len,
         .type = kCARD_CommandTypeNormal,
         .responseType = kCARD_ResponseTypeR1,
         .responseErrorFlags = SDMMC_R1_ALL_ERROR_FLAG,
@@ -525,9 +537,39 @@ static bool sdcard_cmd_set_blocklen(USDHC_Type *base, uint32_t block_size) {
         .data = NULL,
         .command = &command,
     };
-    status = USDHC_TransferBlocking(base, NULL, &transfer);
+    status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
 
     if (status == kStatus_Success) {
+        sdcard->status = command.response[0];
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static bool sdcard_cmd_set_bus_width(mimxrt_sdcard_obj_t *sdcard, uint8_t bus_width) {
+    if (!sdcard_cmd_app_cmd(sdcard, sdcard->rca)) {
+        return false;
+    }
+
+    // TODO: take max bus width from usdhc capability register
+
+    status_t status;
+    usdhc_command_t command = {
+        .index = SDCARD_ACMD_SET_BUS_WIDTH,
+        .argument = bus_width & 0b11,
+        .type = kCARD_CommandTypeNormal,
+        .responseType = kCARD_ResponseTypeR1,
+    };
+    usdhc_transfer_t transfer = {
+        .data = NULL,
+        .command = &command,
+    };
+
+    status = USDHC_TransferBlocking(sdcard->sdcard, NULL, &transfer);
+
+    if (status == kStatus_Success) {
+        sdcard->status = command.response[0];
         return true;
     } else {
         return false;
@@ -563,6 +605,7 @@ static bool sdcard_read(mimxrt_sdcard_obj_t *sdcard, uint8_t *buffer, uint32_t b
     status_t status = sdcard_transfer_blocking(sdcard->sdcard, NULL, &transfer, 500);
 
     if (status == kStatus_Success) {
+        sdcard->status = command.response[0];
         return true;
     } else {
         return false;
@@ -598,6 +641,7 @@ static bool sdcard_write(mimxrt_sdcard_obj_t *sdcard, uint8_t *buffer, uint32_t 
     status_t status = sdcard_transfer_blocking(sdcard->sdcard, NULL, &transfer, 500);
 
     if (status == kStatus_Success) {
+        sdcard->status = command.response[0];
         return true;
     } else {
         return false;
@@ -614,23 +658,18 @@ static bool sdcard_set_active(USDHC_Type *base) {
     return USDHC_SetCardActive(base, 8192);
 }
 
-static bool sdcard_volt_validation(USDHC_Type *base) {
+static bool sdcard_volt_validation(mimxrt_sdcard_obj_t *sdcard) {
     bool valid_voltage = false;
     uint32_t count = 0UL;
-    uint32_t response;
 
     // Perform voltage validation
     while ((count < SDMMC_MAX_VOLT_TRIAL) && (valid_voltage == false)) {
-        if (!sdcard_cmd_app_cmd(base)) {
-            return false;
-        }
-
-        if (!sdcard_cmd_sd_app_op_cond(base, (uint32_t)(SDMMC_VOLTAGE_WINDOW_SD | SDMMC_HIGH_CAPACITY | SD_SWITCH_1_8V_CAPACITY), &response)) {
+        if (!sdcard_cmd_sd_app_op_cond(sdcard, (uint32_t)(SDMMC_VOLTAGE_WINDOW_SD | SDMMC_HIGH_CAPACITY | SD_SWITCH_1_8V_CAPACITY))) {
             return false;
         }
 
         /* Get operating voltage*/
-        valid_voltage = (((response >> 31U) == 1U) ? true : false);
+        valid_voltage = (((sdcard->oper_cond >> 31U) == 1U) ? true : false);
         count++;
     }
 
@@ -671,7 +710,7 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
         return false;
     }
 
-    status = sdcard_volt_validation(self->sdcard);
+    status = sdcard_volt_validation(self);
     if (!status) {
         return false;
     }
@@ -714,13 +753,31 @@ static bool sdcard_power_on(mimxrt_sdcard_obj_t *self) {
     // ===
     // Transfer State
     // ===
-    status = sdcard_cmd_select_card(self->sdcard, self->rca);
+    status = sdcard_cmd_select_card(self);
     if (!status) {
         return false;
-    } else {
-        self->initialized = true;
-        return true;
     }
+
+    status = sdcard_cmd_set_blocklen(self);
+    if (!status) {
+        return false;
+    }
+
+    status = sdcard_cmd_set_bus_width(self, 0b10);  // Change to 4Bit bus width
+    if (!status) {
+        return false;
+    }
+    USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth4Bit);
+
+
+    status = sdcard_cmd_set_blocklen(self);
+    if (!status) {
+        return false;
+    }
+
+    // Finialize initialization
+    self->initialized = true;
+    return true;
 }
 
 static bool sdcard_power_off(mimxrt_sdcard_obj_t *self) {
@@ -889,12 +946,8 @@ STATIC mp_obj_t machine_sdcard_readblocks(mp_obj_t self_in, mp_obj_t _block_num,
         return MP_OBJ_NEW_SMALL_INT(-1);  // readblocks failed
     }
 
-    if (sdcard_cmd_set_blocklen(self->sdcard, SDMMC_DEFAULT_BLOCK_SIZE)) {
-        if (sdcard_read(self, bufinfo.buf, mp_obj_get_int(_block_num), bufinfo.len / SDMMC_DEFAULT_BLOCK_SIZE)) {
-            return MP_OBJ_NEW_SMALL_INT(0);
-        } else {
-            return MP_OBJ_NEW_SMALL_INT(-1);  // readblocks failed
-        }
+    if (sdcard_read(self, bufinfo.buf, mp_obj_get_int(_block_num), bufinfo.len / SDMMC_DEFAULT_BLOCK_SIZE)) {
+        return MP_OBJ_NEW_SMALL_INT(0);
     } else {
         return MP_OBJ_NEW_SMALL_INT(-1);  // readblocks failed
     }
@@ -911,12 +964,8 @@ STATIC mp_obj_t machine_sdcard_writeblocks(mp_obj_t self_in, mp_obj_t _block_num
         return MP_OBJ_NEW_SMALL_INT(-1);  // writeblocks failed
     }
 
-    if (sdcard_cmd_set_blocklen(self->sdcard, SDMMC_DEFAULT_BLOCK_SIZE)) {
-        if (sdcard_write(self, bufinfo.buf, mp_obj_get_int(_block_num), bufinfo.len / SDMMC_DEFAULT_BLOCK_SIZE)) {
-            return MP_OBJ_NEW_SMALL_INT(0);
-        } else {
-            return MP_OBJ_NEW_SMALL_INT(-1);  // writeblocks failed
-        }
+    if (sdcard_write(self, bufinfo.buf, mp_obj_get_int(_block_num), bufinfo.len / SDMMC_DEFAULT_BLOCK_SIZE)) {
+        return MP_OBJ_NEW_SMALL_INT(0);
     } else {
         return MP_OBJ_NEW_SMALL_INT(-1);  // writeblocks failed
     }
