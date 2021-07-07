@@ -13,8 +13,10 @@ try:
 except:
     os.VfsLfs2.mkfs(bdev, progsize=256)
     vfs = os.VfsLfs2(bdev, progsize=256)
-os.mount(vfs, "/flash")
-os.chdir("/flash")
+finally:
+    os.mount(vfs, "/flash")
+    os.chdir("/flash")
+    sys.path.append("/flash")
 
 # do not mount the SD card if SKIPSD exists.
 try:
@@ -30,4 +32,5 @@ except:
         except:
             print("Mounting SD card failed")
 
-sys.path.append("/flash")
+# Change to root directory
+os.chdir("/")

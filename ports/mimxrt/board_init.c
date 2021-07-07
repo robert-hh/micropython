@@ -51,7 +51,7 @@ void board_init(void) {
     // Enable IOCON clock
     CLOCK_EnableClock(kCLOCK_Iomuxc);
 
-   // 1ms tick timer
+    // 1ms tick timer
     SysTick_Config(SystemCoreClock / 1000);
 
     // ------------- USB0 ------------- //
@@ -87,6 +87,9 @@ void board_init(void) {
 
     // PIT
     machine_timer_init_PIT();
+
+    // SDCard
+    machine_sdcard_init0();
 }
 
 void USB_OTG1_IRQHandler(void) {
