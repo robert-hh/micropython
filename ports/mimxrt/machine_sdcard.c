@@ -784,14 +784,14 @@ static bool sdcard_power_off(mimxrt_sdcard_obj_t *self) {
     return true;
 }
 
-static bool sdcard_detect(mimxrt_sdcard_obj_t *self) {
-    if (self->pins.cd_b.pin) {
-        return USDHC_DetectCardInsert(self->sdcard);
-    } else {
-        USDHC_CardDetectByData3(self->sdcard, true);
-        return (USDHC_GetPresentStatusFlags(self->sdcard) & USDHC_PRES_STATE_DLSL(8)) != 0;
-    }
-}
+// static bool sdcard_detect(mimxrt_sdcard_obj_t *self) {
+//     if (self->pins.cd_b.pin) {
+//         return USDHC_DetectCardInsert(self->sdcard);
+//     } else {
+//         USDHC_CardDetectByData3(self->sdcard, true);
+//         return (USDHC_GetPresentStatusFlags(self->sdcard) & USDHC_PRES_STATE_DLSL(8)) != 0;
+//     }
+// }
 
 
 static void sdcard_insertion_status_callback(uint32_t systick) {

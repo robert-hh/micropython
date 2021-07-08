@@ -16,7 +16,6 @@ except:
 finally:
     os.mount(vfs, "/flash")
     os.chdir("/flash")
-    sys.path.append("/flash")
 
 # do not mount the SD card if SKIPSD exists.
 try:
@@ -32,5 +31,5 @@ except:
         except:
             print("Mounting SD card failed")
 
-# Change to root directory
-os.chdir("/")
+sys.path.append("/flash")
+
