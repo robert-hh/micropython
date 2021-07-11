@@ -229,19 +229,16 @@ STATIC const mp_arg_t allowed_args[] = {
 
 
 static status_t sdcard_transfer_blocking(USDHC_Type *base, usdhc_adma_config_t *dmaConfig, usdhc_transfer_t *transfer, uint32_t timeout_ms) {
-    status_t status = USDHC_TransferBlocking(base, dmaConfig, transfer);
+    uint32_t status_reg = 0UL;
 
-    if (status == kStatus_Success) {
-        for (int i = 0; i < timeout_ms * 100; i++) {
-            if (!(USDHC_GetPresentStatusFlags(base) & (kUSDHC_DataInhibitFlag | kUSDHC_CommandInhibitFlag))) {
-                return kStatus_Success;
-            }
-            ticks_delay_us64(10);
+    for (int i = 0; i < timeout_ms * 100; i++) {
+        status_reg = USDHC_GetPresentStatusFlags(base);
+        if (!(status_reg & (kUSDHC_DataInhibitFlag | kUSDHC_CommandInhibitFlag))) {
+            return USDHC_TransferBlocking(base, dmaConfig, transfer);
         }
-        return kStatus_Timeout;
-    } else {
-        return status;
+        ticks_delay_us64(10);
     }
+    return kStatus_Timeout;
 }
 
 static void sdcard_decode_csd(mimxrt_sdcard_obj_t *sdcard, csd_t *csd) {
@@ -269,19 +266,17 @@ static void sdcard_decode_csd(mimxrt_sdcard_obj_t *sdcard, csd_t *csd) {
             break;
         }
         case (1): {
-            read_bl_len = 0xF & (csd->data[2] >> 16);
             c_size = ((0x3F & csd->data[2]) << 16) | (0xFFFF & (csd->data[1] >> 16));
 
-            sdcard->block_len = (1U << (read_bl_len));
-            sdcard->block_count = (uint32_t)(((uint64_t)(c_size + 1U) * (uint64_t)524288) / (uint64_t)sdcard->block_len);
+            sdcard->block_len = 512UL;
+            sdcard->block_count = (uint32_t)(((uint64_t)(c_size + 1U) * (uint64_t)1024UL));
             break;
         }
         case (2): {
-            read_bl_len = 0xF & (csd->data[2] >> 16);
             c_size = ((0xFF & csd->data[2]) << 16) | (0xFFFF & (csd->data[1] >> 16));
 
-            sdcard->block_len = (1U << (read_bl_len));
-            sdcard->block_count = (uint32_t)(((uint64_t)(c_size + 1U) * (uint64_t)524288) / (uint64_t)sdcard->block_len);
+            sdcard->block_len = 512UL;
+            sdcard->block_count = (uint32_t)(((uint64_t)(c_size + 1U) * (uint64_t)1024UL));
             break;
         }
         default: {
