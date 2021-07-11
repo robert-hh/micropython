@@ -129,6 +129,22 @@ uint32_t trng_random_u32(void);
 #define MICROPY_PY_MACHINE_SPI              (1)
 #define MICROPY_PY_FRAMEBUF                 (1)
 
+// If ENET_PHY is defined, add network support
+#if MICROPY_PY_LWIP
+
+#define MICROPY_PY_NETWORK                  (1)
+#define MICROPY_PY_USOCKET                  (1)
+#define MICROPY_PY_UWEBSOCKET               (1)
+#define MICROPY_HW_ETH_MDC                  (1)
+#define MICROPY_PY_LWIP_SOCK_RAW            (MICROPY_PY_LWIP)
+
+// Prevent the "LWIP task" from running.
+#define MICROPY_PY_LWIP_ENTER   MICROPY_PY_PENDSV_ENTER
+#define MICROPY_PY_LWIP_REENTER MICROPY_PY_PENDSV_REENTER
+#define MICROPY_PY_LWIP_EXIT    MICROPY_PY_PENDSV_EXIT
+
+#endif
+
 // For regular code that wants to prevent "background tasks" from running.
 // These background tasks (LWIP, Bluetooth) run in PENDSV context.
 // ## todo: Check for the settings of the STM32 port ni irq.h

@@ -104,30 +104,3 @@ uint64_t mp_hal_time_ns(void) {
     return s * 1000000000ULL;
 }
 
-/*******************************************************************************/
-// MAC address; maybe obsolete. ##todo: remove
-#define MP_HAL_UNIQUE_ID_ADDRESS (0x6012003f)
-// Generate a random locally administered MAC address (LAA)
-void mp_hal_generate_laa_mac(int idx, uint8_t buf[6]) {
-    uint8_t *id = (uint8_t *)MP_HAL_UNIQUE_ID_ADDRESS;
-    buf[0] = 0x02; // LAA range
-    buf[1] = (id[11] << 4) | (id[10] & 0xf);
-    buf[2] = (id[9] << 4) | (id[8] & 0xf);
-    buf[3] = (id[7] << 4) | (id[6] & 0xf);
-    buf[4] = id[2];
-    buf[5] = (id[0] << 2) | idx;
-}
-
-// A board can override this if needed
-MP_WEAK void mp_hal_get_mac(int idx, uint8_t buf[6]) {
-    mp_hal_generate_laa_mac(idx, buf);
-}
-
-void mp_hal_get_mac_ascii(int idx, size_t chr_off, size_t chr_len, char *dest) {
-    static const char hexchr[16] = "0123456789ABCDEF";
-    uint8_t mac[6];
-    mp_hal_get_mac(idx, mac);
-    for (; chr_len; ++chr_off, --chr_len) {
-        *dest++ = hexchr[mac[chr_off >> 1] >> (4 * (1 - (chr_off & 1))) & 0xf];
-    }
-}

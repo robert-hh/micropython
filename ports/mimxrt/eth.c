@@ -34,7 +34,7 @@
 
 #include "eth.h"
 #include "pin.h"
-#include "lib/netutils/netutils.h"
+#include "shared/netutils/netutils.h"
 #include "modnetwork.h"
 
 #include "fsl_iomuxc.h"
@@ -42,6 +42,7 @@
 #include "fsl_phy.h"
 #include "hal/phy/mdio/enet/fsl_enet_mdio.h"
 #include "hal/phy/device/phyksz8081/fsl_phyksz8081.h"
+#include "hal/phy/device/phydp83825/fsl_phydp83825.h"
 #include "fsl_ocotp.h"
 
 #include "lwip/etharp.h"
@@ -75,7 +76,7 @@ SDK_ALIGN(uint8_t g_txDataBuff[ENET_TXBD_NUM][SDK_SIZEALIGN(ENET_FRAME_MAX_FRAME
 enet_handle_t g_handle;
 
 static mdio_handle_t mdioHandle = {.ops = &enet_ops};
-static phy_handle_t phyHandle   = {.phyAddr = 0x02U, .mdioHandle = &mdioHandle, .ops = &phyksz8081_ops};
+static phy_handle_t phyHandle   = {.phyAddr = 0x02U, .mdioHandle = &mdioHandle, .ops = &ENET_PHY_OPS};
 
 enet_buffer_config_t buffConfig[] = {{
     ENET_RXBD_NUM,
@@ -88,7 +89,7 @@ enet_buffer_config_t buffConfig[] = {{
     &g_txDataBuff[0][0],
 }};
 
-uint8_t hw_addr[6] = {0xd4, 0xbe, 0xd9, 0x45, 0x22, 0x60};  // #todo: get better MAC address
+uint8_t hw_addr[6] = {0xe0, 0x51, 0x24, 0x45, 0x22, 0x60};  // #todo: get better MAC address
 eth_t eth_instance;
 
 #define PHY_INIT_TIMEOUT_MS (10000)
@@ -109,6 +110,8 @@ typedef struct _iomux_table_t {
     uint32_t inputRegister;
     uint32_t inputDaisy;
     uint32_t configRegister;
+    uint32_t inputOnfield;
+    uint32_t configValue;
 } iomux_table_t;
 
 static const iomux_table_t iomux_table_enet[] = {
@@ -154,9 +157,6 @@ STATIC void eth_process_frame(eth_t *self, size_t length, uint8_t *buf) {
             pbuf_take(p, buf, length);
             if (netif->input(p, netif) != ERR_OK) {
                 pbuf_free(p);
-            } else {
-                GPIO_WritePinOutput(GPIO1, 24, 0);
-                GPIO_WritePinOutput(GPIO1, 24, 1);
             }
 
         }
@@ -205,18 +205,22 @@ void eth_init(eth_t *self, int mac_idx) {
     IOMUXC_SetPinConfig(int_pin->muxRegister, af_obj->af_mode, 0, 0, int_pin->configRegister, 0xB0A9U);
     GPIO_PinInit(int_pin->gpio, int_pin->pin, &gpio_config);
 
-    // Configure the Transceiver Pins
-    for (int i = 0, io = 1U; i < ARRAY_SIZE(iomux_table_enet); i++) {
-        IOMUXC_SetPinMux(IOTE.muxRegister, IOTE.muxMode, IOTE.inputRegister, IOTE.inputDaisy, IOTE.configRegister, io);
-        IOMUXC_SetPinConfig(IOTE.muxRegister, IOTE.muxMode, IOTE.inputRegister, IOTE.inputDaisy, IOTE.configRegister, 0xB0E9U);
-        io = 0U;
+    // Configure the Transceiver Pins, Settings except for CLK:
+    // Slew Rate Field: Fast Slew Rate, Drive Strength, R0/5, Speed max(200MHz)
+    // Open Drain Disabled, Pull Enabled, Pull 100K Ohm Pull Up
+    // Hysteresis Disabled
+
+    for (int i = 0; i < ARRAY_SIZE(iomux_table_enet); i++) {
+        IOMUXC_SetPinMux(IOTE.muxRegister, IOTE.muxMode, IOTE.inputRegister, IOTE.inputDaisy, IOTE.configRegister, IOTE.inputOnfield);
+        IOMUXC_SetPinConfig(IOTE.muxRegister, IOTE.muxMode, IOTE.inputRegister, IOTE.inputDaisy, IOTE.configRegister, IOTE.configValue);
     }
 
     const clock_enet_pll_config_t config = {
         .enableClkOutput = true, .enableClkOutput25M = false, .loopDivider = 1};
     CLOCK_InitEnetPll(&config);
 
-    IOMUXC_EnableMode(IOMUXC_GPR, kIOMUXC_GPR_ENET1TxClkOutputDir, true);
+    IOMUXC_EnableMode(IOMUXC_GPR, kIOMUXC_GPR_ENET1RefClkMode, false); // Drive ENET_REF_CLK from PAD
+    IOMUXC_EnableMode(IOMUXC_GPR, kIOMUXC_GPR_ENET1TxClkOutputDir, true);  // Enable output driver
 
     // Reset transceiver
     // pull up the ENET_INT before RESET.
@@ -226,19 +230,11 @@ void eth_init(eth_t *self, int mac_idx) {
     GPIO_WritePinOutput(reset_pin->gpio, reset_pin->pin, 1);
     mp_hal_delay_us(1000);
 
-    // get MAC addr from OTP. At the moment it's of no use, since
-    // the MAC address is not yet stored. But I'll keep the code here
-    // for future use.
-    // OCOTP_Init(OCOTP, CLOCK_GetFreq(kCLOCK_IpgClk));
-    // uint32_t mac0, mac1;
-    // mac0 = OCOTP_ReadFuseShadowRegister(OCOTP, 0x620);
-    // mac1 = OCOTP_ReadFuseShadowRegister(OCOTP, 0x630);
-    // *(uint32_t *)&hw_addr[0] = mac0;
-    // *(uint32_t *)&hw_addr[2] = mac1;
+    // get MAC addr from OTP. Just get 2 bytes from the
+    // OTP area added to the prefix.
+    uint32_t *ocotp = (uint32_t *)OCOTP_BASE;
+    *(uint16_t *)&hw_addr[4] = ocotp[0x620 / 4];
 
-    ENET_GetDefaultConfig(&enet_config);
-
-    phyConfig.phyAddr               = 2;
     phyConfig.autoNeg               = true;
     mdioHandle.resource.base        = ENET;
     mdioHandle.resource.csrClock_Hz = CLOCK_GetFreq(kCLOCK_IpgClk);
@@ -246,30 +242,36 @@ void eth_init(eth_t *self, int mac_idx) {
     // Init the PHY interface & negotiate the speed
     bool link = false;
     bool autonego = false;
-    phy_speed_t speed;
-    phy_duplex_t duplex;
+    phy_speed_t speed = kENET_MiiSpeed100M;
+    phy_duplex_t duplex = kENET_MiiFullDuplex;
+
+    phyConfig.phyAddr               = ENET_PHY_ADDRESS;
 
     status_t status = PHY_Init(&phyHandle, &phyConfig);
     if (status == kStatus_Success) {
-        uint32_t count;
-        // Wait for auto-negotiation success and link up
-        count = PHY_AUTONEGO_TIMEOUT_COUNT;
-        do {
-            PHY_GetAutoNegotiationStatus(&phyHandle, &autonego);
-            PHY_GetLinkStatus(&phyHandle, &link);
-            if (autonego && link) {
-                break;
+        if (phyConfig.autoNeg) {
+            uint32_t count;
+            // Wait for auto-negotiation success and link up
+            count = PHY_AUTONEGO_TIMEOUT_COUNT;
+            do {
+                PHY_GetAutoNegotiationStatus(&phyHandle, &autonego);
+                PHY_GetLinkStatus(&phyHandle, &link);
+                if (autonego && link) {
+                    break;
+                }
+            } while (--count);
+            if (!autonego) {
+                mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("PHY Auto-negotiation failed."));
             }
-        } while (--count);
-        if (!autonego) {
-            mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("PHY Auto-negotiation failed."));
+            PHY_GetLinkSpeedDuplex(&phyHandle, &speed, &duplex);
+        } else {
+            PHY_SetLinkSpeedDuplex(&phyHandle, speed, duplex);
         }
     } else {
         mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("PHY Init failed."));
     }
 
-    // Get the actual PHY link speed and set it.
-    PHY_GetLinkSpeedDuplex(&phyHandle, &speed, &duplex);
+    ENET_GetDefaultConfig(&enet_config);
     enet_config.miiSpeed  = (enet_mii_speed_t)speed;
     enet_config.miiDuplex = (enet_mii_duplex_t)duplex;
     enet_config.miiMode = kENET_RmiiMode;

@@ -42,13 +42,13 @@
     { 0 }, { 0 }, \
     { 0 }, { 0 }, \
     { IOMUXC_GPIO_AD_B1_12_LPSPI3_SCK }, { IOMUXC_GPIO_AD_B1_13_LPSPI3_PCS0 }, \
-    { IOMUXC_GPIO_AD_B1_14_LPSPI3_SDO }, { IOMUXC_GPIO_AD_B1_15_LPSPI3_SDI }, 
+    { IOMUXC_GPIO_AD_B1_14_LPSPI3_SDO }, { IOMUXC_GPIO_AD_B1_15_LPSPI3_SDI },
 
 #define DMA_REQ_SRC_RX { 0, kDmaRequestMuxLPSPI1Rx, kDmaRequestMuxLPSPI2Rx, \
                             kDmaRequestMuxLPSPI3Rx, kDmaRequestMuxLPSPI4Rx }
 
 #define DMA_REQ_SRC_TX { 0, kDmaRequestMuxLPSPI1Tx, kDmaRequestMuxLPSPI2Tx, \
-                            kDmaRequestMuxLPSPI3Tx, kDmaRequestMuxLPSPI4Tx } 
+                            kDmaRequestMuxLPSPI3Tx, kDmaRequestMuxLPSPI4Tx }
 
 // Define mapping hardware I2C # to logical I2C #
 // SDA/SCL  HW-I2C    Logical I2C
@@ -66,29 +66,23 @@
 
 
 // Network definitions
-#define MICROPY_PY_NETWORK                  (1)
-#define MICROPY_PY_USOCKET                  (1)
-#define MICROPY_PY_LWIP                     (1)
-#define MICROPY_HW_ETH_MDC                  (1)
-#define MICROPY_PY_LWIP_SOCK_RAW            (MICROPY_PY_LWIP)
-
-// Prevent the "LWIP task" from running.
-#define MICROPY_PY_LWIP_ENTER   MICROPY_PY_PENDSV_ENTER
-#define MICROPY_PY_LWIP_REENTER MICROPY_PY_PENDSV_REENTER
-#define MICROPY_PY_LWIP_EXIT    MICROPY_PY_PENDSV_EXIT
+// Transceiver Phy Address
+#define ENET_PHY_ADDRESS    (2)
+#define ENET_PHY            KSZ8081
+#define ENET_PHY_OPS        phyksz8081_ops
 
 // Etherner PIN definitions
 #define ENET_RESET_PIN      pin_GPIO_AD_B0_04
 #define ENET_INT_PIN        pin_GPIO_AD_B1_06
 
 #define IOMUX_TABLE_ENET \
-    { IOMUXC_GPIO_AD_B0_08_ENET_REF_CLK1 }, \
-    { IOMUXC_GPIO_AD_B0_09_ENET_RDATA01 }, \
-    { IOMUXC_GPIO_AD_B0_10_ENET_RDATA00 }, \
-    { IOMUXC_GPIO_AD_B0_11_ENET_RX_EN }, \
-    { IOMUXC_GPIO_AD_B0_12_ENET_RX_ER }, \
-    { IOMUXC_GPIO_AD_B0_13_ENET_TX_EN }, \
-    { IOMUXC_GPIO_AD_B0_14_ENET_TDATA00 }, \
-    { IOMUXC_GPIO_AD_B0_15_ENET_TDATA01 }, \
-    { IOMUXC_GPIO_EMC_40_ENET_MDIO }, \
-    { IOMUXC_GPIO_EMC_41_ENET_MDC },
+    { IOMUXC_GPIO_AD_B0_08_ENET_REF_CLK1, 1, 0xB0E9u }, \
+    { IOMUXC_GPIO_AD_B0_09_ENET_RDATA01, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_AD_B0_10_ENET_RDATA00, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_AD_B0_11_ENET_RX_EN, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_AD_B0_12_ENET_RX_ER, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_AD_B0_13_ENET_TX_EN, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_AD_B0_14_ENET_TDATA00, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_AD_B0_15_ENET_TDATA01, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_EMC_40_ENET_MDIO, 0, 0xB0E9u }, \
+    { IOMUXC_GPIO_EMC_41_ENET_MDC, 0, 0xB0E9u },

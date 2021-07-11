@@ -24,7 +24,7 @@ MICROPY_VFS_LFS2 ?= 1
 # Include py core make definitions
 include $(TOP)/py/py.mk
 
-GIT_SUBMODULES = lib/tinyusb lib/nxp_driver lib/lwip
+GIT_SUBMODULES = lib/tinyusb lib/nxp_driver lib/lwip lib/mbedtls 
 
 MCU_DIR = lib/nxp_driver/sdk/devices/$(MCU_SERIES)
 LD_FILES = boards/$(BOARD)/$(BOARD).ld boards/$(MCU_SERIES).ld boards/common.ld
@@ -99,6 +99,31 @@ LDFLAGS += --gc-sections
 CFLAGS += -fdata-sections -ffunction-sections
 endif
 
+ifdef MICROPY_PY_LWIP
+
+SRC_ETH_C += \
+	modusocket.c \
+	modnetwork.c \
+	network_lan.c \
+	eth.c \
+	shared/netutils/netutils.c \
+	shared/netutils/trace.c \
+	shared/netutils/dhcpserver.c \
+	hal/phy/mdio/enet/fsl_enet_mdio.c \
+	extmod/modlwip.c \
+	extmod/moduwebsocket.c \
+	$(MCU_DIR)/drivers/fsl_enet.c \
+	$(MCU_DIR)/drivers/fsl_ocotp.c \
+
+SRC_QSTR += \
+	extmod/modlwip.c \
+	extmod/moduwebsocket.c \
+	modusocket.c \
+	modnetwork.c \
+	network_lan.c \
+
+endif
+
 # TinyUSB Stack source
 SRC_TINYUSB_C += \
 	lib/tinyusb/src/tusb.c \
@@ -170,21 +195,12 @@ SRC_C = \
 	shared/runtime/stdout_helpers.c \
 	shared/runtime/sys_stdio_mphal.c \
 	shared/timeutils/timeutils.c \
-	modusocket.c \
-	modnetwork.c \
-	network_lan.c \
-	eth.c \
-	netutils/netutils.c \
-	netutils/trace.c \
-	netutils/dhcpserver.c \
-	hal/phy/device/phyksz8081/fsl_phyksz8081.c \
-	hal/phy/mdio/enet/fsl_enet_mdio.c \
-	extmod/modlwip.c \
 	drivers/bus/softspi.c \
 	extmod/modonewire.c \
 	$(SRC_TINYUSB_C) \
 	$(SRC_HAL_IMX_C) \
 	$(SRC_ETH_C) \
+
 
 ifeq ($(MICROPY_FLOAT_IMPL),double)
 LIBM_SRC_C += $(addprefix lib/libm_dbl/,\
@@ -301,10 +317,6 @@ SRC_QSTR += \
 	shared/runtime/mpirq.c \
 	shared/runtime/sys_stdio_mphal.c \
 	extmod/modonewire.c \
-	extmod/modlwip.c \
-	modusocket.c \
-	modnetwork.c \
-	network_lan.c \
 	$(GEN_PINS_SRC) \
 
 OBJ += $(PY_O)
