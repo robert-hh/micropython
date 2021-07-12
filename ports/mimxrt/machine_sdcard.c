@@ -779,14 +779,14 @@ static bool sdcard_power_off(mimxrt_sdcard_obj_t *self) {
     return true;
 }
 
-// static bool sdcard_detect(mimxrt_sdcard_obj_t *self) {
-//     if (self->pins.cd_b.pin) {
-//         return USDHC_DetectCardInsert(self->sdcard);
-//     } else {
-//         USDHC_CardDetectByData3(self->sdcard, true);
-//         return (USDHC_GetPresentStatusFlags(self->sdcard) & USDHC_PRES_STATE_DLSL(8)) != 0;
-//     }
-// }
+static bool sdcard_detect(mimxrt_sdcard_obj_t *self) {
+    if (self->pins.cd_b.pin) {
+        return USDHC_DetectCardInsert(self->sdcard);
+    } else {
+        USDHC_CardDetectByData3(self->sdcard, true);
+        return (USDHC_GetPresentStatusFlags(self->sdcard) & USDHC_PRES_STATE_DLSL(8)) != 0;
+    }
+}
 
 
 static void sdcard_insertion_status_callback(uint32_t systick) {
@@ -810,7 +810,7 @@ static void sdcard_insertion_status_callback(uint32_t systick) {
 
     #if defined MICROPY_USDHC2 && USDHC2_AVAIL
     interrupt_flags = USDHC_GetInterruptStatusFlags(USDHC2);
-    if ((interrupt_flags & kUSDHC_CardInsertionFlag) && (mimxrt_sdcard_objs[USDHC1_SDCARD_OBJ_IDX].inserted == false)) {
+    if ((interrupt_flags & kUSDHC_CardInsertionFlag) && (mimxrt_sdcard_objs[USDHC2_SDCARD_OBJ_IDX].inserted == false)) {
         mimxrt_sdcard_objs[USDHC2_SDCARD_OBJ_IDX].inserted = true;
         USDHC_ClearInterruptStatusFlags(USDHC2, kUSDHC_CardInsertionFlag);
     }
@@ -878,6 +878,7 @@ STATIC bool machine_sdcard_init_helper(mimxrt_sdcard_obj_t *self, const mp_arg_v
     };
     USDHC_Init(self->sdcard, &config);
 
+    self->inserted = sdcard_detect(self);
     if (self->inserted) {
         (void)USDHC_SetSdClock(self->sdcard, CLOCK_GetSysPfdFreq(kCLOCK_Pfd2) / 3, 300000UL);
         USDHC_SetDataBusWidth(self->sdcard, kUSDHC_DataBusWidth1Bit);
