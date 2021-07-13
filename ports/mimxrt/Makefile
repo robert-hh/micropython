@@ -101,6 +101,8 @@ endif
 
 ifdef MICROPY_PY_LWIP
 
+SRC_MOD := $(filter-out %/mbedtls/library/error.c, $(SRC_MOD))
+
 SRC_ETH_C += \
 	modusocket.c \
 	modnetwork.c \
@@ -111,9 +113,10 @@ SRC_ETH_C += \
 	shared/netutils/dhcpserver.c \
 	hal/phy/mdio/enet/fsl_enet_mdio.c \
 	extmod/modlwip.c \
+	mbedtls/mbedtls_port.c \
+	lib/mbedtls_errors/mp_mbedtls_errors.c \
 	extmod/moduwebsocket.c \
 	$(MCU_DIR)/drivers/fsl_enet.c \
-	$(MCU_DIR)/drivers/fsl_ocotp.c \
 
 SRC_QSTR += \
 	extmod/modlwip.c \
@@ -121,6 +124,8 @@ SRC_QSTR += \
 	modusocket.c \
 	modnetwork.c \
 	network_lan.c \
+
+CFLAGS += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
 
 endif
 

@@ -202,6 +202,12 @@ extern const struct _mp_obj_module_t mp_module_network;
 #define SOCKET_BUILTIN_MODULE
 #endif
 
+#if MICROPY_SSL_MBEDTLS
+#define MICROPY_PORT_ROOT_POINTER_MBEDTLS void **mbedtls_memory;
+#else
+#define MICROPY_PORT_ROOT_POINTER_MBEDTLS
+#endif
+
 #define MICROPY_PORT_BUILTIN_MODULES \
     { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
     { MP_ROM_QSTR(MP_QSTR_mimxrt), (mp_obj_t)&mp_module_mimxrt }, \
@@ -219,6 +225,8 @@ extern const struct _mp_obj_module_t mp_module_network;
     void *machine_pin_irq_objects[MICROPY_HW_NUM_PIN_IRQS]; \
     /* list of registered NICs */ \
     mp_obj_list_t mod_network_nic_list; \
+    /* root pointers for sub-systems */ \
+    MICROPY_PORT_ROOT_POINTER_MBEDTLS \
 
 #define MP_STATE_PORT MP_STATE_VM
 
