@@ -43,8 +43,10 @@ uint32_t trng_random_u32(void);
 #define MICROPY_EMIT_THUMB                  (1)
 #define MICROPY_EMIT_INLINE_THUMB           (1)
 
-// Compiler configuration
-#define MICROPY_COMP_CONST                  (0)
+// compiler configuration
+#define MICROPY_COMP_MODULE_CONST           (1)
+#define MICROPY_COMP_TRIPLE_TUPLE_ASSIGN    (1)
+#define MICROPY_COMP_RETURN_IF_EXPR         (1)
 
 // Python internal features
 #define MICROPY_READER_VFS                  (1)
