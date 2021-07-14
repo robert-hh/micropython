@@ -51,7 +51,7 @@ void board_init(void) {
     // Enable IOCON clock
     CLOCK_EnableClock(kCLOCK_Iomuxc);
 
-   // 1ms tick timer
+    // 1ms tick timer
     SysTick_Config(SystemCoreClock / 1000);
 
     // ------------- USB0 ------------- //

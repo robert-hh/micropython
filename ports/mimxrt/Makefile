@@ -54,9 +54,6 @@ INC += -I$(TOP)/$(MCU_DIR)/project_template
 INC += -I$(TOP)/lib/tinyusb/src
 INC += -I$(TOP)/lib/tinyusb/hw
 INC += -I$(TOP)/lib/tinyusb/hw/bsp/teensy_40
-INC += -Ilwip_inc
-INC += -I$(TOP)/lib/lwip/src/include
-INC += -Ihal/phy
 
 CFLAGS_MCU = -mtune=cortex-m7 -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-d16
 CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 -nostdlib -mthumb $(CFLAGS_MCU)
@@ -99,7 +96,12 @@ LDFLAGS += --gc-sections
 CFLAGS += -fdata-sections -ffunction-sections
 endif
 
-ifdef MICROPY_PY_LWIP
+# All settings for EThernat support are controller by the value of MICROPY_PY_LWIP
+ifeq ($(MICROPY_PY_LWIP), 1)
+
+INC += -Ilwip_inc
+INC += -I$(TOP)/lib/lwip/src/include
+INC += -Ihal/phy
 
 SRC_MOD := $(filter-out %/mbedtls/library/error.c, $(SRC_MOD))
 
@@ -165,6 +167,7 @@ SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/fsl_pit.c \
 	$(MCU_DIR)/drivers/fsl_snvs_lp.c \
 	$(MCU_DIR)/drivers/fsl_trng.c \
+	$(MCU_DIR)/drivers/fsl_ocotp.c \
 
 SRC_C = \
 	main.c \

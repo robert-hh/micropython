@@ -43,7 +43,6 @@
 #include "hal/phy/mdio/enet/fsl_enet_mdio.h"
 #include "hal/phy/device/phyksz8081/fsl_phyksz8081.h"
 #include "hal/phy/device/phydp83825/fsl_phydp83825.h"
-#include "fsl_ocotp.h"
 
 #include "lwip/etharp.h"
 #include "lwip/dns.h"
@@ -68,28 +67,28 @@ AT_NONCACHEABLE_SECTION_ALIGN(enet_tx_bd_struct_t g_txBuffDescrip[ENET_TXBD_NUM]
  * If use non-cache region, the alignment size is the "ENET_BUFF_ALIGNMENT".
  */
 SDK_ALIGN(uint8_t g_rxDataBuff[ENET_RXBD_NUM][SDK_SIZEALIGN(ENET_FRAME_MAX_FRAMELEN, ENET_BUFF_ALIGNMENT)],
-          ENET_BUFF_ALIGNMENT) __attribute__((section(".ram_functions")));
+    ENET_BUFF_ALIGNMENT) __attribute__((section(".ram_functions")));
 SDK_ALIGN(uint8_t g_txDataBuff[ENET_TXBD_NUM][SDK_SIZEALIGN(ENET_FRAME_MAX_FRAMELEN, ENET_BUFF_ALIGNMENT)],
-          ENET_BUFF_ALIGNMENT) __attribute__((section(".ram_functions")));
+    ENET_BUFF_ALIGNMENT) __attribute__((section(".ram_functions")));
 
 // ENET Handles & Buffers
 enet_handle_t g_handle;
 
 static mdio_handle_t mdioHandle = {.ops = &enet_ops};
-static phy_handle_t phyHandle   = {.phyAddr = 0x02U, .mdioHandle = &mdioHandle, .ops = &ENET_PHY_OPS};
+static phy_handle_t phyHandle = {.phyAddr = 0x02U, .mdioHandle = &mdioHandle, .ops = &ENET_PHY_OPS};
 
 enet_buffer_config_t buffConfig[] = {{
-    ENET_RXBD_NUM,
-    ENET_TXBD_NUM,
-    SDK_SIZEALIGN(ENET_FRAME_MAX_FRAMELEN, ENET_BUFF_ALIGNMENT),
-    SDK_SIZEALIGN(ENET_FRAME_MAX_FRAMELEN, ENET_BUFF_ALIGNMENT),
-    &g_rxBuffDescrip[0],
-    &g_txBuffDescrip[0],
-    &g_rxDataBuff[0][0],
-    &g_txDataBuff[0][0],
-}};
+                                         ENET_RXBD_NUM,
+                                         ENET_TXBD_NUM,
+                                         SDK_SIZEALIGN(ENET_FRAME_MAX_FRAMELEN, ENET_BUFF_ALIGNMENT),
+                                         SDK_SIZEALIGN(ENET_FRAME_MAX_FRAMELEN, ENET_BUFF_ALIGNMENT),
+                                         &g_rxBuffDescrip[0],
+                                         &g_txBuffDescrip[0],
+                                         &g_rxDataBuff[0][0],
+                                         &g_txDataBuff[0][0],
+                                     }};
 
-uint8_t hw_addr[6] = {0xe0, 0x51, 0x24, 0x45, 0x22, 0x60};  // #todo: get better MAC address
+static uint8_t hw_addr[6]; // The MAC address field
 eth_t eth_instance;
 
 #define PHY_INIT_TIMEOUT_MS (10000)
@@ -216,7 +215,8 @@ void eth_init(eth_t *self, int mac_idx) {
     }
 
     const clock_enet_pll_config_t config = {
-        .enableClkOutput = true, .enableClkOutput25M = false, .loopDivider = 1};
+        .enableClkOutput = true, .enableClkOutput25M = false, .loopDivider = 1
+    };
     CLOCK_InitEnetPll(&config);
 
     IOMUXC_EnableMode(IOMUXC_GPR, kIOMUXC_GPR_ENET1RefClkMode, false); // Drive ENET_REF_CLK from PAD
@@ -230,13 +230,10 @@ void eth_init(eth_t *self, int mac_idx) {
     GPIO_WritePinOutput(reset_pin->gpio, reset_pin->pin, 1);
     mp_hal_delay_us(1000);
 
-    // get MAC addr from OTP. Just get 2 bytes from the
-    // OTP area added to the prefix.
-    uint32_t *ocotp = (uint32_t *)OCOTP_BASE;
-    *(uint16_t *)&hw_addr[4] = ocotp[0x620 / 4];
+    mp_hal_get_mac(0, hw_addr);
 
-    phyConfig.autoNeg               = true;
-    mdioHandle.resource.base        = ENET;
+    phyConfig.autoNeg = true;
+    mdioHandle.resource.base = ENET;
     mdioHandle.resource.csrClock_Hz = CLOCK_GetFreq(kCLOCK_IpgClk);
 
     // Init the PHY interface & negotiate the speed
@@ -245,7 +242,7 @@ void eth_init(eth_t *self, int mac_idx) {
     phy_speed_t speed = kENET_MiiSpeed100M;
     phy_duplex_t duplex = kENET_MiiFullDuplex;
 
-    phyConfig.phyAddr               = ENET_PHY_ADDRESS;
+    phyConfig.phyAddr = ENET_PHY_ADDRESS;
 
     status_t status = PHY_Init(&phyHandle, &phyConfig);
     if (status == kStatus_Success) {
@@ -272,7 +269,7 @@ void eth_init(eth_t *self, int mac_idx) {
     }
 
     ENET_GetDefaultConfig(&enet_config);
-    enet_config.miiSpeed  = (enet_mii_speed_t)speed;
+    enet_config.miiSpeed = (enet_mii_speed_t)speed;
     enet_config.miiDuplex = (enet_mii_duplex_t)duplex;
     enet_config.miiMode = kENET_RmiiMode;
     // Enable checksum generation by the ENET controller

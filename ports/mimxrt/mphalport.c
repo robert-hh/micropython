@@ -32,6 +32,7 @@
 #include "ticks.h"
 #include "tusb.h"
 #include "fsl_snvs_lp.h"
+#include "fsl_ocotp.h"
 
 #include CPU_HEADER_H
 
@@ -104,3 +105,28 @@ uint64_t mp_hal_time_ns(void) {
     return s * 1000000000ULL;
 }
 
+/*******************************************************************************/
+// MAC address
+
+// Generate a random locally administered MAC address (LAA)
+void mp_hal_generate_laa_mac(int idx, uint8_t buf[6]) {
+    // Take the MAC addr from the OTP's Configuration and Manufacturing Info
+    OCOTP_Init(OCOTP, CLOCK_GetFreq(kCLOCK_IpgClk));
+    buf[0] = 0x02; // Locally Administered MAC
+    *(uint32_t *)&buf[1] = OCOTP->CFG0 ^ (OCOTP->CFG0 >> 8);
+    *(uint16_t *)&buf[4] = (uint16_t)(OCOTP->CFG1 ^ (OCOTP->CFG1 >> 16));
+}
+
+// A board can override this if needed
+MP_WEAK void mp_hal_get_mac(int idx, uint8_t buf[6]) {
+    mp_hal_generate_laa_mac(idx, buf);
+}
+
+void mp_hal_get_mac_ascii(int idx, size_t chr_off, size_t chr_len, char *dest) {
+    static const char hexchr[16] = "0123456789ABCDEF";
+    uint8_t mac[6];
+    mp_hal_get_mac(idx, mac);
+    for (; chr_len; ++chr_off, --chr_len) {
+        *dest++ = hexchr[mac[chr_off >> 1] >> (4 * (1 - (chr_off & 1))) & 0xf];
+    }
+}
