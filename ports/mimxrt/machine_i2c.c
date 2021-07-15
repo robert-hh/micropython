@@ -143,6 +143,33 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     return MP_OBJ_FROM_PTR(self);
 }
 
+STATIC void machine_i2c_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    enum { ARG_freq, ARG_drive };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_freq, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
+        { MP_QSTR_drive, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
+    };
+
+    machine_i2c_obj_t *self = (machine_i2c_obj_t *)self_in;
+    uint32_t freq;
+    uint32_t drive;
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    freq = args[ARG_freq].u_int;
+    if (freq != -1) {
+        self->master_config->baudRate_Hz = freq;
+        LPI2C_MasterSetBaudRate(self->i2c_inst, LPI2C_CLOCK_FREQUENCY, freq);
+    }
+    drive = args[ARG_freq].u_int;
+    if (drive != 1) {
+        if (drive < 1 || drive > 7) {
+            drive = DEFAULT_I2C_DRIVE;
+        }
+        lpi2c_set_iomux(self->i2c_hw_id, drive);
+    }
+}
+
 static void lpi2c_master_callback(LPI2C_Type *base, lpi2c_master_handle_t *handle, status_t status, void *self_in) {
     machine_i2c_obj_t *self = (machine_i2c_obj_t *)self_in;
 
@@ -203,6 +230,7 @@ STATIC int machine_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, si
 }
 
 STATIC const mp_machine_i2c_p_t machine_i2c_p = {
+    .init = machine_i2c_init,
     .transfer = mp_machine_i2c_transfer_adaptor,
     .transfer_single = machine_i2c_transfer_single,
 };
