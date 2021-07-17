@@ -226,6 +226,7 @@ LIBM_SRC_C += $(addprefix lib/libm_dbl/,\
 	tgamma.c \
 	trunc.c \
 	)
+
 ifeq ($(SUPPORTS_HARDWARE_FP_DOUBLE),1)
 LIBM_SRC_C += lib/libm_dbl/thumb_vfp_sqrt.c
 else
@@ -260,6 +261,7 @@ LIBM_SRC_C += $(addprefix lib/libm/,\
 	wf_lgamma.c \
 	wf_tgamma.c \
 	)
+
 ifeq ($(SUPPORTS_HARDWARE_FP_SINGLE),1)
 LIBM_SRC_C += lib/libm/thumb_vfp_sqrtf.c
 else
@@ -294,14 +296,9 @@ SRC_QSTR += \
 	modmimxrt.c \
 	moduos.c \
 	pin.c \
-<<<<<<< HEAD
 	shared/runtime/mpirq.c \
 	shared/runtime/sys_stdio_mphal.c \
-=======
 	fatfs_port.c \
-	lib/utils/mpirq.c \
-	lib/utils/sys_stdio_mphal.c \
->>>>>>> mimxrt/sdcard: Enabled FAT fs.
 	extmod/modonewire.c \
 	$(GEN_PINS_SRC) \
 
