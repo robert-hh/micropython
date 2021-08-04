@@ -38,7 +38,7 @@ you have to build the firmware from the sources, as detailed in the README.md
 files of MicroPyton. The make procedure for the respective board will create
 the firmware.bin or firmware.hex file.
 
-Once firmware versions are provided by MicroPyhgton, you can download the
+Once firmware versions are provided by MicroPython, you can download the
 most recent MicroPython firmware .hex or .bin file to load onto your
 i.MXRT device. You can download it from the 
 `MicroPython downloads page <https://micropython.org/download/all>`_.
@@ -66,14 +66,14 @@ button on the board. Then you can upload the firmware with the command:
 
 teensy_loader_cli --mcu=imxrt1062 -v -w firmware.hex
 
-The IMXRT10xx-EVK have a second USB port connected to a support MCU.
+The IMXRT10xx-EVK boards have a second USB port connected to a support MCU.
 Connecting that USB port to your PC will register
 a disk drive with the name of the board. Just copy the firmware.bin file to this
 drive. That will start the flashing procedure. You will know that the flash
 was complete, if that drive disappears and reappears.
 If you decided to install the very useful Segger open-SDA firmware on that
 sidekick MCU, then you have to use the debugger software
-to upload the IMXRT firmware.
+to upload the i.MXRT firmware.
 
 Serial prompt
 -------------
@@ -90,7 +90,7 @@ If you experience problems during flashing or with running firmware immediately
 after it, here are troubleshooting recommendations:
 
 * Be aware of and try to exclude hardware problems.  There are 2 common
-  problems: bad power source quality, and worn-out/defective FlashROM.
+  problems: bad power source quality, and worn-out/defective Flash ROM.
   Speaking of power source, not just raw amperage is important, but also low
   ripple and noise/EMI in general.  The most reliable and convenient power
   source is a USB port.

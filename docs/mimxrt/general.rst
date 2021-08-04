@@ -15,7 +15,7 @@ a i.MXRT chip. MicroPython tries to provide a generic port which would run on
 as many boards/modules as possible, but there may be limitations. The
 NXP IMXRT1020-EVK and the Teensy 4.0 and Teensy 4.1 development boards are taken
 as reference for the port (for example, testing is performed on them).
-For any board you are using please make sure you have a datasheet, schematics
+For any board you are using please make sure you have a data sheet, schematics
 and other reference materials so you can look up any board-specific functions.
  
 The following boards are supported by the port out of the box:
@@ -63,7 +63,7 @@ following design and implementation decision were made:
 Technical specifications and SoC datasheets
 -------------------------------------------
 
-The datasheets and other reference material for i.MXRT chip are available
+The data sheets and other reference material for i.MXRT chip are available
 from the vendor site: https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/i-mx-rt-crossover-mcus:IMX-RT-SERIES .
 They are the primary reference for the chip technical specifications, capabilities,
 operating modes, internal functioning, etc.
@@ -90,6 +90,5 @@ For your convenience, a few technical specifications are provided below:
 
 The lower numbers for UART, SPI and I2C apply to the i.MXRT 101x MCU.
 
-For more information see the i.MXRT datasheets or reference manuals. NXP provides
+For more information see the i.MXRT data sheets or reference manuals. NXP provides
 excellent software support trough it's SDK packages.
-

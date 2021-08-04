@@ -93,7 +93,7 @@ Use the :ref:`machine.Pin <machine.Pin>` class::
 
     p6 = Pin(pin.cpu.GPIO_B1_15, Pin.OUT) # Use the cpu pin name.
 
-Available Pins are follow the ranges and labeling of the respective board, like:
+Available Pins are follow the ranges and labelling of the respective board, like:
 0-33 for Teensy 4.0, 0-21 for the MIMXRT10xx-EVK board, or 'D0-Dxx', or 'A0-Ann',
 or the pin names from the dictionaries Pin.board or Pin.cpu.
 
@@ -123,17 +123,18 @@ TX and RX pins for users. The pin assignment of UARTs to pins is fixed.
 The UARTs are numbered 1..8. The rx/tx pins are assigned according to the
 table below:
 
-===============   =====    =====    =======  =======  =====    =====    =====    =====
-Board / Pin       UART1    UART2    UART3    UART4    UART5    UART6    UART7    UART8
-===============   =====    =====    =======  =======  =====    =====    =====    =====
-Teensy 4.0         0/1      7/8     14/15    16/17    21/20    25/24    28/29      -
-Teensy 4.1         0/1      7/8     14/15    16/17    21/20    25/24    28/29    34/35
-MIXMXRT1010-EVK   D0/D1    A0/D4    D6/D7      -        -        -        -        -
-MIXMXRT1020-EVK   D0/D1    D9/D6    D10/D13  D15/D14  A1/A0      -        -        -
-MIXMXRT1050-EVK   D0/D1    D7/D6    D8/D9    A1/A0      -        -        -        -
-MIXMXRT1060-EVK   D0/D1    D7/D6    D8/D9    A1/A0      -        -        -        -
-MIXMXRT1064-EVK   D0/D1    D7/D6    D8/D9    A1/A0      -        -        -        -
-===============   =====    =====    =======  =======  =====    =====    =====    =====
+=================  =====    =====    =======  =======  =====    =====    =====    =====
+Board / Pin        UART1    UART2    UART3    UART4    UART5    UART6    UART7    UART8
+=================  =====    =====    =======  =======  =====    =====    =====    =====
+Teensy 4.0          0/1      7/8     14/15    16/17    21/20    25/24    28/29      -
+Teensy 4.1          0/1      7/8     14/15    16/17    21/20    25/24    28/29    34/35
+MIXMXRT1010-EVK    D0/D1    A0/D4    D6/D7      -        -        -        -        -
+MIXMXRT1020-EVK    D0/D1    D9/D6    D10/D13  D15/D14  A1/A0      -        -        -
+MIXMXRT1050-EVK    D0/D1    D7/D6    D8/D9    A1/A0      -        -        -        -
+MIXMXRT1050-EVKB   D0/D1    D7/D6    D8/D9    A1/A0      -        -        -        -
+MIXMXRT1060-EVK    D0/D1    D7/D6    D8/D9    A1/A0      -        -        -        -
+MIXMXRT1064-EVK    D0/D1    D7/D6    D8/D9    A1/A0      -        -        -        -
+=================  =====    =====    =======  =======  =====    =====    =====    =====
 
 PWM (pulse width modulation)
 ----------------------------
@@ -170,98 +171,7 @@ handling signal groups. ::
 
     pwm3                    # show the PWM objects properties
 
-
-
-Each FLEX submodule or QTMR module may run at different frequencies. The frequency range
-is 5 Hz to >1 MHz, with increasing error for frequency an duty cycle at higher frequencies.
-Pins are specified in the same way as for the Pin class.
-
-The following table shows the assignment of the board Pins to PWM units:
-
-===========   ======    ======    ==============
-Pin/ MIMXRT   1010      1020      1050/1060/1064
-===========   ======    ======    ==============
-D0            -         F1/1/B    -
-D1            -         F1/1/A    -
-D2            F1/3/B    -         F1/3/B
-D3            F1/3/A    F2/3/B    F4/0/A
-D4            F1/3/A    Q2/1      F2/3/A
-D5            F1/0/B    F2/3/A    F1/3/A
-D6            -         F2/0/A    Q3/2
-D7            -         F1/0/A    Q3/3
-D8            F1/0/A    F1/0/B    F1/1/X
-D9            F1/1/B    F2/0/B    F1/0/X
-D10           F1/3/B    F2/2/B    F1/0/B (*)
-D11           F1/2/A    F2/1/A    F1/1/A (*)
-D12           F1/2/B    F2/1/B    F1/1/B (*)
-D13           F1/3/A    F2/2/A    F1/0/A (*)
-D14           F1/0/B    -         Q3/0
-D15           F1/0/A    -         Q3/1
-A0            -         F1/2/A    -
-A1            F1/3/X    F1/2/B    -
-A2            F1/2/X    F1/3/A    -
-A3            -         F1/3/B    -
-===========   ======    ======    ==============
-
-Pins denoted with (*) are by default not wired at the board.
-
-
-====   ==========  ====   ==========
-Pin    Teensy 4.0  Pin    Teensy 4.1
-====   ==========  ====   ==========
-0      F1/1/X      0      F1/1/X
-1      F1/0/X      1      F1/0/X
-2      F4/2/A      2      F4/2/A
-3      F4/2/B      3      F4/2/B
-4      F2/0/A      4      F2/0/A
-5      F2/1/A      5      F2/1/A
-6      F2/2/A      6      F2/2/A
-7      F1/3/B      7      F1/3/B
-8      F1/3/A      8      F1/3/A
-9      F2/2/B      9      F2/2/B
-10     Q1/0        10     Q1/0
-11     Q1/2        11     Q1/2
-12     Q1/1        12     Q1/1
-13     Q2/0        13     Q2/0
-14     Q3/2        14     Q3/2
-15     Q3/3        15     Q3/3
-18     Q3/1        18     Q3/1
-19     Q3/0        19     Q3/0
-22     F4/0/A      22     F4/0/A
-23     F4/1/A      23     F4/1/A
-24     F1/2/X      24     F1/2/X
-25     F1/3/X      25     F1/3/X
-28     F3/1/B      28     F3/1/B
-29     F3/1/A      29     F3/1/A
-33     F2/0/B      33     F2/0/B
--      -           36     F2/3/A
--      -           37     F2/3/B
-DAT1   F1/1/B      42     F1/1/B
-DAT0   F1/1/A      43     F1/1/A
-CLK    F1/0/B      44     F1/0/B
-CMD    F1/0/A      45     F1/0/A
-DAT2   F1/2/A      46     F1/2/A
-DAT3   F1/2/B      47     F1/2/B
--      -           48     F1/0/B
--      -           49     F1/2/A
--      -           50     F1/2/B
--      -           51     F3/3/B
--      -           52     F1/1/B
--      -           53     F1/1/A
--      -           54     F3/0/A
-====   ==========  ====   ==========
-
-Legend:
-
-* Qm/n:    QTMR module m, channel n
-* Fm/n/l:  FLEXPWM module m, submodule n, channel l. The X-Channels duty cycle is not
-independent from the A and B channels of the same submodule.
-If you use the A/B channels as well, the duty cycle will be 32768 (or 50%).
-
-Pins without a PWM signal are not listed. A signal may be available at more than one Pin.
-PWM may also be activated at CPU pins, which are not available at the board connectors.
-Such a Pin may be used as synchronisation master.
-
+For further details, look at the specific documentation :ref:`machine.PWM <mimxrt_machine.PWM>`.
 
 ADC (analog to digital conversion)
 ----------------------------------
@@ -283,7 +193,7 @@ Software SPI bus
 ----------------
 
 Software SPI (using bit-banging) works on all pins, and is accessed via the
-:ref:`machine.SoftSPI <machine.SoftSPI>` class::
+:ref:`machine.SoftSPI <machine.SoftSPI>` class. ::
 
     from machine import Pin, SoftSPI
 
@@ -322,17 +232,18 @@ It depends on the board design, which SPI's signals are exposed to
 the user, as detailed in the table below.
 The signal order in the table is CS, MOSI, MISO and CLK.
 
-================    ===============  ===========  ==========
-Board / Pin         SPI0             SPI1         SPI2
-================    ===============  ===========  ==========
-Teensy 4.0          10/11/12/13      0/26/1/27         -
-Teensy 4.1          10/11/12/13      38/26/39/27  -/50/54/49
-MIXMXRT1010-EVK     D10/D11/D12/D13       -            -
-MIXMXRT1020-EVK     D10/D11/D12/D13       -            -
-MIXMXRT1050-EVK     D10/D11/D12/D13       -            -
-MIXMXRT1060-EVK     D10/D11/D12/D13       -            -
-MIXMXRT1064-EVK     D10/D11/D12/D13       -            -
-================    ===============  ===========  ==========
+=================    ===============  ===========  ==========
+Board / Pin          SPI0             SPI1         SPI2
+=================    ===============  ===========  ==========
+Teensy 4.0           10/11/12/13      0/26/1/27         -
+Teensy 4.1           10/11/12/13      38/26/39/27  -/50/54/49
+MIXMXRT1010-EVK      D10/D11/D12/D13       -            -
+MIXMXRT1020-EVK      D10/D11/D12/D13       -            -
+MIXMXRT1050-EVK      D10/D11/D12/D13       -            -
+MIXMXRT1050-EVKB     D10/D11/D12/D13       -            -
+MIXMXRT1060-EVK      D10/D11/D12/D13       -            -
+MIXMXRT1064-EVK      D10/D11/D12/D13       -            -
+=================    ===============  ===========  ==========
 
 
 Hardware SPI is accessed via the :ref:`machine.SPI <machine.SPI>` class and
@@ -382,17 +293,18 @@ It depends on the board design, which I2C's signals are exposed to
 the user, as detailed in the table below.
 The signal order in the table is SDA, SCL.
 
-================    =======  =====  =====
-Board / Pin         I2C0     I2C1   I2C2
-================    =======  =====  =====
-Teensy 4.0          18/19    17/16  25/24
-Teensy 4.1          18/19    17/16  25/24
-MIXMXRT1010-EVK     D14/D15  D0/D1   -
-MIXMXRT1020-EVK     D14/D15  A4/A5  D0/D1
-MIXMXRT1050-EVK     D14/D15  D1/D0    -
-MIXMXRT1060-EVK     D14/D15  D1/D0    -
-MIXMXRT1064-EVK     D14/D15  D1/D0    -
-================    =======  =====  =====
+=================    =======  =====  =====
+Board / Pin          I2C0     I2C1   I2C2
+=================    =======  =====  =====
+Teensy 4.0           18/19    17/16  25/24
+Teensy 4.1           18/19    17/16  25/24
+MIXMXRT1010-EVK      D14/D15  D0/D1   -
+MIXMXRT1020-EVK      D14/D15  A4/A5  D0/D1
+MIXMXRT1050-EVK      D14/D15  D1/D0    -
+MIXMXRT1050-EVKB     D14/D15  D1/D0    -
+MIXMXRT1060-EVK      D14/D15  D1/D0    -
+MIXMXRT1064-EVK      D14/D15  D1/D0    -
+=================    =======  =====  =====
 
 
 Hardware I2C is accessed via the :ref:`machine.I2C <machine.I2C>` class and
@@ -486,7 +398,7 @@ The DHT driver is implemented in software and works on all pins::
     d.humidity()    # eg. 41.3 (% RH)
 
 Be sure to have a 4.7k pull-up resistor on the data line. Some
-DHT module have that alreayd on their board.
+DHT module have that already on their board.
 
 Transferring files
 ------------------
