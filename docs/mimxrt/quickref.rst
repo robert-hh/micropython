@@ -18,6 +18,13 @@ working with this board it may be useful to get an overview of the microcontroll
    general.rst
    tutorial/intro.rst
 
+Documentation for proprietary classes or class extensions:
+
+.. toctree::
+   :maxdepth: 1
+
+   machine.PWM.rst
+
 Installing MicroPython
 ----------------------
 

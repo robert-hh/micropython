@@ -49,7 +49,7 @@ Supported MCUs
 
 Note
     Most of the controllers do not have internal flash memory. Therefore
-    their flash capacity is dependent on an external flash chip!
+    their flash capacity is dependent on an external flash chip.
 
 To make a generic MIMXRT port and support as many boards as possible the
 following design and implementation decision were made:
