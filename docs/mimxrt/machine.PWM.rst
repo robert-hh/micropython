@@ -8,11 +8,11 @@ This class provides pulse width modulation output.
 
 Example usage::
 
-    # Samples for Teensy 
-    # 
-    
+    # Samples for Teensy
+    #
+
     from machine import Pin, PWM
-    
+
     pwm2 = PWM(Pin(2))      # create PWM object from a pin
     pwm2.freq()             # get current frequency
     pwm2.freq(1000)         # set frequency
@@ -22,7 +22,7 @@ Example usage::
     # create a complementary signal pair on Pin 2 and 3
     pwm2 = PWM((2, 3), freq=2000, duty_ns=20000)
 
-    # Create a group of four synchronized signals. 
+    # Create a group of four synchronized signals.
     # Start with Pin(4) at submodule 0, which creates the sync pulse.
     pwm4 = PWM(Pin(4), freq=1000, align=PWM.HEAD)
     # Pins 5, 6, and 9 are pins at the same module
@@ -48,13 +48,13 @@ Constructors
         mode. These two pins must be the A/B channels of the same submodule.
       - *freq* should be an integer which sets the frequency in Hz for the
         PWM cycle. The valid frequency range is 5 Hz - > 1 MHz.
-      - *duty_u16* sets the duty cycle as a ratio ``duty_u16 / 65538``.
+      - *duty_u16* sets the duty cycle as a ratio ``duty_u16 / 53536``.
         The duty cycle of a X channel can only be changed, if the A and B channel
         of the respective submodule is not used. Otherwise the duty_16 value of the
         X channel is 32768 (50%).
       - *duty_ns* sets the pulse width in nanoseconds. The limitation for X channels
         apply as well.
-    
+
 
     PWM objects are either provided by a FLEXPWM module or a QTMR module.
     The i.MXRT devices have either two or four FLEXPWM and QTMR modules.
@@ -69,9 +69,9 @@ Constructors
     Keyword arguments:
 
       - *center*\=value. An integer sets the center of the pulse within the pulse period.
-        The range is 0-65538. The resulting pulse will last from center - duty_u16/2 to
+        The range is 0-53535. The resulting pulse will last from center - duty_u16/2 to
         center + duty_u16/2. There is not check made whether the pulse will
-        cross the pulse period boundary of 0-65538.
+        cross the pulse period boundary of 0-53535.
 
       - *align*\=value. Predefine values are PWM.MIDDLE (0), PWM.BEGIN (1) and PWM.END (2).
         These are shortcuts for the pulse center setting, causing the pulse either at
@@ -134,7 +134,7 @@ Methods
    With no arguments the duty cycle is returned.
 
    With a single *value* argument the duty cycle is set to that value, measured
-   as the ratio ``value / 65538``.
+   as the ratio ``value / 53536``.
 
 .. method:: PWM.duty_ns([value])
   :noindex:
@@ -189,12 +189,14 @@ D10           F1/3/B    F2/2/B    F1/0/B (*)
 D11           F1/2/A    F2/1/A    F1/1/A (*)
 D12           F1/2/B    F2/1/B    F1/1/B (*)
 D13           F1/3/A    F2/2/A    F1/0/A (*)
-D14           F1/0/B    -         Q3/0
-D15           F1/0/A    -         Q3/1
+D14           F1/0/B    -         F2/3/B
+D15           F1/0/A    -         F2/3/A
 A0            -         F1/2/A    -
 A1            F1/3/X    F1/2/B    -
 A2            F1/2/X    F1/3/A    -
 A3            -         F1/3/B    -
+A4            -         -         Q3/1
+A5            -         -         Q3/0
 ===========   ======    ======    ==============
 
 Pins denoted with (*) are by default not wired at the board.
