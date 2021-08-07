@@ -48,7 +48,7 @@ Constructors
         mode. These two pins must be the A/B channels of the same submodule.
       - *freq* should be an integer which sets the frequency in Hz for the
         PWM cycle. The valid frequency range is 5 Hz - > 1 MHz.
-      - *duty_u16* sets the duty cycle as a ratio ``duty_u16 / 53536``.
+      - *duty_u16* sets the duty cycle as a ratio ``duty_u16 / 65536``.
         The duty cycle of a X channel can only be changed, if the A and B channel
         of the respective submodule is not used. Otherwise the duty_16 value of the
         X channel is 32768 (50%).
@@ -69,18 +69,14 @@ Constructors
     Keyword arguments:
 
       - *center*\=value. An integer sets the center of the pulse within the pulse period.
-        The range is 0-53535. The resulting pulse will last from center - duty_u16/2 to
-        center + duty_u16/2. There is not check made whether the pulse will
-        cross the pulse period boundary of 0-53535.
-
+        The range is 0-65535. The resulting pulse will last from center - duty_u16/2 to
+        center + duty_u16/2.
       - *align*\=value. Predefine values are PWM.MIDDLE (0), PWM.BEGIN (1) and PWM.END (2).
         These are shortcuts for the pulse center setting, causing the pulse either at
         the center of the frame, the leading edge at the begin or the trailing edge at the
         end of a pulse period.
-
       - *invert*\=True|False channel_mask. Setting a bit in the mask inverts the respective channel.
         Bit 0 inverts the first specified channel, bit 2 the second. The default is 0.
-
       - *sync*\=True|False. If a channel of a module's submodule 0 is already active, other
         submodules of the same module can be forced to be synchronous to submodule 0. Their
         pulse period start then at at same clock cycle. The default is False.
@@ -129,12 +125,12 @@ Methods
   :noindex:
 
    Get or set the current duty cycle of the PWM output, as an unsigned 16-bit
-   value in the range 0 to 65537 inclusive.
+   value in the range 0 to 65535 inclusive.
 
    With no arguments the duty cycle is returned.
 
    With a single *value* argument the duty cycle is set to that value, measured
-   as the ratio ``value / 53536``.
+   as the ratio ``value / 65536``.
 
 .. method:: PWM.duty_ns([value])
   :noindex:
@@ -148,7 +144,7 @@ Methods
 .. method:: PWM.center([value])
 
    Get or set the current pulse center of the PWM output, as an unsigned 16-bit
-   value in the range 0 to 65537 inclusive.
+   value in the range 0 to 65535 inclusive.
 
    With no arguments the center position is returned.
 
@@ -251,8 +247,8 @@ Legend:
 
 * Qm/n:    QTMR module m, channel n
 * Fm/n/l:  FLEXPWM module m, submodule n, channel l. The X-Channels duty cycle is not
-  independent from the A and B channels of the same submodule.
-  If you use the A/B channels as well, the duty cycle will be 32768 (or 50%).
+  independent from the A and B channels of the same submodule. The pulse at an X channel
+  is always aligned to the period start.
 
 Pins without a PWM signal are not listed. A signal may be available at more than one Pin.
 PWM may also be activated at CPU pins, which are not available at the board connectors.
