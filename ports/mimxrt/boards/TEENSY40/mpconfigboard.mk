@@ -3,6 +3,10 @@ MCU_VARIANT = MIMXRT1062DVJ6A
 
 MICROPY_FLOAT_IMPL = double
 
+BOARD_FLASH_TYPE ?= qspi_nor
+BOARD_FLASH_SIZE ?= 0x200000  # 2MB
+BOARD_FLASH_RESERVED ?= 0x1000  # 4KB
+
 SRC_C += \
 	hal/flexspi_nor_flash.c \
 

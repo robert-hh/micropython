@@ -3,10 +3,9 @@ MCU_VARIANT = MIMXRT1064DVL6A
 
 MICROPY_FLOAT_IMPL = double
 
-BOARD_FLASH_TYPE ?= hyperflash
-BOARD_FLASH_SIZE ?= 0x4000000  # 64MB
 
 JLINK_PATH ?= /media/RT1064-EVK/
+
 
 deploy: $(BUILD)/firmware.bin
 	cp $< $(JLINK_PATH)

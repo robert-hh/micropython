@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "evkmimxrt1050_flexspi_nor_config.h"
+#include BOARD_FLASH_CONFIG_HEADER_H
 
 /* Component ID definition, used by tools. */
 #ifndef FSL_COMPONENT_ID
@@ -37,7 +37,7 @@ const flexspi_nor_config_t qspiflash_config = {
                 (1u << kFlexSpiMiscOffset_SafeConfigFreqEnable) | (1u << kFlexSpiMiscOffset_DiffClkEnable),
             .sflashPadType = kSerialFlash_8Pads,
             .serialClkFreq = kFlexSpiSerialClk_133MHz,
-            .sflashA1Size  = 64u * 1024u * 1024u,
+            .sflashA1Size  = BOARD_FLASH_SIZE,
             .dataValidTime = {16u, 16u},
             .lookupTable =
                 {

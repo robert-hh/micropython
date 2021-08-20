@@ -13,6 +13,17 @@ endif
 include ../../py/mkenv.mk
 include $(BOARD_DIR)/mpconfigboard.mk
 
+# Set optional flash configuraiton variables
+BOARD_FLASH_RESERVED ?=
+
+LD_MEMORY_CONFIG_DEFINES += \
+	BOARD_FLASH_TYPE=$(BOARD_FLASH_TYPE) \
+	BOARD_FLASH_SIZE=$(BOARD_FLASH_SIZE)	
+
+ifdef $(BOARD_FLASH_RESERVED)
+LD_MEMORY_CONFIG_DEFINES += BOARD_FLASH_RESERVED=$(BOARD_FLASH_RESERVED)
+endif
+
 # Qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 QSTR_GLOBAL_DEPENDENCIES = $(BOARD_DIR)/mpconfigboard.h
@@ -27,7 +38,7 @@ include $(TOP)/py/py.mk
 GIT_SUBMODULES = lib/tinyusb lib/nxp_driver
 
 MCU_DIR = lib/nxp_driver/sdk/devices/$(MCU_SERIES)
-LD_FILES = boards/$(BOARD)/$(BOARD).ld boards/$(MCU_SERIES).ld boards/common.ld
+LD_FILES = boards/$(MCU_SERIES).ld boards/common.ld
 
 MAKE_PINS = boards/make-pins.py
 BOARD_PINS = $(BOARD_DIR)/pins.csv
@@ -46,11 +57,12 @@ CFLAGS += -Wno-error=unused-parameter
 INC += -I.
 INC += -I$(TOP)
 INC += -I$(BUILD)
+INC += -Ihal
 INC += -I$(BOARD_DIR)
 INC += -I$(TOP)/lib/cmsis/inc
 INC += -I$(TOP)/$(MCU_DIR)
 INC += -I$(TOP)/$(MCU_DIR)/drivers
-INC += -I$(TOP)/$(MCU_DIR)/project_template
+#INC += -I$(TOP)/$(MCU_DIR)/project_template/
 INC += -I$(TOP)/lib/tinyusb/src
 INC += -I$(TOP)/lib/tinyusb/hw
 INC += -I$(TOP)/lib/tinyusb/hw/bsp/teensy_40
@@ -64,7 +76,16 @@ CFLAGS += -DXIP_EXTERNAL_FLASH=1 \
 	-D__STARTUP_CLEAR_BSS \
 	-D__STARTUP_INITIALIZE_RAMFUNCTION \
 	-D__START=main \
-	-DCPU_HEADER_H='<$(MCU_SERIES).h>'
+	-DCPU_HEADER_H='<$(MCU_SERIES).h>' \
+	-DBOARD_FLASH_SIZE=$(BOARD_FLASH_SIZE) \
+	-DBOARD_FLASH_CONFIG_HEADER_H=\"$(BOARD)_flexspi_nor_config.h\"
+
+ifeq ($(BOARD_FLASH_TYPE), qspi_nor)
+	CFLAGS += -DBOARD_FLASH_OPS_HEADER_H=\"hal/flexspi_nor_flash.h\"
+else ifeq ($(BOARD_FLASH_TYPE), hyperflash)
+	CFLAGS += -DBOARD_FLASH_OPS_HEADER_H=\"hal/flexspi_hyper_flash.h\"
+endif
+
 CFLAGS += $(CFLAGS_MOD) $(CFLAGS_EXTRA)
 
 # Configure floating point support
@@ -82,7 +103,8 @@ endif
 SUPPORTS_HARDWARE_FP_SINGLE = 0
 SUPPORTS_HARDWARE_FP_DOUBLE = 0
 
-LDFLAGS = $(addprefix -T,$(LD_FILES)) -Map=$@.map --cref --print-memory-usage
+LDFLAGS = -Map=$@.map --cref --print-memory-usage
+LDDEFINES = $(addprefix -D, $(LD_MEMORY_CONFIG_DEFINES))
 LIBS = $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
 # Tune for Debugging or Optimization
@@ -141,7 +163,6 @@ SRC_C += \
 	tusb_port.c \
 	board_init.c \
 	dma_channel.c \
-	$(BOARD_DIR)/flash_config.c \
 	machine_adc.c \
 	machine_i2c.c \
 	machine_led.c \
@@ -169,6 +190,16 @@ SRC_C += \
 	extmod/modonewire.c \
 	$(SRC_TINYUSB_C) \
 	$(SRC_HAL_IMX_C) \
+
+ifeq ($(BOARD_FLASH_TYPE), qspi_nor)
+	SRC_C += \
+		hal/flexspi_nor_flash.c \
+		$(BOARD_DIR)/qspi_nor_flash_config.c
+else ifeq ($(BOARD_FLASH_TYPE), hyperflash)
+	SRC_C += \
+		hal/flexspi_hyper_flash.c \
+		$(BOARD_DIR)/qspi_hyper_flash_config.c
+endif
 
 ifeq ($(MICROPY_FLOAT_IMPL),double)
 LIBM_SRC_C += $(addprefix lib/libm_dbl/,\
@@ -301,8 +332,10 @@ $(BUILD)/lib/tinyusb/src/device/usbd.o: CFLAGS += -Wno-missing-braces
 all: $(BUILD)/firmware.hex $(BUILD)/firmware.bin
 
 $(BUILD)/firmware.elf: $(OBJ)
+	$(ECHO) "PREPROCESS LINK $@"
+	$(Q)$(CC) -E -x c $(LDDEFINES) $(LD_FILES) | grep -v '^#' > $(BUILD)/link.ld
 	$(ECHO) "LINK $@"
-	$(Q)$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(Q)$(LD) $(addprefix -T, $(BUILD)/link.ld)  $(LDFLAGS) -o $@ $^ $(LIBS)
 	$(Q)$(SIZE) $@
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf

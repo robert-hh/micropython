@@ -3,8 +3,8 @@ MCU_VARIANT = MIMXRT1011DAE5A
 
 MICROPY_FLOAT_IMPL = single
 
-SRC_C += \
-	hal/flexspi_nor_flash.c \
+BOARD_FLASH_TYPE ?= qspi_nor
+BOARD_FLASH_SIZE ?= 0x1000000  # 16MB
 
 JLINK_PATH = /media/RT1010-EVK/
 JLINK_COMMANDER_SCRIPT = $(BUILD)/script.jlink

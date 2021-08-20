@@ -7,7 +7,7 @@
 
 // Based on tinyusb/hw/bsp/teensy_40/teensy40_flexspi_nor_config.c
 
-#include "teensy41_flexspi_nor_config.h"
+#include BOARD_FLASH_CONFIG_HEADER_H
 
 /* Component ID definition, used by tools. */
 #ifndef FSL_COMPONENT_ID
@@ -53,7 +53,7 @@ const flexspi_nor_config_t qspiflash_config = {
             // Enable DDR mode, Wordaddassable, Safe configuration, Differential clock
             .sflashPadType = kSerialFlash_4Pads,
             .serialClkFreq = kFlexSpiSerialClk_60MHz,
-            .sflashA1Size  = 8u * 1024u * 1024u,
+            .sflashA1Size  = BOARD_FLASH_SIZE,
             .lookupTable =
                 {
                     // 0 Read LUTs 0 -> 0

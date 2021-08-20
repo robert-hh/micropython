@@ -3,8 +3,8 @@ MCU_VARIANT = MIMXRT1062DVJ6A
 
 MICROPY_FLOAT_IMPL = double
 
-SRC_C += \
-	hal/flexspi_hyper_flash.c \
+BOARD_FLASH_TYPE ?= qspi_nor
+BOARD_FLASH_SIZE ?= 0x800000  # 8MB
 
 JLINK_PATH ?= /media/RT1060-EVK/
 JLINK_COMMANDER_SCRIPT = $(BUILD)/script.jlink

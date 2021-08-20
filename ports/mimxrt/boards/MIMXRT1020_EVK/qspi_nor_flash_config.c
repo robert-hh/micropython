@@ -1,13 +1,13 @@
 /*
- * Copyright 2018 NXP
+ * Copyright 2019 NXP.
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-// Based on tinyusb/hw/bsp/teensy_40/teensy40_flexspi_nor_config.c
+// Based on tinyusb/hw/bsp/teensy_40/evkmimxrt1010_flexspi_nor_config.c
 
-#include "teensy40_flexspi_nor_config.h"
+#include BOARD_FLASH_CONFIG_HEADER_H
 
 /* Component ID definition, used by tools. */
 #ifndef FSL_COMPONENT_ID
@@ -18,7 +18,7 @@
  * Code
  ******************************************************************************/
 #if defined(XIP_BOOT_HEADER_ENABLE) && (XIP_BOOT_HEADER_ENABLE == 1)
-#if defined(__CC_ARM) || defined(__ARMCC_VERSION) || defined(__GNUC__)
+#if defined(__ARMCC_VERSION) || defined(__GNUC__)
 __attribute__((section(".boot_hdr.conf")))
 #elif defined(__ICCARM__)
 #pragma location = ".boot_hdr.conf"
@@ -32,28 +32,20 @@ const flexspi_nor_config_t qspiflash_config = {
             .readSampleClkSrc = kFlexSPIReadSampleClk_LoopbackFromDqsPad,
             .csHoldTime       = 3u,
             .csSetupTime      = 3u,
-
             .busyOffset = FLASH_BUSY_STATUS_OFFSET,     // Status bit 0 indicates busy.
             .busyBitPolarity = FLASH_BUSY_STATUS_POL,   // Busy when the bit is 1.
-
             .deviceModeCfgEnable = 1u,
             .deviceModeType = kDeviceConfigCmdType_QuadEnable,
             .deviceModeSeq = {
                 .seqId = 4u,
                 .seqNum = 1u,
             },
-            .deviceModeArg = 0x0200,
-            .configCmdEnable = 1u,
-            .configModeType[0] = kDeviceConfigCmdType_Generic,
-            .configCmdSeqs[0] = {
-                .seqId = 2u,
-                .seqNum = 1u,
-            },
-            .deviceType = kFlexSpiDeviceType_SerialNOR,
+            .deviceModeArg = 0x40,
             // Enable DDR mode, Wordaddassable, Safe configuration, Differential clock
+            .deviceType = kFlexSpiDeviceType_SerialNOR,
             .sflashPadType = kSerialFlash_4Pads,
-            .serialClkFreq = kFlexSpiSerialClk_60MHz,
-            .sflashA1Size  = 2u * 1024u * 1024u,
+            .serialClkFreq = kFlexSpiSerialClk_100MHz,
+            .sflashA1Size  = BOARD_FLASH_SIZE,
             .lookupTable =
                 {
                     // 0 Read LUTs 0 -> 0
@@ -137,8 +129,8 @@ const flexspi_nor_config_t qspiflash_config = {
         },
     .pageSize           = 256u,
     .sectorSize         = 4u * 1024u,
-    .ipcmdSerialClkFreq = kFlexSpiSerialClk_30MHz,
-    .blockSize          = 0x00010000,
+    .blockSize          = 256u * 1024u,
     .isUniformBlockSize = false,
+    // .ipcmdSerialClkFreq = kFlexSpiSerialClk_30MHz,
 };
 #endif /* XIP_BOOT_HEADER_ENABLE */

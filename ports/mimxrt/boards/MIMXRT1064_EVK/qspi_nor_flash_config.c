@@ -1,13 +1,11 @@
 /*
- * Copyright 2019 NXP
+ * Copyright 2018 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-// Based on tinyusb/hw/bsp/teensy_40/evkmimxrt1010_flexspi_nor_config.c
-
-#include "evkmimxrt1010_flexspi_nor_config.h"
+#include BOARD_FLASH_CONFIG_HEADER_H
 
 /* Component ID definition, used by tools. */
 #ifndef FSL_COMPONENT_ID
@@ -27,14 +25,20 @@ __attribute__((section(".boot_hdr.conf")))
 const flexspi_nor_config_t qspiflash_config = {
     .memConfig =
         {
-            .tag              = FLEXSPI_CFG_BLK_TAG,
-            .version          = FLEXSPI_CFG_BLK_VERSION,
-            .readSampleClkSrc = kFlexSPIReadSampleClk_LoopbackFromDqsPad,
-            .csHoldTime       = 3u,
-            .csSetupTime      = 3u,
-            .sflashPadType    = kSerialFlash_4Pads,
-            .serialClkFreq    = kFlexSpiSerialClk_100MHz,
-            .sflashA1Size     = 16u * 1024u * 1024u,
+            .tag                = FLEXSPI_CFG_BLK_TAG,
+            .version            = FLEXSPI_CFG_BLK_VERSION,
+            .readSampleClkSrc   = kFlexSPIReadSampleClk_ExternalInputFromDqsPad,
+            .csHoldTime         = 3u,
+            .csSetupTime        = 3u,
+            .columnAddressWidth = 3u,
+            // Enable DDR mode, Wordaddassable, Safe configuration, Differential clock
+            .controllerMiscOption =
+                (1u << kFlexSpiMiscOffset_DdrModeEnable) | (1u << kFlexSpiMiscOffset_WordAddressableEnable) |
+                (1u << kFlexSpiMiscOffset_SafeConfigFreqEnable) | (1u << kFlexSpiMiscOffset_DiffClkEnable),
+            .sflashPadType = kSerialFlash_8Pads,
+            .serialClkFreq = kFlexSpiSerialClk_133MHz,
+            .sflashA1Size  = BOARD_FLASH_SIZE,
+            .dataValidTime = {16u, 16u},
             .lookupTable =
                 {
                     // 0 Read LUTs 0 -> 0
@@ -116,9 +120,10 @@ const flexspi_nor_config_t qspiflash_config = {
                     FLEXSPI_LUT_SEQ(0, 0, 0, 0, 0, 0), // Filler
                 },
         },
-    .pageSize           = 256u,
-    .sectorSize         = 4u * 1024u,
+    .pageSize           = 512u,
+    .sectorSize         = 256u * 1024u,
     .blockSize          = 256u * 1024u,
-    .isUniformBlockSize = false,
+    .isUniformBlockSize = true,
 };
+
 #endif /* XIP_BOOT_HEADER_ENABLE */

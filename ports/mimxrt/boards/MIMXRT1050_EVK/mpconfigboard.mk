@@ -3,10 +3,10 @@ MCU_VARIANT = MIMXRT1052DVL6B
 
 MICROPY_FLOAT_IMPL = double
 
-SRC_C += \
-	hal/flexspi_nor_flash.c \
+BOARD_FLASH_TYPE ?= hyperflash
+BOARD_FLASH_SIZE ?= 0x4000000  # 64MB
 
-JLINK_PATH ?= /media/RT1050-EVK/
+JLINK_PATH ?= /media/RT1050-EVKB/
 
 deploy: $(BUILD)/firmware.bin
 	cp $< $(JLINK_PATH)
