@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 NXP
+ * Copyright 2019 NXP.
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -16,7 +16,7 @@
  * Code
  ******************************************************************************/
 #if defined(XIP_BOOT_HEADER_ENABLE) && (XIP_BOOT_HEADER_ENABLE == 1)
-#if defined(__CC_ARM) || defined(__ARMCC_VERSION) || defined(__GNUC__)
+#if defined(__ARMCC_VERSION) || defined(__GNUC__)
 __attribute__((section(".boot_hdr.conf")))
 #elif defined(__ICCARM__)
 #pragma location = ".boot_hdr.conf"
@@ -25,13 +25,22 @@ __attribute__((section(".boot_hdr.conf")))
 const flexspi_nor_config_t qspiflash_config = {
     .memConfig =
         {
-            .tag                = FLEXSPI_CFG_BLK_TAG,
-            .version            = FLEXSPI_CFG_BLK_VERSION,
-            .readSampleClkSrc   = kFlexSPIReadSampleClk_ExternalInputFromDqsPad,
-            .csHoldTime         = 3u,
-            .csSetupTime        = 3u,
-            .columnAddressWidth = 3u,
+            .tag              = FLEXSPI_CFG_BLK_TAG,
+            .version          = FLEXSPI_CFG_BLK_VERSION,
+            .readSampleClkSrc = kFlexSPIReadSampleClk_LoopbackFromDqsPad,
+            .csHoldTime       = 3u,
+            .csSetupTime      = 3u,
+            .busyOffset = FLASH_BUSY_STATUS_OFFSET,     // Status bit 0 indicates busy.
+            .busyBitPolarity = FLASH_BUSY_STATUS_POL,   // Busy when the bit is 1.
+            .deviceModeCfgEnable = 1u,
+            .deviceModeType = kDeviceConfigCmdType_QuadEnable,
+            .deviceModeSeq = {
+                .seqId = 4u,
+                .seqNum = 1u,
+            },
+            .deviceModeArg = 0x40,
             // Enable DDR mode, Wordaddassable, Safe configuration, Differential clock
+<<<<<<< HEAD:ports/mimxrt/boards/MIMXRT1050_EVK/qspi_nor_flash_config.c
             .controllerMiscOption =
                 (1u << kFlexSpiMiscOffset_DdrModeEnable) | (1u << kFlexSpiMiscOffset_WordAddressableEnable) |
                 (1u << kFlexSpiMiscOffset_SafeConfigFreqEnable) | (1u << kFlexSpiMiscOffset_DiffClkEnable),
@@ -39,6 +48,12 @@ const flexspi_nor_config_t qspiflash_config = {
             .serialClkFreq = kFlexSpiSerialClk_133MHz,
             .sflashA1Size  = BOARD_FLASH_SIZE,
             .dataValidTime = {16u, 16u},
+=======
+            .deviceType = kFlexSpiDeviceType_SerialNOR,
+            .sflashPadType = kSerialFlash_4Pads,
+            .serialClkFreq = kFlexSpiSerialClk_30MHz,
+            .sflashA1Size  = 8u * 1024u * 1024u,
+>>>>>>> mimxrt: First attempt to set up the board specific files.:ports/mimxrt/boards/MIMXRT1050_EVK/flash_config.c
             .lookupTable =
                 {
                     // 0 Read LUTs 0 -> 0
@@ -120,10 +135,10 @@ const flexspi_nor_config_t qspiflash_config = {
                     FLEXSPI_LUT_SEQ(0, 0, 0, 0, 0, 0), // Filler
                 },
         },
-    .pageSize           = 512u,
-    .sectorSize         = 256u * 1024u,
+    .pageSize           = 256u,
+    .sectorSize         = 4u * 1024u,
     .blockSize          = 256u * 1024u,
-    .isUniformBlockSize = true,
+    .isUniformBlockSize = false,
+    .ipcmdSerialClkFreq = kFlexSpiSerialClk_30MHz,
 };
-
 #endif /* XIP_BOOT_HEADER_ENABLE */
