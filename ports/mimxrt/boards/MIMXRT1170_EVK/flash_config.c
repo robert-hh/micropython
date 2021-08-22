@@ -7,7 +7,7 @@
 
 // Based on tinyusb/hw/bsp/teensy_40/evkmimxrt1010_flexspi_nor_config.c
 
-#include "evkmimxrt1020_flexspi_nor_config.h"
+#include "evkmimxrt1170_flexspi_nor_config.h"
 
 /* Component ID definition, used by tools. */
 #ifndef FSL_COMPONENT_ID
@@ -130,7 +130,7 @@ const flexspi_nor_config_t qspiflash_config = {
         },
     .pageSize           = 256u,
     .sectorSize         = 4u * 1024u,
-    .ipcmdSerialClkFreq = 0x1,
+    .ipcmdSerialClkFreq = kFlexSpiSerialClk_30MHz,
     .blockSize          = 256u * 1024u,
     .isUniformBlockSize = false,
 };
