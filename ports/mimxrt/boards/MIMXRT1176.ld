@@ -5,30 +5,30 @@
  * 'reserved_size' variable. The size of the reserved area should be a multiple
  * of the sector size of the flash memory!
  */
-#if BOARD_FLASH_RESERVED
+#if defined BOARD_FLASH_RESERVED
 reserved_size = BOARD_FLASH_RESERVED;
 #endif
 
-#if BOARD_FLASH_TYPE==qspi_nor
-flash_start         = 0x60000000;
-#elif BOARD_FLASH_TYPE==hyperflash
-flash_start         = 0x60000000;
-#elif BOARD_FLASH_TYPE==internal
-flash_start         = 0x70000000;
+#if BOARD_FLASH_TYPE == qspi_nor
+flash_start         = 0x30000000;
 #else
 #error Unknown BOARD_FLASH_TYPE
 #endif
-flash_size 			= BOARD_FLASH_SIZE;
+flash_size      = BOARD_FLASH_SIZE;
 flash_end           = DEFINED(reserved_size) ? ((flash_start) + (flash_size - reserved_size)) : ((flash_start) + (flash_size));
-flash_config_start  = flash_start;
-flash_config_size   = 0x00001000;
+flash_config_start  = flash_start + 400;  /* TODO: check why config_start is on 0x400 instead of 0x0 offset */
+flash_config_size   = 0x00000C00;
 ivt_start           = flash_start + 0x00001000;
 ivt_size            = 0x00001000;
 interrupts_start    = flash_start + 0x00002000;
 interrupts_size     = 0x00000400;
 text_start          = flash_start + 0x00002400;
+#if defined MULTI_CORE
+m_core1_image_start = flash_start + 0x000C0000;
+m_core1_image_size  = 0x00040000;
+#endif
 vfs_start           = flash_start + 0x00100000;
-text_size           = ((vfs_start) - (text_start));
+text_size           = ((vfs_start) - (m_core1_image_start));
 vfs_size            = ((flash_end) - (vfs_start));
 itcm_start          = 0x00000000;
 itcm_size           = 0x00020000;

@@ -24,6 +24,10 @@ ifdef $(BOARD_FLASH_RESERVED)
 LD_MEMORY_CONFIG_DEFINES += BOARD_FLASH_RESERVED=$(BOARD_FLASH_RESERVED)
 endif
 
+ifdef $(MULTI_CORE)
+LD_MEMORY_CONFIG_DEFINES += MULTI_CORE
+endif	
+
 # Qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 QSTR_GLOBAL_DEPENDENCIES = $(BOARD_DIR)/mpconfigboard.h

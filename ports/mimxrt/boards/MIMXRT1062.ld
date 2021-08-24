@@ -1,4 +1,10 @@
 /* Memory configuration */
+
+/* Reserved Area
+ * Users can create a reserved area at the end of the flash memory via 
+ * 'reserved_size' variable. The size of the reserved area should be a multiple
+ * of the sector size of the flash memory!
+ */
 #if BOARD_FLASH_RESERVED
 reserved_size = BOARD_FLASH_RESERVED;
 #endif
