@@ -24,13 +24,7 @@ ENTRY(Reset_Handler)
 
 HEAP_SIZE  = DEFINED(__heap_size__)  ? __heap_size__  : 0x0400;
 STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x0400;
-
-/* Reserved Area
- * Users can create a reserved area at the end of the flash memory via 
- * 'reserved_size' variable. The size of the reserved area should be a multiple
- * of the sector size of the flash memory!
- */
-reserved_size = DEFINED(reserved_size) ? reserved_size : 0k;
+VECTOR_RAM_SIZE = DEFINED(__ram_vector_table__) ? 0x00000400 : 0;
 
 /* Specify the memory areas */
 MEMORY
@@ -39,9 +33,14 @@ MEMORY
   m_ivt          (RX) : ORIGIN = ivt_start,             LENGTH = ivt_size
   m_interrupts   (RX) : ORIGIN = interrupts_start,      LENGTH = interrupts_size
   m_text         (RX) : ORIGIN = text_start,            LENGTH = text_size
+#if defined MULTI_CORE
+  m_core1_image  (RX) : ORIGIN = m_core1_image_start,   LENGTH = m_core1_image_size
+#endif  
   m_vfs          (RX) : ORIGIN = vfs_start,             LENGTH = vfs_size
   /* Teensy uses the last bit of flash for recovery. */
+#if defined BOARD_FLASH_RESERVED  
   m_reserved     (RX) : ORIGIN = (vfs_start + vfs_size), LENGTH = reserved_size  
+#endif
   m_itcm         (RX) : ORIGIN = itcm_start,            LENGTH = itcm_size
   m_dtcm         (RW) : ORIGIN = dtcm_start,            LENGTH = dtcm_size
   m_ocrm         (RW) : ORIGIN = ocrm_start,            LENGTH = ocrm_size
@@ -50,6 +49,8 @@ MEMORY
 /* Define output sections */
 SECTIONS
 {
+  __NCACHE_REGION_START = ORIGIN(m_ocrm);
+  __NCACHE_REGION_SIZE  = 0;
   __flash_start = flash_start;
   __vfs_start = ORIGIN(m_vfs);
   __vfs_end = __vfs_start + LENGTH(m_vfs);  
@@ -77,13 +78,11 @@ SECTIONS
   .interrupts :
   {
     __VECTOR_TABLE = .;
+    __Vectors = .;
     . = ALIGN(4);
     KEEP(*(.isr_vector))     /* Startup code */
     . = ALIGN(4);
   } > m_interrupts
-
-  __VECTOR_RAM = __VECTOR_TABLE;
-  __RAM_VECTOR_TABLE_SIZE_BYTES = 0x0;
 
   /* The program code and other data goes into internal RAM */
   .text :
@@ -173,33 +172,47 @@ SECTIONS
   __etext = .;    /* define a global symbol at end of code */
   __DATA_ROM = .; /* Symbol is used by startup for data initialization */
 
+  .interrupts_ram :
+  {
+    . = ALIGN(4);
+    __VECTOR_RAM__ = .;
+    __interrupts_ram_start__ = .; /* Create a global symbol at data start */
+    *(.m_interrupts_ram)     /* This is a user defined section */
+    . += VECTOR_RAM_SIZE;
+    . = ALIGN(4);
+    __interrupts_ram_end__ = .; /* Define a global symbol at data end */
+  } > m_dtcm
+
+  __VECTOR_RAM = DEFINED(__ram_vector_table__) ? __VECTOR_RAM__ : ORIGIN(m_interrupts);
+  __RAM_VECTOR_TABLE_SIZE_BYTES = DEFINED(__ram_vector_table__) ? (__interrupts_ram_end__ - __interrupts_ram_start__) : 0x0;
+
   .data : AT(__DATA_ROM)
   {
     . = ALIGN(4);
     __DATA_RAM = .;
     __data_start__ = .;      /* create a global symbol at data start */
-    __data_section_table = .;
     *(m_usb_dma_init_data)
     *(.data)                 /* .data sections */
     *(.data*)                /* .data* sections */
     KEEP(*(.jcr*))
     . = ALIGN(4);
     __data_end__ = .;        /* define a global symbol at data end */
-    __data_section_table_end = .;
   } > m_dtcm
 
-  __RAM_FUNCTIONS_ROM = __DATA_ROM + (__data_end__ - __data_start__);
-  .ram_functions : AT(__RAM_FUNCTIONS_ROM)
+  __ram_function_flash_start = __DATA_ROM + (__data_end__ - __data_start__); /* Symbol is used by startup for TCM data initialization */
+
+  .ram_functions : AT(__ram_function_flash_start)
   {
-    . = ALIGN(4);
+    . = ALIGN(32);
     __ram_function_start__ = .;
     *fsl_flexspi.o(.text*)
     *(.ram_functions*)
-    . = ALIGN(4);
+    *(CodeQuickAccess)
+    . = ALIGN(128);
     __ram_function_end__ = .;
   } > m_itcm  
 
-  __NDATA_ROM = __DATA_ROM + (__ram_function_end__ - __data_start__);
+  __NDATA_ROM = __ram_function_flash_start + (__ram_function_end__ - __ram_function_start__);
   .ncache.init : AT(__NDATA_ROM)
   {
     __noncachedata_start__ = .;   /* create a global symbol at ncache data start */
@@ -226,14 +239,12 @@ SECTIONS
     . = ALIGN(4);
     __START_BSS = .;
     __bss_start__ = .;
-    __bss_section_table = .;
     *(m_usb_dma_noninit_data)
     *(.bss)
     *(.bss*)
     *(COMMON)
     . = ALIGN(4);
     __bss_end__ = .;
-    __bss_section_table_end = .;
     __END_BSS = .;
   } > m_dtcm
 
@@ -257,7 +268,6 @@ SECTIONS
   /* Initializes stack on the end of block */
   __StackTop   = ORIGIN(m_dtcm) + LENGTH(m_dtcm);
   __StackLimit = __StackTop - STACK_SIZE;
-  _vStackTop = __StackTop;
   PROVIDE(__stack = __StackTop);
 
   .ARM.attributes 0 : { *(.ARM.attributes) }

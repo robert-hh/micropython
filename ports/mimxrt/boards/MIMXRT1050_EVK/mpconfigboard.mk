@@ -6,6 +6,8 @@ MICROPY_FLOAT_IMPL = double
 BOARD_FLASH_TYPE ?= hyperflash
 BOARD_FLASH_SIZE ?= 0x4000000  # 64MB
 
+CFLAGS += -DCPU_HEADER_H='<$(MCU_SERIES).h>' \
+
 JLINK_PATH ?= /media/RT1050-EVKB/
 
 deploy: $(BUILD)/firmware.bin

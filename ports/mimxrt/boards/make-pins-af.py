@@ -32,18 +32,18 @@ def main(input_path, output_path):
                     int((match.groupdict()["muxMode"].strip("U")), 16)
                 ] = match.group("function")
 
-    header = "Pad,ALT0, ALT1, ALT2, ALT3, ALT4, ALT5, ALT6, ALT7, ALT8, ALT9,ADC,ACMP,Default\n"
+    header = "Pad,ALT0,ALT1,ALT2,ALT3,ALT4,ALT5,ALT6,ALT7,ALT8,ALT9,ALT10,ADC,ACMP,Default\n"
 
     with open(output_path, "w") as output_file:
         output_file.write(header)
 
         for pin_name, pin_dict in pins.items():
             line = pin_name + ", "
-            for i in range(10):
-                line += pin_dict.get(i, "") + ", "
+            for i in range(11):
+                line += pin_dict.get(i, "") + ","
             # Append dummy entries for analog functions
-            line += ", "  # ACMP
-            line += ", "  # ADC
+            line += ","  # ACMP
+            line += ","  # ADC
 
             line += "\n"
 
@@ -69,6 +69,6 @@ if __name__ == "__main__":
         help="Specifies the output file path",
     )
     #
-    args = parser.parse_args()
+    args = parser.parse_args(["-i", "/home/philipp/Projects/micropython/micropython/lib/nxp_driver/sdk/devices/MIMXRT1176/drivers/fsl_iomuxc.h", "-o", "1176_iomux.csv"])
     #
     main(args.iomuxc_file, args.output_file)
