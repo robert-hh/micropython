@@ -212,7 +212,7 @@ STATIC void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
         self->master_config->betweenTransferDelayInNanoSec = args[ARG_gap_ns].u_int;
     }
     LPSPI_Enable(self->spi_inst, false);  // Disable first before new settings are applies
-    LPSPI_MasterInit(self->spi_inst, self->master_config, CLOCK_GetFreq(kCLOCK_Usb1PllPfd0Clk) / (CLOCK_DIVIDER + 1));
+    LPSPI_MasterInit(self->spi_inst, self->master_config, BOARD_BOOTCLOCKRUN_LPSPI_CLK_ROOT);
 }
 
 void LPSPI_EDMAMasterCallback(LPSPI_Type *base, lpspi_master_edma_handle_t *handle, status_t status, void *self_in) {
@@ -238,6 +238,15 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
         edma_config_t userConfig;
 
         /* DMA MUX init*/
+        #if defined CPU_MIMXRT1176AVM8A_cm7
+        DMAMUX_Init(DMAMUX0);
+
+        DMAMUX_SetSource(DMAMUX0, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source
+        DMAMUX_EnableChannel(DMAMUX0, chan_rx);
+
+        DMAMUX_SetSource(DMAMUX0, chan_tx, dma_req_src_tx[self->spi_hw_id]);
+        DMAMUX_EnableChannel(DMAMUX0, chan_tx);
+        #else
         DMAMUX_Init(DMAMUX);
 
         DMAMUX_SetSource(DMAMUX, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source
@@ -245,6 +254,7 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
 
         DMAMUX_SetSource(DMAMUX, chan_tx, dma_req_src_tx[self->spi_hw_id]);
         DMAMUX_EnableChannel(DMAMUX, chan_tx);
+        #endif
 
         EDMA_GetDefaultConfig(&userConfig);
         EDMA_Init(DMA0, &userConfig);
