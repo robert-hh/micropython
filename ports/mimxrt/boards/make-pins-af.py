@@ -69,13 +69,6 @@ if __name__ == "__main__":
         help="Specifies the output file path",
     )
     #
-    args = parser.parse_args(
-        [
-            "-i",
-            "/home/philipp/Projects/micropython/micropython/lib/nxp_driver/sdk/devices/MIMXRT1176/drivers/fsl_iomuxc.h",
-            "-o",
-            "1176_iomux.csv",
-        ]
-    )
+    args = parser.parse_args(["-i", "/home/philipp/Projects/micropython/micropython/lib/nxp_driver/sdk/devices/MIMXRT1176/drivers/fsl_iomuxc.h", "-o", "1176_iomux.csv"])
     #
     main(args.iomuxc_file, args.output_file)

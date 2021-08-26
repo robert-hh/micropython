@@ -36,7 +36,8 @@ extern uint32_t SystemCoreClock;
 /*******************************************************************************
  ************************ BOARD_InitBootClocks function ************************
  ******************************************************************************/
-void BOARD_InitBootClocks(void) {
+void BOARD_InitBootClocks(void)
+{
     BOARD_BootClockRUN();
 }
 
@@ -49,22 +50,23 @@ void BOARD_InitBootClocks(void) {
  ******************************************************************************/
 const clock_sys_pll_config_t sysPllConfig_BOARD_BootClockRUN = {
     .loopDivider = 1, /* PLL loop divider, Fout = Fin * ( 20 + loopDivider*2 + numerator / denominator ) */
-    .numerator = 0,   /* 30 bit numerator of fractional loop divider */
+    .numerator   = 0, /* 30 bit numerator of fractional loop divider */
     .denominator = 1, /* 30 bit denominator of fractional loop divider */
-    .src = 0,         /* Bypass clock source, 0 - OSC 24M, 1 - CLK1_P and CLK1_N */
+    .src         = 0, /* Bypass clock source, 0 - OSC 24M, 1 - CLK1_P and CLK1_N */
 };
 const clock_usb_pll_config_t usb1PllConfig_BOARD_BootClockRUN = {
     .loopDivider = 0, /* PLL loop divider, Fout = Fin * 20 */
-    .src = 0,         /* Bypass clock source, 0 - OSC 24M, 1 - CLK1_P and CLK1_N */
+    .src         = 0, /* Bypass clock source, 0 - OSC 24M, 1 - CLK1_P and CLK1_N */
 };
 const clock_enet_pll_config_t enetPllConfig_BOARD_BootClockRUN = {
     .enableClkOutput500M = true, /* Enable the PLL providing the ENET 500MHz reference clock */
-    .src = 0,                    /* Bypass clock source, 0 - OSC 24M, 1 - CLK1_P and CLK1_N */
+    .src                 = 0,    /* Bypass clock source, 0 - OSC 24M, 1 - CLK1_P and CLK1_N */
 };
 /*******************************************************************************
  * Code for BOARD_BootClockRUN configuration
  ******************************************************************************/
-void BOARD_BootClockRUN(void) {
+void BOARD_BootClockRUN(void)
+{
     /* Init RTC OSC clock frequency. */
     CLOCK_SetRtcXtalFreq(32768U);
     /* Enable 1MHz clock output. */
@@ -87,7 +89,8 @@ void BOARD_BootClockRUN(void) {
     /* Setting the VDD_SOC to 1.5V. It is necessary to config CORE to 500Mhz. */
     DCDC->REG3 = (DCDC->REG3 & (~DCDC_REG3_TRG_MASK)) | DCDC_REG3_TRG(0x12);
     /* Waiting for DCDC_STS_DC_OK bit is asserted */
-    while (DCDC_REG0_STS_DC_OK_MASK != (DCDC_REG0_STS_DC_OK_MASK & DCDC->REG0)) {
+    while (DCDC_REG0_STS_DC_OK_MASK != (DCDC_REG0_STS_DC_OK_MASK & DCDC->REG0))
+    {
     }
     /* Set AHB_PODF. */
     CLOCK_SetDiv(kCLOCK_AhbDiv, 0);
@@ -108,7 +111,7 @@ void BOARD_BootClockRUN(void) {
      * With this macro XIP_EXTERNAL_FLASH, usb1 pll (selected to be FLEXSPI clock source in SDK projects) will be left
      * unchanged. Note: If another clock source is selected for FLEXSPI, user may want to avoid changing that clock as
      * well.*/
-    #if !(defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1))
+#if !(defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1))
     /* Disable Flexspi clock gate. */
     CLOCK_DisableClock(kCLOCK_FlexSpi);
     /* Set FLEXSPI_PODF. */
@@ -116,7 +119,7 @@ void BOARD_BootClockRUN(void) {
     /* Set Flexspi clock source. */
     CLOCK_SetMux(kCLOCK_FlexspiMux, 0);
     CLOCK_SetMux(kCLOCK_FlexspiSrcMux, 0);
-    #endif
+#endif
     /* Disable ADC_ACLK_EN clock gate. */
     CCM->CSCMR2 &= ~CCM_CSCMR2_ADC_ACLK_EN_MASK;
     /* Set ADC_ACLK_PODF. */
@@ -150,7 +153,7 @@ void BOARD_BootClockRUN(void) {
     CLOCK_SetDiv(kCLOCK_Sai3Div, 1);
     /* Set Sai3 clock source. */
     CLOCK_SetMux(kCLOCK_Sai3Mux, 0);
-
+    
     /* Configure LPI2C using PLL3 - USB1 PLL 480MHz */
     CLOCK_DisableClock(kCLOCK_Lpi2c1);
     CLOCK_DisableClock(kCLOCK_Lpi2c2);
@@ -198,7 +201,7 @@ void BOARD_BootClockRUN(void) {
      * With this macro XIP_EXTERNAL_FLASH, usb1 pll (selected to be FLEXSPI clock source in SDK projects) will be left
      * unchanged. Note: If another clock source is selected for FLEXSPI, user may want to avoid changing that clock as
      * well.*/
-    #if !(defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1))
+#if !(defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1))
     /* Init Usb1 PLL. */
     CLOCK_InitUsb1Pll(&usb1PllConfig_BOARD_BootClockRUN);
     /* Init Usb1 pfd0. */
@@ -211,7 +214,7 @@ void BOARD_BootClockRUN(void) {
     CLOCK_InitUsb1Pfd(kCLOCK_Pfd3, 18);
     /* Disable Usb1 PLL output for USBPHY1. */
     CCM_ANALOG->PLL_USB1 &= ~CCM_ANALOG_PLL_USB1_EN_USB_CLKS_MASK;
-    #endif
+#endif
     /* DeInit Audio PLL. */
     CLOCK_DeinitAudioPll();
     /* Bypass Audio PLL. */

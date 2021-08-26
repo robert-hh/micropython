@@ -34,10 +34,10 @@
     { IOMUXC_GPIO_SD_B0_02_LPSPI1_SDO }, { IOMUXC_GPIO_SD_B0_03_LPSPI1_SDI },
 
 #define DMA_REQ_SRC_RX { 0, kDmaRequestMuxLPSPI1Rx, kDmaRequestMuxLPSPI2Rx, \
-                         kDmaRequestMuxLPSPI3Rx, kDmaRequestMuxLPSPI4Rx }
+                            kDmaRequestMuxLPSPI3Rx, kDmaRequestMuxLPSPI4Rx }
 
 #define DMA_REQ_SRC_TX { 0, kDmaRequestMuxLPSPI1Tx, kDmaRequestMuxLPSPI2Tx, \
-                         kDmaRequestMuxLPSPI3Tx, kDmaRequestMuxLPSPI4Tx }
+                            kDmaRequestMuxLPSPI3Tx, kDmaRequestMuxLPSPI4Tx } 
 
 // Define the mapping hardware I2C # to logical I2C #
 // SDA/SCL  HW-I2C    Logical I2C

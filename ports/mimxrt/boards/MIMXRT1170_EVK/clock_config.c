@@ -35,7 +35,8 @@ extern uint32_t SystemCoreClock;
 /*******************************************************************************
  ************************ BOARD_InitBootClocks function ************************
  ******************************************************************************/
-void BOARD_InitBootClocks(void) {
+void BOARD_InitBootClocks(void)
+{
     BOARD_BootClockRUN();
 }
 
@@ -43,14 +44,14 @@ void BOARD_InitBootClocks(void) {
 #if defined(XIP_BOOT_HEADER_DCD_ENABLE) && (XIP_BOOT_HEADER_DCD_ENABLE == 1)
 /* This function should not run from SDRAM since it will change SEMC configuration. */
 AT_QUICKACCESS_SECTION_CODE(void UpdateSemcClock(void));
-void UpdateSemcClock(void) {
+void UpdateSemcClock(void)
+{
     /* Enable self-refresh mode and update semc clock root to 200MHz. */
     SEMC->IPCMD = 0xA55A000D;
-    while ((SEMC->INTR & 0x3) == 0) {
+    while ((SEMC->INTR & 0x3) == 0)
         ;
-    }
-    SEMC->INTR = 0x3;
-    SEMC->DCCR = 0x0B;
+    SEMC->INTR                                = 0x3;
+    SEMC->DCCR                                = 0x0B;
     /*
     * Currently we are using SEMC parameter which fit both 166MHz and 200MHz, only
     * need to change the SEMC clock root here. If customer is using their own DCD and
@@ -81,72 +82,81 @@ void UpdateSemcClock(void) {
 #endif
 
 const clock_arm_pll_config_t armPllConfig_BOARD_BootClockRUN =
-{
-    .postDivider = kCLOCK_PllPostDiv2,            /* Post divider, 0 - DIV by 2, 1 - DIV by 4, 2 - DIV by 8, 3 - DIV by 1 */
-    .loopDivider = 166,                           /* PLL Loop divider, Fout = Fin * ( loopDivider / ( 2 * postDivider ) ) */
-};
+    {
+        .postDivider = kCLOCK_PllPostDiv2,        /* Post divider, 0 - DIV by 2, 1 - DIV by 4, 2 - DIV by 8, 3 - DIV by 1 */
+        .loopDivider = 166,                       /* PLL Loop divider, Fout = Fin * ( loopDivider / ( 2 * postDivider ) ) */
+    };
 
 const clock_sys_pll2_config_t sysPll2Config_BOARD_BootClockRUN =
-{
-    .mfd = 268435455,                             /* Denominator of spread spectrum */
-    .ss = NULL,                                   /* Spread spectrum parameter */
-    .ssEnable = false,                            /* Enable spread spectrum or not */
-};
+    {
+        .mfd = 268435455,                         /* Denominator of spread spectrum */
+        .ss = NULL,                               /* Spread spectrum parameter */
+        .ssEnable = false,                        /* Enable spread spectrum or not */
+    };
 
 const clock_video_pll_config_t videoPllConfig_BOARD_BootClockRUN =
-{
-    .loopDivider = 41,                            /* PLL Loop divider, valid range for DIV_SELECT divider value: 27 ~ 54. */
-    .postDivider = 0,                             /* Divider after PLL, should only be 1, 2, 4, 8, 16, 32 */
-    .numerator = 1,                               /* 30 bit numerator of fractional loop divider, Fout = Fin * ( loopDivider + numerator / denominator ) */
-    .denominator = 960000,                        /* 30 bit denominator of fractional loop divider, Fout = Fin * ( loopDivider + numerator / denominator ) */
-    .ss = NULL,                                   /* Spread spectrum parameter */
-    .ssEnable = false,                            /* Enable spread spectrum or not */
-};
+    {
+        .loopDivider = 41,                        /* PLL Loop divider, valid range for DIV_SELECT divider value: 27 ~ 54. */
+        .postDivider = 0,                         /* Divider after PLL, should only be 1, 2, 4, 8, 16, 32 */
+        .numerator = 1,                           /* 30 bit numerator of fractional loop divider, Fout = Fin * ( loopDivider + numerator / denominator ) */
+        .denominator = 960000,                    /* 30 bit denominator of fractional loop divider, Fout = Fin * ( loopDivider + numerator / denominator ) */
+        .ss = NULL,                               /* Spread spectrum parameter */
+        .ssEnable = false,                        /* Enable spread spectrum or not */
+    };
 
 /*******************************************************************************
  * Code for BOARD_BootClockRUN configuration
  ******************************************************************************/
-void BOARD_BootClockRUN(void) {
+void BOARD_BootClockRUN(void)
+{
     clock_root_config_t rootCfg = {0};
 
-    #if !defined(SKIP_DCDC_ADJUSTMENT) || (!SKIP_DCDC_ADJUSTMENT)
-    if ((OCOTP->FUSEN[16].FUSE == 0x57AC5969U) && ((OCOTP->FUSEN[17].FUSE & 0xFFU) == 0x0BU)) {
+#if !defined(SKIP_DCDC_ADJUSTMENT) || (!SKIP_DCDC_ADJUSTMENT)
+    if((OCOTP->FUSEN[16].FUSE == 0x57AC5969U) && ((OCOTP->FUSEN[17].FUSE & 0xFFU) == 0x0BU))
+    {
         DCDC_SetVDD1P0BuckModeTargetVoltage(DCDC, kDCDC_1P0BuckTarget1P15V);
-    } else {
+    }
+    else
+    {
         /* Set 1.125V for production samples to align with data sheet requirement */
         DCDC_SetVDD1P0BuckModeTargetVoltage(DCDC, kDCDC_1P0BuckTarget1P125V);
     }
-    #endif
+#endif
 
-    #if !defined(SKIP_FBB_ENABLE) || (!SKIP_FBB_ENABLE)
+#if !defined(SKIP_FBB_ENABLE) || (!SKIP_FBB_ENABLE)
     /* Check if FBB need to be enabled in OverDrive(OD) mode */
-    if (((OCOTP->FUSEN[7].FUSE & 0x10U) >> 4U) != 1) {
+    if(((OCOTP->FUSEN[7].FUSE & 0x10U) >> 4U) != 1)
+    {
         PMU_EnableBodyBias(ANADIG_PMU, kPMU_FBB_CM7, true);
-    } else {
+    }
+    else
+    {
         PMU_EnableBodyBias(ANADIG_PMU, kPMU_FBB_CM7, false);
     }
-    #endif
+#endif
 
-    #if defined(BYPASS_LDO_LPSR) && BYPASS_LDO_LPSR
+#if defined(BYPASS_LDO_LPSR) && BYPASS_LDO_LPSR
     PMU_StaticEnableLpsrAnaLdoBypassMode(ANADIG_LDO_SNVS, true);
     PMU_StaticEnableLpsrDigLdoBypassMode(ANADIG_LDO_SNVS, true);
-    #endif
+#endif
 
-    #if !defined(SKIP_LDO_ADJUSTMENT) || (!SKIP_LDO_ADJUSTMENT)
+#if !defined(SKIP_LDO_ADJUSTMENT) || (!SKIP_LDO_ADJUSTMENT)
     pmu_static_lpsr_ana_ldo_config_t lpsrAnaConfig;
     pmu_static_lpsr_dig_config_t lpsrDigConfig;
 
-    if ((ANADIG_LDO_SNVS->PMU_LDO_LPSR_ANA & ANADIG_LDO_SNVS_PMU_LDO_LPSR_ANA_BYPASS_MODE_EN_MASK) == 0UL) {
+    if((ANADIG_LDO_SNVS->PMU_LDO_LPSR_ANA & ANADIG_LDO_SNVS_PMU_LDO_LPSR_ANA_BYPASS_MODE_EN_MASK) == 0UL)
+    {
         PMU_StaticGetLpsrAnaLdoDefaultConfig(&lpsrAnaConfig);
         PMU_StaticLpsrAnaLdoInit(ANADIG_LDO_SNVS, &lpsrAnaConfig);
     }
 
-    if ((ANADIG_LDO_SNVS->PMU_LDO_LPSR_DIG & ANADIG_LDO_SNVS_PMU_LDO_LPSR_DIG_BYPASS_MODE_MASK) == 0UL) {
+    if((ANADIG_LDO_SNVS->PMU_LDO_LPSR_DIG & ANADIG_LDO_SNVS_PMU_LDO_LPSR_DIG_BYPASS_MODE_MASK) == 0UL)
+    {
         PMU_StaticGetLpsrDigLdoDefaultConfig(&lpsrDigConfig);
         lpsrDigConfig.targetVoltage = kPMU_LpsrDigTargetStableVoltage1P117V;
         PMU_StaticLpsrDigLdoInit(ANADIG_LDO_SNVS, &lpsrDigConfig);
     }
-    #endif
+#endif
 
     /* PLL LDO shall be enabled first before enable PLLs */
 
@@ -168,20 +178,21 @@ void BOARD_BootClockRUN(void) {
     ANADIG_OSC->OSC_24M_CTRL |= ANADIG_OSC_OSC_24M_CTRL_OSC_EN(1) | ANADIG_OSC_OSC_24M_CTRL_BYPASS_EN(0) | ANADIG_OSC_OSC_24M_CTRL_BYPASS_CLK(0) | ANADIG_OSC_OSC_24M_CTRL_LP_EN(1) | ANADIG_OSC_OSC_24M_CTRL_OSC_24M_GATE(0);
     /* Wait for 24M OSC to be stable. */
     while (ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE_MASK !=
-           (ANADIG_OSC->OSC_24M_CTRL & ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE_MASK)) {
+            (ANADIG_OSC->OSC_24M_CTRL & ANADIG_OSC_OSC_24M_CTRL_OSC_24M_STABLE_MASK))
+    {
     }
 
     /* Swicth both core, M7 Systick and Bus_Lpsr to OscRC48MDiv2 first */
     rootCfg.mux = kCLOCK_M7_ClockRoot_MuxOscRc48MDiv2;
     rootCfg.div = 1;
-    #if __CORTEX_M == 7
+#if __CORTEX_M == 7
     CLOCK_SetRootClock(kCLOCK_Root_M7, &rootCfg);
     CLOCK_SetRootClock(kCLOCK_Root_M7_Systick, &rootCfg);
-    #endif
-    #if __CORTEX_M == 4
+#endif
+#if __CORTEX_M == 4
     CLOCK_SetRootClock(kCLOCK_Root_M4, &rootCfg);
     CLOCK_SetRootClock(kCLOCK_Root_Bus_Lpsr, &rootCfg);
-    #endif
+#endif
 
     /*
     * if DCD is used, please make sure the clock source of SEMC is not changed in the following PLL/PFD configuration code.
@@ -236,45 +247,45 @@ void BOARD_BootClockRUN(void) {
 
     /* Module clock root configurations. */
     /* Configure M7 using ARM_PLL_CLK */
-    #if __CORTEX_M == 7
+#if __CORTEX_M == 7
     rootCfg.mux = kCLOCK_M7_ClockRoot_MuxArmPllOut;
     rootCfg.div = 1;
     CLOCK_SetRootClock(kCLOCK_Root_M7, &rootCfg);
-    #endif
+#endif
 
     /* Configure M4 using SYS_PLL3_PFD3_CLK */
-    #if __CORTEX_M == 4
+#if __CORTEX_M == 4
     rootCfg.mux = kCLOCK_M4_ClockRoot_MuxSysPll3Pfd3;
     rootCfg.div = 1;
     CLOCK_SetRootClock(kCLOCK_Root_M4, &rootCfg);
-    #endif
+#endif
 
     /* Configure BUS using SYS_PLL3_CLK */
-    #if __CORTEX_M == 7
+#if __CORTEX_M == 7
     rootCfg.mux = kCLOCK_BUS_ClockRoot_MuxSysPll3Out;
     rootCfg.div = 2;
     CLOCK_SetRootClock(kCLOCK_Root_Bus, &rootCfg);
-    #endif
+#endif
 
     /* Configure BUS_LPSR using SYS_PLL3_CLK */
-    #if __CORTEX_M == 4
+#if __CORTEX_M == 4
     rootCfg.mux = kCLOCK_BUS_LPSR_ClockRoot_MuxSysPll3Out;
     rootCfg.div = 3;
     CLOCK_SetRootClock(kCLOCK_Root_Bus_Lpsr, &rootCfg);
-    #endif
+#endif
 
     /* Configure SEMC using SYS_PLL2_PFD1_CLK */
-    #ifndef SKIP_SEMC_INIT
+#ifndef SKIP_SEMC_INIT
     rootCfg.mux = kCLOCK_SEMC_ClockRoot_MuxSysPll2Pfd1;
     rootCfg.div = 3;
     CLOCK_SetRootClock(kCLOCK_Root_Semc, &rootCfg);
-    #endif
+#endif
 
-    #if defined(XIP_BOOT_HEADER_ENABLE) && (XIP_BOOT_HEADER_ENABLE == 1)
-    #if defined(XIP_BOOT_HEADER_DCD_ENABLE) && (XIP_BOOT_HEADER_DCD_ENABLE == 1)
+#if defined(XIP_BOOT_HEADER_ENABLE) && (XIP_BOOT_HEADER_ENABLE == 1)
+#if defined(XIP_BOOT_HEADER_DCD_ENABLE) && (XIP_BOOT_HEADER_DCD_ENABLE == 1)
     UpdateSemcClock();
-    #endif
-    #endif
+#endif
+#endif
 
     /* Configure CSSYS using OSC_RC_48M_DIV2 */
     rootCfg.mux = kCLOCK_CSSYS_ClockRoot_MuxOscRc48MDiv2;
@@ -287,18 +298,18 @@ void BOARD_BootClockRUN(void) {
     CLOCK_SetRootClock(kCLOCK_Root_Cstrace, &rootCfg);
 
     /* Configure M4_SYSTICK using OSC_RC_48M_DIV2 */
-    #if __CORTEX_M == 4
+#if __CORTEX_M == 4
     rootCfg.mux = kCLOCK_M4_SYSTICK_ClockRoot_MuxOscRc48MDiv2;
     rootCfg.div = 1;
     CLOCK_SetRootClock(kCLOCK_Root_M4_Systick, &rootCfg);
-    #endif
+#endif
 
     /* Configure M7_SYSTICK using OSC_RC_48M_DIV2 */
-    #if __CORTEX_M == 7
+#if __CORTEX_M == 7
     rootCfg.mux = kCLOCK_M7_SYSTICK_ClockRoot_MuxOscRc48MDiv2;
     rootCfg.div = 240;
     CLOCK_SetRootClock(kCLOCK_Root_M7_Systick, &rootCfg);
-    #endif
+#endif
 
     /* Configure ADC1 using OSC_RC_48M_DIV2 */
     rootCfg.mux = kCLOCK_ADC1_ClockRoot_MuxOscRc48MDiv2;
@@ -356,11 +367,11 @@ void BOARD_BootClockRUN(void) {
     CLOCK_SetRootClock(kCLOCK_Root_Gpt6, &rootCfg);
 
     /* Configure FLEXSPI1 using OSC_RC_48M_DIV2 */
-    #if !(defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1))
+#if !(defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1))
     rootCfg.mux = kCLOCK_FLEXSPI1_ClockRoot_MuxOscRc48MDiv2;
     rootCfg.div = 1;
     CLOCK_SetRootClock(kCLOCK_Root_Flexspi1, &rootCfg);
-    #endif
+#endif
 
     /* Configure FLEXSPI2 using OSC_RC_48M_DIV2 */
     rootCfg.mux = kCLOCK_FLEXSPI2_ClockRoot_MuxOscRc48MDiv2;
@@ -685,9 +696,9 @@ void BOARD_BootClockRUN(void) {
     /* Set GPT6 High frequency reference clock source. */
     IOMUXC_GPR->GPR27 &= ~IOMUXC_GPR_GPR27_REF_1M_CLK_GPT6_MASK;
 
-    #if __CORTEX_M == 7
+#if __CORTEX_M == 7
     SystemCoreClock = CLOCK_GetRootClockFreq(kCLOCK_Root_M7);
-    #else
+#else
     SystemCoreClock = CLOCK_GetRootClockFreq(kCLOCK_Root_M4);
-    #endif
+#endif
 }
