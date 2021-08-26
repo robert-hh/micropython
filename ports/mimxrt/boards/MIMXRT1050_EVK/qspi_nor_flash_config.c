@@ -40,7 +40,6 @@ const flexspi_nor_config_t qspiflash_config = {
             },
             .deviceModeArg = 0x40,
             // Enable DDR mode, Wordaddassable, Safe configuration, Differential clock
-<<<<<<< HEAD:ports/mimxrt/boards/MIMXRT1050_EVK/qspi_nor_flash_config.c
             .controllerMiscOption =
                 (1u << kFlexSpiMiscOffset_DdrModeEnable) | (1u << kFlexSpiMiscOffset_WordAddressableEnable) |
                 (1u << kFlexSpiMiscOffset_SafeConfigFreqEnable) | (1u << kFlexSpiMiscOffset_DiffClkEnable),
@@ -48,12 +47,6 @@ const flexspi_nor_config_t qspiflash_config = {
             .serialClkFreq = kFlexSpiSerialClk_133MHz,
             .sflashA1Size  = BOARD_FLASH_SIZE,
             .dataValidTime = {16u, 16u},
-=======
-            .deviceType = kFlexSpiDeviceType_SerialNOR,
-            .sflashPadType = kSerialFlash_4Pads,
-            .serialClkFreq = kFlexSpiSerialClk_30MHz,
-            .sflashA1Size  = 8u * 1024u * 1024u,
->>>>>>> mimxrt: First attempt to set up the board specific files.:ports/mimxrt/boards/MIMXRT1050_EVK/flash_config.c
             .lookupTable =
                 {
                     // 0 Read LUTs 0 -> 0
