@@ -76,7 +76,6 @@ CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 -n
 CFLAGS += -DCPU_$(MCU_SERIES) -DCPU_$(MCU_VARIANT)
 CFLAGS += -DXIP_EXTERNAL_FLASH=1 \
 	-DXIP_BOOT_HEADER_ENABLE=1 \
-	-DCFG_TUSB_MCU=OPT_MCU_MIMXRT10XX \
 	-D__STARTUP_CLEAR_BSS \
 	-D__STARTUP_INITIALIZE_RAMFUNCTION \
 	-D__START=main \
@@ -166,7 +165,6 @@ SRC_C += \
 	tusb_port.c \
 	board_init.c \
 	dma_channel.c \
-	machine_adc.c \
 	machine_i2c.c \
 	machine_led.c \
 	machine_pin.c \
@@ -303,7 +301,6 @@ SRC_S = shared/runtime/gchelper_m3.s \
 
 # List of sources for qstr extraction
 SRC_QSTR += \
-	machine_adc.c \
 	machine_led.c \
 	machine_pin.c \
 	machine_rtc.c \
