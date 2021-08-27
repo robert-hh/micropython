@@ -37,7 +37,6 @@
 #define DEFAULT_I2C_FREQ        (400000)
 #define DEFAULT_I2C_DRIVE       (6)
 
-
 typedef struct _machine_i2c_obj_t {
     mp_obj_base_t base;
     LPI2C_Type *i2c_inst;

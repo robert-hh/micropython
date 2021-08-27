@@ -48,6 +48,12 @@
 
 #define CLOCK_DIVIDER           (1)
 
+#if defined(CPU_MIMXRT1176AVM8A_cm7) 
+#define LPSPI_DMAMUX            DMAMUX0
+#else
+#define LPSPI_DMAMUX            DMAMUX
+#endif
+
 #define MICROPY_HW_SPI_NUM MP_ARRAY_SIZE(spi_index_table)
 
 #define SCK (iomux_table[index])
@@ -238,23 +244,14 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
         edma_config_t userConfig;
 
         /* DMA MUX init*/
-        #if defined CPU_MIMXRT1176AVM8A_cm7
-        DMAMUX_Init(DMAMUX0);
 
-        DMAMUX_SetSource(DMAMUX0, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source
-        DMAMUX_EnableChannel(DMAMUX0, chan_rx);
+        DMAMUX_Init(LPSPI_DMAMUX);
 
-        DMAMUX_SetSource(DMAMUX0, chan_tx, dma_req_src_tx[self->spi_hw_id]);
-        DMAMUX_EnableChannel(DMAMUX0, chan_tx);
-        #else
-        DMAMUX_Init(DMAMUX);
+        DMAMUX_SetSource(LPSPI_DMAMUX, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source
+        DMAMUX_EnableChannel(LPSPI_DMAMUX, chan_rx);
 
-        DMAMUX_SetSource(DMAMUX, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source
-        DMAMUX_EnableChannel(DMAMUX, chan_rx);
-
-        DMAMUX_SetSource(DMAMUX, chan_tx, dma_req_src_tx[self->spi_hw_id]);
-        DMAMUX_EnableChannel(DMAMUX, chan_tx);
-        #endif
+        DMAMUX_SetSource(LPSPI_DMAMUX, chan_tx, dma_req_src_tx[self->spi_hw_id]);
+        DMAMUX_EnableChannel(LPSPI_DMAMUX, chan_tx);
 
         EDMA_GetDefaultConfig(&userConfig);
         EDMA_Init(DMA0, &userConfig);

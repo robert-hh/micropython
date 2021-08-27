@@ -50,6 +50,7 @@ typedef struct _machine_uart_obj_t {
     uint16_t timeout;       // timeout waiting for first char (in ms)
     uint16_t timeout_char;  // timeout waiting between chars (in ms)
     uint8_t id;
+    uint8_t hw_id;
     uint8_t invert;
     uint16_t tx_status;
     uint8_t *txbuf;
@@ -94,7 +95,13 @@ bool lpuart_set_iomux(int8_t uart) {
     }
 }
 
-uint32_t UART_SrcFreq(void) {
+#if defined(CPU_MIMXRT1176AVM8A_cm7) 
+uint32_t UART_SrcFreq(uint8_t uart_hw_id) {
+    uint32_t freq = 30000000;
+    return freq;
+}
+#else
+uint32_t UART_SrcFreq(uint8_t uart_hw_id) {
     uint32_t freq;
     // To make it simple, we assume default PLL and divider settings, and the
     // only variable from application is use PLL3 source or OSC source.
@@ -105,6 +112,7 @@ uint32_t UART_SrcFreq(void) {
     }
     return freq;
 }
+#endif
 
 void LPUART_UserCallback(LPUART_Type *base, lpuart_handle_t *handle, status_t status, void *userData) {
     machine_uart_obj_t *self = userData;
@@ -230,7 +238,7 @@ STATIC mp_obj_t machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args
             self->timeout_char = min_timeout_char;
         }
 
-        LPUART_Init(self->lpuart, &self->config, UART_SrcFreq()); // ??
+        LPUART_Init(self->lpuart, &self->config, UART_SrcFreq(self->hw_id)); // ??
         LPUART_TransferCreateHandle(self->lpuart, &self->handle,  LPUART_UserCallback, self);
         uint8_t *buffer = m_new(uint8_t, rxbuf_len + 1);
         LPUART_TransferStartRingBuffer(self->lpuart, &self->handle, buffer, rxbuf_len);
@@ -278,6 +286,7 @@ STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, 
     machine_uart_obj_t *self = m_new_obj(machine_uart_obj_t);
     self->base.type = &machine_uart_type;
     self->id = uart_id;
+    self->hw_id = uart_hw_id;
     self->lpuart = uart_base_ptr_table[uart_hw_id];
     self->invert = false;
     self->timeout = 1;
