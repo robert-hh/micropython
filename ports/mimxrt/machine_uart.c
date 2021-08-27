@@ -32,6 +32,7 @@
 #include "fsl_common.h"
 #include "fsl_lpuart.h"
 #include "fsl_iomuxc.h"
+#include "clock_config.h"
 
 #define DEFAULT_UART_BAUDRATE (115200)
 #define DEFAULT_BUFFER_SIZE (256)
@@ -94,25 +95,6 @@ bool lpuart_set_iomux(int8_t uart) {
         return false;
     }
 }
-
-#if defined(CPU_MIMXRT1176AVM8A_cm7) 
-uint32_t UART_SrcFreq(uint8_t uart_hw_id) {
-    uint32_t freq = 30000000;
-    return freq;
-}
-#else
-uint32_t UART_SrcFreq(uint8_t uart_hw_id) {
-    uint32_t freq;
-    // To make it simple, we assume default PLL and divider settings, and the
-    // only variable from application is use PLL3 source or OSC source.
-    if (CLOCK_GetMux(kCLOCK_UartMux) == 0) { // PLL3 div6 80M
-        freq = (CLOCK_GetPllFreq(kCLOCK_PllUsb1) / 6U) / (CLOCK_GetDiv(kCLOCK_UartDiv) + 1U);
-    } else {
-        freq = CLOCK_GetOscFreq() / (CLOCK_GetDiv(kCLOCK_UartDiv) + 1U);
-    }
-    return freq;
-}
-#endif
 
 void LPUART_UserCallback(LPUART_Type *base, lpuart_handle_t *handle, status_t status, void *userData) {
     machine_uart_obj_t *self = userData;
@@ -238,7 +220,7 @@ STATIC mp_obj_t machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args
             self->timeout_char = min_timeout_char;
         }
 
-        LPUART_Init(self->lpuart, &self->config, UART_SrcFreq(self->hw_id)); // ??
+        LPUART_Init(self->lpuart, &self->config, BOARD_BOOTCLOCKRUN_UART_CLK_ROOT);
         LPUART_TransferCreateHandle(self->lpuart, &self->handle,  LPUART_UserCallback, self);
         uint8_t *buffer = m_new(uint8_t, rxbuf_len + 1);
         LPUART_TransferStartRingBuffer(self->lpuart, &self->handle, buffer, rxbuf_len);
