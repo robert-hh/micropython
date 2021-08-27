@@ -55,7 +55,7 @@ void BOARD_InitBootClocks(void);
 #define BOARD_BOOTCLOCKRUN_ARM_PLL_CLK                996000000UL
 #define BOARD_BOOTCLOCKRUN_ASRC_CLK_ROOT              24000000UL
 #define BOARD_BOOTCLOCKRUN_AXI_CLK_ROOT               996000000UL
-#define BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT               240000000UL
+#define BOARD_BOOTCLOCKRUN_BUS_CLK_ROOT               120000000UL  // 120MHz
 #define BOARD_BOOTCLOCKRUN_BUS_LPSR_CLK_ROOT          160000000UL
 #define BOARD_BOOTCLOCKRUN_CAN1_CLK_ROOT              24000000UL
 #define BOARD_BOOTCLOCKRUN_CAN2_CLK_ROOT              24000000UL
@@ -188,7 +188,7 @@ void BOARD_InitBootClocks(void);
 // Configuration for all instances of peripherals are identical
 #define BOARD_BOOTCLOCKRUN_LPI2C_CLK_ROOT             30000000UL  // 30MHz 
 #define BOARD_BOOTCLOCKRUN_LPSPI_CLK_ROOT             90000000UL  // 90MHz 
-
+#define BOARD_BOOTCLOCKRUN_PERCLK_CLK_ROOT            120000000UL  // 120MHz
 /*******************************************************************************
  * API for BOARD_BootClockRUN configuration
  ******************************************************************************/

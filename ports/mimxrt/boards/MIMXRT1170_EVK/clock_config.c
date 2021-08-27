@@ -263,7 +263,7 @@ void BOARD_BootClockRUN(void)
     /* Configure BUS using SYS_PLL3_CLK */
 #if __CORTEX_M == 7
     rootCfg.mux = kCLOCK_BUS_ClockRoot_MuxSysPll3Out;
-    rootCfg.div = 2;
+    rootCfg.div = 3;
     CLOCK_SetRootClock(kCLOCK_Root_Bus, &rootCfg);
 #endif
 
