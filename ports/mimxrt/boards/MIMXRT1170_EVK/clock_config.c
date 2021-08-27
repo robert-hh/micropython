@@ -454,34 +454,34 @@ void BOARD_BootClockRUN(void)
     CLOCK_SetRootClock(kCLOCK_Root_Lpuart12, &rootCfg);
 
 
-    /* Configure LPI2C1 using SYS_PLL3_DIV_2 (240MHz) */
-    rootCfg.mux = kCLOCK_LPI2C1_ClockRoot_MuxSysPll3Div2;
-    rootCfg.div = 7;  // Divide by DIV + 1 = 8
+    /* Configure LPI2C1 using SYS_PLL3_DIV_2 (297MHz) */
+    rootCfg.mux = kCLOCK_LPI2C1_ClockRoot_MuxSysPll2Pfd3;
+    rootCfg.div = 8;  // Divide by DIV + 1 = 9
     CLOCK_SetRootClock(kCLOCK_Root_Lpi2c1, &rootCfg);
 
-    /* Configure LPI2C2 using SYS_PLL3_DIV_2 (240MHz) */
-    rootCfg.mux = kCLOCK_LPI2C2_ClockRoot_MuxSysPll3Div2;
-    rootCfg.div = 7;  // Divide by DIV + 1 = 8
+    /* Configure LPI2C2 using SYS_PLL3_DIV_2 (297MHz) */
+    rootCfg.mux = kCLOCK_LPI2C2_ClockRoot_MuxSysPll2Pfd3;
+    rootCfg.div = 8;  // Divide by DIV + 1 = 9
     CLOCK_SetRootClock(kCLOCK_Root_Lpi2c2, &rootCfg);
 
-    /* Configure LPI2C3 using SYS_PLL3_DIV_2 (240MHz) */
-    rootCfg.mux = kCLOCK_LPI2C3_ClockRoot_MuxSysPll3Div2;
-    rootCfg.div = 7;  // Divide by DIV + 1 = 8
+    /* Configure LPI2C3 using SYS_PLL3_DIV_2 (297MHz) */
+    rootCfg.mux = kCLOCK_LPI2C3_ClockRoot_MuxSysPll2Pfd3;
+    rootCfg.div = 8;  // Divide by DIV + 1 = 9
     CLOCK_SetRootClock(kCLOCK_Root_Lpi2c3, &rootCfg);
 
-    /* Configure LPI2C4 using SYS_PLL3_DIV_2 (240MHz) */
-    rootCfg.mux = kCLOCK_LPI2C4_ClockRoot_MuxSysPll3Div2;
-    rootCfg.div = 7;  // Divide by DIV + 1 = 8
+    /* Configure LPI2C4 using SYS_PLL3_DIV_2 (297MHz) */
+    rootCfg.mux = kCLOCK_LPI2C4_ClockRoot_MuxSysPll2Pfd3;
+    rootCfg.div = 8;  // Divide by DIV + 1 = 9
     CLOCK_SetRootClock(kCLOCK_Root_Lpi2c4, &rootCfg);
 
-    /* Configure LPI2C5 using SYS_PLL3_DIV_2 (240MHz) */
-    rootCfg.mux = kCLOCK_LPI2C5_ClockRoot_MuxSysPll3Div2;
-    rootCfg.div = 7;  // Divide by DIV + 1 = 8
+    /* Configure LPI2C5 using SYS_PLL3_DIV_2 (297MHz) */
+    rootCfg.mux = kCLOCK_LPI2C5_ClockRoot_MuxSysPll2Pfd3;
+    rootCfg.div = 8;  // Divide by DIV + 1 = 9
     CLOCK_SetRootClock(kCLOCK_Root_Lpi2c5, &rootCfg);
 
-    /* Configure LPI2C6 using SYS_PLL3_DIV_2 (240MHz) */
-    rootCfg.mux = kCLOCK_LPI2C6_ClockRoot_MuxSysPll3Div2;
-    rootCfg.div = 7;  // Divide by DIV + 1 = 8
+    /* Configure LPI2C6 using SYS_PLL3_DIV_2 (297MHz) */
+    rootCfg.mux = kCLOCK_LPI2C6_ClockRoot_MuxSysPll2Pfd3;
+    rootCfg.div = 8;  // Divide by DIV + 1 = 9
     CLOCK_SetRootClock(kCLOCK_Root_Lpi2c6, &rootCfg);
 
 

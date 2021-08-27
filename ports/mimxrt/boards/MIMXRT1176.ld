@@ -23,12 +23,14 @@ ivt_size            = 0x00001000;
 interrupts_start    = flash_start + 0x00002000;
 interrupts_size     = 0x00000400;
 text_start          = flash_start + 0x00002400;
+vfs_start           = flash_start + 0x00200000;
+
 #if defined MULTI_CORE
-m_core1_image_start = flash_start + 0x000C0000;
+m_core1_image_start = vfs_start - 0x00040000;
 m_core1_image_size  = 0x00040000;
 #endif
-vfs_start           = flash_start + 0x00100000;
-text_size           = ((vfs_start) - (m_core1_image_start));
+
+text_size           = ((vfs_start) - (text_start));
 vfs_size            = ((flash_end) - (vfs_start));
 itcm_start          = 0x00000000;
 itcm_size           = 0x00020000;

@@ -10,8 +10,13 @@ BOARD_FLASH_RESERVED ?= 0x1000  # 4KB
 CFLAGS += -DCPU_HEADER_H='<$(MCU_SERIES).h>' \
 			-DCFG_TUSB_MCU=OPT_MCU_MIMXRT10XX
 
+SRC_SS = $(MCU_DIR)/gcc/startup_$(MCU_SERIES).S
 SRC_C += \
 	hal/flexspi_nor_flash.c
+
+SRC_HAL_IMX_C += \
+		$(MCU_DIR)/system_$(MCU_SERIES).c \
+		$(MCU_DIR)/drivers/fsl_cache.c
 
 deploy: $(BUILD)/firmware.hex
 	teensy_loader_cli --mcu=imxrt1062 -v -w $<
