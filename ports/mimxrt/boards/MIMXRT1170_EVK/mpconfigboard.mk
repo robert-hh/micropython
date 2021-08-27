@@ -16,7 +16,9 @@ SRC_HAL_IMX_C += \
 		$(MCU_DIR)/drivers/cm7/fsl_cache.c \
 		$(MCU_DIR)/drivers/fsl_pmu.c \
 		$(MCU_DIR)/drivers/fsl_common_arm.c \
-		$(MCU_DIR)/drivers/fsl_anatop_ai.c
+		$(MCU_DIR)/drivers/fsl_anatop_ai.c \
+		$(MCU_DIR)/drivers/fsl_caam.c \
+		$(MCU_DIR)/drivers/fsl_lpadc.c
 
 INC += -I$(TOP)/$(MCU_DIR)/drivers/cm7
 

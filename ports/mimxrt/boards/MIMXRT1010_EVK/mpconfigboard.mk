@@ -12,7 +12,9 @@ CFLAGS += -DCPU_HEADER_H='<$(MCU_SERIES).h>' \
 SRC_SS = $(MCU_DIR)/gcc/startup_$(MCU_SERIES).S
 SRC_HAL_IMX_C += \
 		$(MCU_DIR)/system_$(MCU_SERIES).c \
-		$(MCU_DIR)/drivers/fsl_cache.c
+		$(MCU_DIR)/drivers/fsl_adc.c \
+		$(MCU_DIR)/drivers/fsl_cache.c \
+		$(MCU_DIR)/drivers/fsl_trng.c
 
 JLINK_PATH = /media/RT1010-EVK/
 JLINK_COMMANDER_SCRIPT = $(BUILD)/script.jlink

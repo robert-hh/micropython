@@ -137,8 +137,6 @@ SRC_TINYUSB_C += \
 SRC_HAL_IMX_C += \
 	$(MCU_DIR)/xip/fsl_flexspi_nor_boot.c \
 	$(BOARD_DIR)/clock_config.c \
-	$(MCU_DIR)/drivers/fsl_adc.c \
-	$(MCU_DIR)/drivers/fsl_cache.c \
 	$(MCU_DIR)/drivers/fsl_clock.c \
 	$(MCU_DIR)/drivers/fsl_dmamux.c \
 	$(MCU_DIR)/drivers/fsl_edma.c \
@@ -152,8 +150,7 @@ SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/fsl_flexram.c \
 	$(MCU_DIR)/drivers/fsl_flexspi.c \
 	$(MCU_DIR)/drivers/fsl_pit.c \
-	$(MCU_DIR)/drivers/fsl_snvs_lp.c \
-	$(MCU_DIR)/drivers/fsl_trng.c
+	$(MCU_DIR)/drivers/fsl_snvs_lp.c
 
 SRC_C += \
 	main.c \
@@ -163,6 +160,7 @@ SRC_C += \
 	tusb_port.c \
 	board_init.c \
 	dma_channel.c \
+	machine_adc.c \
 	machine_i2c.c \
 	machine_led.c \
 	machine_pin.c \
@@ -297,6 +295,7 @@ SRC_S = shared/runtime/gchelper_m3.s \
 
 # List of sources for qstr extraction
 SRC_QSTR += \
+	machine_adc.c \
 	machine_led.c \
 	machine_pin.c \
 	machine_rtc.c \

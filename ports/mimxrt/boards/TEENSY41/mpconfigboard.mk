@@ -16,7 +16,9 @@ SRC_C += \
 
 SRC_HAL_IMX_C += \
 		$(MCU_DIR)/system_$(MCU_SERIES).c \
-		$(MCU_DIR)/drivers/fsl_cache.c
+		$(MCU_DIR)/drivers/fsl_adc.c \
+		$(MCU_DIR)/drivers/fsl_cache.c \
+		$(MCU_DIR)/drivers/fsl_trng.c
 
 deploy: $(BUILD)/firmware.hex
 	teensy_loader_cli --mcu=imxrt1062 -v -w $<
