@@ -149,7 +149,7 @@ extern const mp_obj_dict_t machine_pin_board_pins_locals_dict;
 void pin_init(void);
 uint32_t pin_get_mode(const machine_pin_obj_t *pin);
 uint32_t pin_get_af(const machine_pin_obj_t *pin);
-uint32_t pin_generate_config(const uint32_t pull, const uint32_t mode);
+uint32_t pin_generate_config(const uint32_t pull, const uint32_t mode, const uint32_t drive);
 const machine_pin_obj_t *pin_find(mp_obj_t user_obj);
 const machine_pin_obj_t *pin_find_named_pin(const mp_obj_dict_t *named_pins, mp_obj_t name);
 const machine_pin_af_obj_t *pin_find_af(const machine_pin_obj_t *pin, uint8_t fn);

@@ -62,43 +62,43 @@ uint32_t pin_get_af(const machine_pin_obj_t *pin) {
     return (uint32_t)(mux_register & IOMUXC_SW_MUX_CTL_PAD_MUX_MODE_MASK) >> IOMUXC_SW_MUX_CTL_PAD_MUX_MODE_SHIFT;
 }
 
-uint32_t pin_generate_config(const uint32_t pull, const uint32_t mode) {
+uint32_t pin_generate_config(const uint32_t pull, const uint32_t mode, const uint32_t drive) {
     uint32_t pad_config = 0x0UL;
 
     #if defined CPU_MIMXRT1176AVM8A_cm7
     #else
-        pad_config |= IOMUXC_SW_PAD_CTL_PAD_SRE(0U);  // Slow Slew Rate
-        pad_config |= IOMUXC_SW_PAD_CTL_PAD_SPEED(0b01);  // medium(100MHz)
+    pad_config |= IOMUXC_SW_PAD_CTL_PAD_SRE(0U);      // Slow Slew Rate
+    pad_config |= IOMUXC_SW_PAD_CTL_PAD_SPEED(0b01);      // medium(100MHz)
 
-        if (mode == PIN_MODE_OPEN_DRAIN) {
+    if (mode == PIN_MODE_OPEN_DRAIN) {
         pad_config |= IOMUXC_SW_PAD_CTL_PAD_ODE(0b1);  // Open Drain Enabled
-        } else {
+    } else {
         pad_config |= IOMUXC_SW_PAD_CTL_PAD_ODE(0b0);  // Open Drain Disabled
-        }
+    }
 
-        if (pull == PIN_PULL_DISABLED) {
+    if (pull == PIN_PULL_DISABLED) {
         pad_config |= IOMUXC_SW_PAD_CTL_PAD_PKE(0); // Pull/Keeper Disabled
-        } else if (pull == PIN_PULL_HOLD) {
+    } else if (pull == PIN_PULL_HOLD) {
         pad_config |= IOMUXC_SW_PAD_CTL_PAD_PKE(1) | // Pull/Keeper Enabled
             IOMUXC_SW_PAD_CTL_PAD_PUE(0);            // Keeper selected
-        } else {
+    } else {
         pad_config |= IOMUXC_SW_PAD_CTL_PAD_PKE(1) |  // Pull/Keeper Enabled
             IOMUXC_SW_PAD_CTL_PAD_PUE(1) |            // Pull selected
             IOMUXC_SW_PAD_CTL_PAD_PUS(pull);
-        }
+    }
 
-        if (mode == PIN_MODE_IN) {
+    if (mode == PIN_MODE_IN) {
         pad_config |= IOMUXC_SW_PAD_CTL_PAD_DSE(0b000) |  // output driver disabled
             IOMUXC_SW_PAD_CTL_PAD_HYS(1U);  // Hysteresis enabled
-        } else {
-        uint drive = args[PIN_INIT_ARG_DRIVE].u_int;
+    } else {
+
         if (!IS_GPIO_DRIVE(drive)) {
             mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("invalid drive strength: %d"), drive);
         }
 
         pad_config |= IOMUXC_SW_PAD_CTL_PAD_DSE(drive) |
             IOMUXC_SW_PAD_CTL_PAD_HYS(0U);  // Hysteresis disabled
-        }
+    }
     #endif
 
     return pad_config;

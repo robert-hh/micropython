@@ -213,6 +213,7 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
         const machine_pin_af_obj_t *af_obj;
         uint32_t pad_config = 0UL;
         uint8_t pull = PIN_PULL_DISABLED;
+        uint32_t drive = (uint32_t)args[PIN_INIT_ARG_DRIVE].u_int;
 
         // Generate pin configuration
         if ((args[PIN_INIT_ARG_VALUE].u_obj != MP_OBJ_NULL) && (mp_obj_is_true(args[PIN_INIT_ARG_VALUE].u_obj))) {
@@ -233,7 +234,7 @@ STATIC mp_obj_t machine_pin_obj_init_helper(const machine_pin_obj_t *self, size_
             pull = (uint8_t)mp_obj_get_int(args[PIN_INIT_ARG_PULL].u_obj);
         }
 
-        pad_config = pin_generate_config(pull, mode);
+        pad_config = pin_generate_config(pull, mode, drive);
 
         // Configure PAD as GPIO
         IOMUXC_SetPinMux(self->muxRegister, af_obj->af_mode, 0, 0, self->configRegister, 1U);  // Software Input On Field: Input Path is determined by functionality
