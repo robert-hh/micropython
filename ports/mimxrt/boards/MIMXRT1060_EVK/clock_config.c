@@ -165,13 +165,13 @@ void BOARD_BootClockRUN(void)
     /* Set Csi clock source. */
     CLOCK_SetMux(kCLOCK_CsiMux, 0);
 
-    /* Configure LPSPI using PLL3/PFD0 - USB1 PLL 720MHz */
+    /* Configure LPSPI using PLL2 - SysPll 528MHz */
     CLOCK_DisableClock(kCLOCK_Lpspi1);
     CLOCK_DisableClock(kCLOCK_Lpspi2);
     CLOCK_DisableClock(kCLOCK_Lpspi3);
     CLOCK_DisableClock(kCLOCK_Lpspi4);
-    CLOCK_SetMux(kCLOCK_LpspiMux, 2);  // Select USB1 PLL PDF0 (720 MHz) as master lpspi clock source
-    CLOCK_SetDiv(kCLOCK_LpspiDiv, 1);  // Divide clock by 2
+    CLOCK_SetMux(kCLOCK_LpspiMux, 2);  // Select Syspll (PLL2) (528 MHz) as master lpspi clock source
+    CLOCK_SetDiv(kCLOCK_LpspiDiv, 3);  // Divide clock by 4
 
     /* Disable TRACE clock gate. */
     CLOCK_DisableClock(kCLOCK_Trace);
