@@ -19,21 +19,6 @@
         .channel = (_channel) \
     } \
 
-#if defined CPU_MIMXRT1176AVM8A_cm7
-#define PIN(_name, _gpio, _pin, _af_list, _adc_list_len, _adc_list) \
-    { \
-        .base = { &machine_pin_type }, \
-        .name = MP_QSTR_##_name, \
-        .gpio = (_gpio), \
-        .pin = (uint32_t)(_pin), \
-        .muxRegister = (uint32_t) 0UL, \
-        .configRegister = (uint32_t) 0UL, \
-        .af_list_len = (uint8_t)(sizeof((_af_list)) / sizeof(machine_pin_af_obj_t)), \
-        .adc_list_len = (_adc_list_len), \
-        .af_list = (_af_list), \
-        .adc_list = (_adc_list), \
-    }
-#else
 #define PIN(_name, _gpio, _pin, _af_list, _adc_list_len, _adc_list) \
     { \
         .base = { &machine_pin_type }, \
@@ -47,4 +32,3 @@
         .af_list = (_af_list), \
         .adc_list = (_adc_list), \
     }
-#endif
