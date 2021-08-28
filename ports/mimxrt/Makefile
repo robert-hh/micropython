@@ -66,7 +66,6 @@ INC += -I$(BOARD_DIR)
 INC += -I$(TOP)/lib/cmsis/inc
 INC += -I$(TOP)/$(MCU_DIR)
 INC += -I$(TOP)/$(MCU_DIR)/drivers
-#INC += -I$(TOP)/$(MCU_DIR)/project_template/
 INC += -I$(TOP)/lib/tinyusb/src
 INC += -I$(TOP)/lib/tinyusb/hw
 INC += -I$(TOP)/lib/tinyusb/hw/bsp/teensy_40
@@ -76,7 +75,6 @@ CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 -n
 CFLAGS += -DCPU_$(MCU_SERIES) -DCPU_$(MCU_VARIANT)
 CFLAGS += -DXIP_EXTERNAL_FLASH=1 \
 	-DXIP_BOOT_HEADER_ENABLE=1 \
-	-DCFG_TUSB_MCU=OPT_MCU_MIMXRT10XX \
 	-D__STARTUP_CLEAR_BSS \
 	-D__STARTUP_INITIALIZE_RAMFUNCTION \
 	-D__START=main \
@@ -137,11 +135,8 @@ SRC_TINYUSB_C += \
 	lib/tinyusb/src/portable/nxp/transdimension/dcd_transdimension.c
 
 SRC_HAL_IMX_C += \
-	$(MCU_DIR)/system_$(MCU_SERIES).c \
 	$(MCU_DIR)/xip/fsl_flexspi_nor_boot.c \
-	$(MCU_DIR)/project_template/clock_config.c \
-	$(MCU_DIR)/drivers/fsl_adc.c \
-	$(MCU_DIR)/drivers/fsl_cache.c \
+	$(BOARD_DIR)/clock_config.c \
 	$(MCU_DIR)/drivers/fsl_clock.c \
 	$(MCU_DIR)/drivers/fsl_dmamux.c \
 	$(MCU_DIR)/drivers/fsl_edma.c \
@@ -155,8 +150,7 @@ SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/fsl_flexram.c \
 	$(MCU_DIR)/drivers/fsl_flexspi.c \
 	$(MCU_DIR)/drivers/fsl_pit.c \
-	$(MCU_DIR)/drivers/fsl_snvs_lp.c \
-	$(MCU_DIR)/drivers/fsl_trng.c \
+	$(MCU_DIR)/drivers/fsl_snvs_lp.c
 
 SRC_C += \
 	main.c \
@@ -296,8 +290,6 @@ LIBM_O = $(addprefix $(BUILD)/, $(LIBM_SRC_C:.c=.o))
 ifeq ($(MICROPY_FLOAT_IMPL),double)
 $(LIBM_O): CFLAGS := $(filter-out -Wdouble-promotion -Wfloat-conversion, $(CFLAGS))
 endif
-
-SRC_SS = $(MCU_DIR)/gcc/startup_$(MCU_SERIES).S
 
 SRC_S = shared/runtime/gchelper_m3.s \
 

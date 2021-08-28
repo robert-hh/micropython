@@ -244,6 +244,7 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
         edma_config_t userConfig;
 
         /* DMA MUX init*/
+
         DMAMUX_Init(LPSPI_DMAMUX);
 
         DMAMUX_SetSource(LPSPI_DMAMUX, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source

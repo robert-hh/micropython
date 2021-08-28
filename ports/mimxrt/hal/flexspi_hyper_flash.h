@@ -30,6 +30,15 @@
 #include "fsl_flexspi.h"
 #include BOARD_FLASH_CONFIG_HEADER_H
 
+
+#if defined CPU_MIMXRT1176AVM8A_cm7
+#define BOARD_FLEX_SPI FLEXSPI1
+#define BOARD_FLEX_SPI_ADDR_BASE FlexSPI1_AMBA_BASE
+#else
+#define BOARD_FLEX_SPI FLEXSPI
+#define BOARD_FLEX_SPI_ADDR_BASE FlexSPI_AMBA_BASE
+#endif
+
 // Defined in boards flash_config.c
 extern flexspi_nor_config_t qspiflash_config;
 
@@ -38,27 +47,6 @@ void flexspi_hyper_flash_init(void);
 void flexspi_nor_update_lut(void);
 status_t flexspi_nor_flash_erase_sector(FLEXSPI_Type *base, uint32_t address);
 status_t flexspi_nor_flash_page_program(FLEXSPI_Type *base, uint32_t address, const uint32_t *src, uint32_t size);
-
-static inline uint32_t flexspi_get_frequency(void) {
-    uint32_t div;
-    uint32_t fre;
-
-    /* Clock divider:
-       000 divided by 1
-       001 divided by 2
-       010 divided by 3
-       011 divided by 4
-       100 divided by 5
-       101 divided by 6
-       110 divided by 7
-       111 divided by 8
-     */
-    div = CLOCK_GetDiv(kCLOCK_FlexspiDiv);
-    /* Get frequency */
-    fre = CLOCK_GetFreq(kCLOCK_Usb1PllPfd0Clk) / (div + 0x01U);
-
-    return fre;
-}
 
 #define HYPERFLASH_CMD_LUT_SEQ_IDX_READDATA    0
 #define HYPERFLASH_CMD_LUT_SEQ_IDX_WRITEDATA   1
