@@ -48,7 +48,7 @@
 
 #define CLOCK_DIVIDER           (1)
 
-#if defined(CPU_MIMXRT1176AVM8A_cm7) 
+#if defined(CPU_MIMXRT1176AVM8A_cm7)
 #define LPSPI_DMAMUX            DMAMUX0
 #else
 #define LPSPI_DMAMUX            DMAMUX
