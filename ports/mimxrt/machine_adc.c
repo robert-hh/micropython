@@ -77,14 +77,14 @@ STATIC mp_obj_t adc_obj_make_new(const mp_obj_type_t *type, size_t n_args, size_
     ADC_Type *adc_instance = pin->adc_list[0].instance;  // NOTE: we only use the first ADC assignment - multiple assignments are not supported for now
     uint8_t channel = pin->adc_list[0].channel;
 
-#if 0  //done in adc_read_u16
+    #if 0 // done in adc_read_u16
     // Configure ADC peripheral channel
     adc_channel_config_t channel_config = {
         .channelNumber = (uint32_t)channel,
         .enableInterruptOnConversionCompleted = false,
     };
     ADC_SetChannelConfig(adc_instance, 0UL, &channel_config);  // NOTE: we always choose channel group '0' since we only perform software triggered conversion
-#endif
+    #endif
 
     // Create ADC Instance
     machine_adc_obj_t *o = m_new_obj(machine_adc_obj_t);
@@ -117,7 +117,8 @@ STATIC mp_obj_t machine_adc_read_u16(mp_obj_t self_in) {
     // Measure input voltage
     LPADC_DoSoftwareTrigger(self->adc, 1U);
     lpadc_conv_result_t result_struct;
-    while (!LPADC_GetConvResult(self->adc, &result_struct)) {}
+    while (!LPADC_GetConvResult(self->adc, &result_struct)) {
+    }
 
     return MP_OBJ_NEW_SMALL_INT(result_struct.convValue * 2);
 }

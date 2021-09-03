@@ -181,6 +181,10 @@ class Pins(object):
                 gpio, pin = row[6].split("_")
                 pin_number = pin.lstrip("IO")
 
+                # Filter out GPIO with no IOMUXC support (necessary for 117x)
+                if any(s in pad for s in ("GPIO_SNVS", "GPIO_LPSR", "WAKEUP")):
+                    continue
+
                 pin = Pin(pad, gpio, pin_number, idx=idx)
 
                 # Parse alternate functions
