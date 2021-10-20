@@ -29,6 +29,7 @@
 #include "sdcard.h"
 #include "ticks.h"
 #include "fsl_iomuxc.h"
+#include "pin.h"
 
 #define SDCARD_VOLTAGE_WINDOW_SD                (0x80100000U)
 #define SDCARD_HIGH_CAPACITY                    (0x40000000U)
@@ -299,7 +300,11 @@ static status_t sdcard_transfer_blocking(USDHC_Type *base, usdhc_handle_t *handl
 
     (void)memset(&dma_config, 0, sizeof(usdhc_adma_config_t));
     dma_config.dmaMode = kUSDHC_DmaModeAdma2;
+
+    #if !(defined(FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN) && FSL_FEATURE_USDHC_HAS_NO_RW_BURST_LEN)
     dma_config.burstLen = kUSDHC_EnBurstLenForINCR;
+    #endif
+
     dma_config.admaTable = sdcard_adma_descriptor_table;
     dma_config.admaTableWords = DMA_DESCRIPTOR_BUFFER_SIZE;
 
@@ -670,6 +675,22 @@ static bool sdcard_reset(mimxrt_sdcard_obj_t *card) {
 }
 
 void sdcard_init(mimxrt_sdcard_obj_t *card, uint32_t base_clk) {
+    #ifdef CPU_MIMXRT1176_cm7
+    clock_root_config_t rootCfg = {0};
+    /* SYS PLL2 528MHz. */
+    const clock_sys_pll2_config_t sysPll2Config = {
+        .ssEnable = false,
+    };
+
+    CLOCK_InitSysPll2(&sysPll2Config);
+    CLOCK_InitPfd(kCLOCK_PllSys2, kCLOCK_Pfd2, 24);
+
+    rootCfg.mux = 4;
+    rootCfg.div = 2;
+    CLOCK_SetRootClock(kCLOCK_Root_Usdhc1, &rootCfg);
+    
+    #else
+    
     // Configure PFD0 of PLL2 (system PLL) fractional divider to 24 resulting in:
     //  with PFD0_clk = PLL2_clk * 18 / N
     //       PFD0_clk = 528MHz   * 18 / 24 = 396MHz
@@ -686,6 +707,8 @@ void sdcard_init(mimxrt_sdcard_obj_t *card, uint32_t base_clk) {
     CLOCK_SetDiv(kCLOCK_Usdhc2Div, 1U);  // USDHC_input_clk = PFD0_clk / 2 = 198MHZ
     CLOCK_SetMux(kCLOCK_Usdhc2Mux, 1U);  // Select PFD0 as clock input for USDHC
     #endif
+
+    #endif // CPU_MIMXRT1176_cm7
 
     // Initialize USDHC
     const usdhc_config_t config = {
@@ -725,24 +748,12 @@ static inline void sdcard_init_pin(const machine_pin_obj_t *pin, uint8_t af_idx,
 
 void sdcard_init_pins(mimxrt_sdcard_obj_t *card) {
     // speed and strength optimized for clock frequency < 100MHz
-    uint32_t speed = 1U;
-    uint32_t strength = 7U;
     const mimxrt_sdcard_obj_pins_t *pins = card->pins;
 
-    uint32_t default_config = IOMUXC_SW_PAD_CTL_PAD_SPEED(speed) |
-        IOMUXC_SW_PAD_CTL_PAD_SRE_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_PKE_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_PUE_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_HYS_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_PUS(1) |
-        IOMUXC_SW_PAD_CTL_PAD_DSE(strength);
-    uint32_t no_cd_config = IOMUXC_SW_PAD_CTL_PAD_SPEED(speed) |
-        IOMUXC_SW_PAD_CTL_PAD_SRE_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_PKE_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_PUE_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_HYS_MASK |
-        IOMUXC_SW_PAD_CTL_PAD_PUS(0) |
-        IOMUXC_SW_PAD_CTL_PAD_DSE(strength);
+    uint32_t default_config = pin_generate_config(
+        PIN_PULL_UP_47K, PIN_MODE_SKIP, PIN_DRIVE_POWER_6, card->pins->clk.pin->configRegister);
+    uint32_t no_cd_config = pin_generate_config(
+        PIN_PULL_DOWN_100K, PIN_MODE_SKIP, PIN_DRIVE_POWER_6, card->pins->data3.pin->configRegister);
 
     sdcard_init_pin(card->pins->clk.pin, card->pins->clk.af_idx, default_config);  // USDHC1_CLK
     sdcard_init_pin(card->pins->cmd.pin, card->pins->cmd.af_idx, default_config);  // USDHC1_CMD

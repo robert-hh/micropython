@@ -30,14 +30,19 @@
 #include "py/mphal.h"
 #include "fsl_pit.h"
 #include "modmachine.h"
+#include "clock_config.h"
 
 #define TIMER_MODE_ONE_SHOT (0)
 #define TIMER_MODE_PERIODIC (1)
 #define TIMER_MIN_PERIOD 1
 
-#define alarm_callback PIT_IRQHandler
-#define PIT_SOURCE_CLOCK CLOCK_GetIpgFreq()
+#if defined CPU_MIMXRT1176_cm7
+#define PIT_IRQ_ID PIT1_IRQn
+#define alarm_callback PIT1_IRQHandler
+#else
 #define PIT_IRQ_ID PIT_IRQn
+#define alarm_callback PIT_IRQHandler
+#endif
 
 typedef struct _machine_timer_obj_t {
     mp_obj_base_t base;
@@ -52,6 +57,12 @@ typedef struct _machine_timer_obj_t {
 static const int8_t channel_no[MICROPY_HW_PIT_NUM_CHANNELS] = {0, 2, 3}; // no channel 1
 static pit_config_t pit_config;
 
+#if defined CPU_MIMXRT1176_cm7
+static PIT_Type *board_timer_pit = PIT1;
+#else
+static PIT_Type *board_timer_pit = PIT;
+#endif
+
 // This is the interrupt handler
 // To tell which channel fired one has to poll the flags
 void alarm_callback(void) {
@@ -59,15 +70,15 @@ void alarm_callback(void) {
         uint32_t flag;
         machine_timer_obj_t *self = MP_STATE_PORT(timer_table)[index];
         if (self != NULL) {
-            flag = PIT_GetStatusFlags(PIT, self->channel);
+            flag = PIT_GetStatusFlags(board_timer_pit, self->channel);
             if (flag & kPIT_TimerFlag) { // channel fired
-                PIT_ClearStatusFlags(PIT, self->channel, kPIT_TimerFlag);
+                PIT_ClearStatusFlags(board_timer_pit, self->channel, kPIT_TimerFlag);
                 __DSB();
 
                 mp_sched_schedule(self->callback, MP_OBJ_FROM_PTR(self));
 
                 if (self->mode == TIMER_MODE_ONE_SHOT) {
-                    PIT_StopTimer(PIT, self->channel);
+                    PIT_StopTimer(board_timer_pit, self->channel);
                 }
             }
         }
@@ -115,16 +126,16 @@ STATIC mp_obj_t machine_timer_init_helper(machine_timer_obj_t *self, size_t n_ar
     self->callback = args[ARG_callback].u_obj;
 
     // Set timer period for channel id
-    PIT_SetTimerPeriod(PIT, self->channel, USEC_TO_COUNT(self->delta_us, PIT_SOURCE_CLOCK));
+    PIT_SetTimerPeriod(board_timer_pit, self->channel, USEC_TO_COUNT(self->delta_us, BOARD_BOOTCLOCKRUN_PERCLK_CLK_ROOT));
 
     // Enable timer interrupts for the channel
-    PIT_EnableInterrupts(PIT, self->channel, kPIT_TimerInterruptEnable);
+    PIT_EnableInterrupts(board_timer_pit, self->channel, kPIT_TimerInterruptEnable);
 
     // Enable at the NVIC
     EnableIRQ(PIT_IRQ_ID);
 
     // Start channel 0
-    PIT_StartTimer(PIT, self->channel);
+    PIT_StartTimer(board_timer_pit, self->channel);
 
     return mp_const_none;
 }
@@ -145,7 +156,7 @@ STATIC mp_obj_t machine_timer_make_new(const mp_obj_type_t *type, size_t n_args,
 
     // check, if a timer exists at that channel and stop it first
     if (MP_STATE_PORT(timer_table)[id] != NULL) {
-        PIT_StopTimer(PIT, channel_no[id]);
+        PIT_StopTimer(board_timer_pit, channel_no[id]);
         self = MP_STATE_PORT(timer_table)[id];
     } else {
         self = m_new_obj_with_finaliser(machine_timer_obj_t);
@@ -169,7 +180,7 @@ STATIC mp_obj_t machine_timer_make_new(const mp_obj_type_t *type, size_t n_args,
 
 STATIC mp_obj_t machine_timer___del__(mp_obj_t self_in) {
     machine_timer_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    PIT_StopTimer(PIT, self->channel);
+    PIT_StopTimer(board_timer_pit, self->channel);
     MP_STATE_PORT(timer_table)[self->id] = NULL;
     return mp_const_none;
 }
@@ -177,14 +188,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_timer___del___obj, machine_timer___del_
 
 STATIC mp_obj_t machine_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     machine_timer_obj_t *self = MP_OBJ_TO_PTR(args[0]);
-    PIT_StopTimer(PIT, self->channel);
+    PIT_StopTimer(board_timer_pit, self->channel);
     return machine_timer_init_helper(self, n_args - 1, args + 1, kw_args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_timer_init_obj, 1, machine_timer_init);
 
 STATIC mp_obj_t machine_timer_deinit(mp_obj_t self_in) {
     machine_timer_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    PIT_StopTimer(PIT, self->channel);
+    PIT_StopTimer(board_timer_pit, self->channel);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_timer_deinit_obj, machine_timer_deinit);
@@ -192,13 +203,13 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_timer_deinit_obj, machine_timer_deinit)
 // Initialize clock an first config
 void machine_timer_init_PIT(void) {
     // PIT timer
-    // Enable clock gate for GPIO1
-    CLOCK_EnableClock(kCLOCK_Gpio1); // ?
-    // Set PERCLK_CLK divider to 1
-    CLOCK_SetDiv(kCLOCK_PerclkDiv, 0U);
+    // // Enable clock gate for GPIO1
+    // CLOCK_EnableClock(kCLOCK_Gpio1); // ?
+    // // Set PERCLK_CLK divider to 1
+    // CLOCK_SetDiv(kCLOCK_PerclkDiv, 0U);
 
     PIT_GetDefaultConfig(&pit_config);
-    PIT_Init(PIT, &pit_config);
+    PIT_Init(board_timer_pit, &pit_config);
 }
 
 STATIC const mp_rom_map_elem_t machine_timer_locals_dict_table[] = {

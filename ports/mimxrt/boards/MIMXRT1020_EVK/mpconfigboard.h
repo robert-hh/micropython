@@ -11,7 +11,7 @@
 
 // Define mapping logical UART # to hardware UART #
 // RX/TX   HW-UART    Logical UART
-// D3/D5   LPUART1    Not usable, Since D3 is blocked.
+// DBG_USB LPUART1 -> 0  Also on D3/D5, if J25/J26 are pulled.
 // D0/D1   LPUART2 -> 1
 // D6/D9   LPUART3 -> 2
 // D10/D12 LPUART5 -> 3
@@ -19,7 +19,7 @@
 // A0/A1   LPUART4 -> 5
 
 #define MICROPY_HW_UART_NUM     (sizeof(uart_index_table) / sizeof(uart_index_table)[0])
-#define MICROPY_HW_UART_INDEX   { 0, 2, 3, 5, 8, 4 }
+#define MICROPY_HW_UART_INDEX   { 1, 2, 3, 5, 8, 4 }
 
 #define IOMUX_TABLE_UART \
     { IOMUXC_GPIO_AD_B0_06_LPUART1_TX }, { IOMUXC_GPIO_AD_B0_07_LPUART1_RX }, \

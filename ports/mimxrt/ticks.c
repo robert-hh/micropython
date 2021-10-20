@@ -42,7 +42,11 @@ void ticks_init(void) {
 
     gpt_config_t config;
     config.clockSource = kGPT_ClockSource_Osc;
+    #if defined CPU_MIMXRT1176_cm7
+    config.divider = 8; // XTAL is 24MHz
+    #else
     config.divider = 24; // XTAL is 24MHz
+    #endif
     config.enableFreeRun = true;
     config.enableRunInWait = true;
     config.enableRunInStop = true;

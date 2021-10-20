@@ -66,15 +66,14 @@ uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
     if (tud_cdc_connected() && tud_cdc_available()) {
         ret |= MP_STREAM_POLL_RD;
     }
+    #if defined CPU_MIMXRT1176_cm7
+    ret = debug_uart_poll();
+    #endif
     return ret;
 }
 
 int mp_hal_stdin_rx_chr(void) {
     for (;;) {
-        // TODO
-        // if (USARTx->USART.INTFLAG.bit.RXC) {
-        //     return USARTx->USART.DATA.bit.DATA;
-        // }
         int c = ringbuf_get(&stdin_ringbuf);
         if (c != -1) {
             return c;
@@ -86,6 +85,11 @@ int mp_hal_stdin_rx_chr(void) {
                 return buf[0];
             }
         }
+        #if defined CPU_MIMXRT1176_cm7
+        if (debug_uart_poll()) {
+            return debug_uart_rx_chr();
+        }
+        #endif
         MICROPY_EVENT_POLL_HOOK
     }
 }
@@ -106,11 +110,6 @@ void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
         }
     }
     mp_uos_dupterm_tx_strn(str, len);
-    // TODO
-    // while (len--) {
-    //     while (!(USARTx->USART.INTFLAG.bit.DRE)) { }
-    //     USARTx->USART.DATA.bit.DATA = *str++;
-    // }
 }
 
 uint64_t mp_hal_time_ns(void) {

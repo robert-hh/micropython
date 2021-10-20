@@ -32,6 +32,8 @@
 #include "fsl_common.h"
 #include "fsl_lpuart.h"
 #include "fsl_iomuxc.h"
+#include "clock_config.h"
+#include "pin.h"
 
 #define DEFAULT_UART_BAUDRATE (115200)
 #define DEFAULT_BUFFER_SIZE (256)
@@ -50,6 +52,7 @@ typedef struct _machine_uart_obj_t {
     uint16_t timeout;       // timeout waiting for first char (in ms)
     uint16_t timeout_char;  // timeout waiting between chars (in ms)
     uint8_t id;
+    uint8_t hw_id;
     uint8_t invert;
     uint16_t tx_status;
     uint8_t *txbuf;
@@ -79,31 +82,24 @@ STATIC const char *_invert_name[] = {"None", "INV_TX", "INV_RX", "INV_TX|INV_RX"
 #define RX (iomux_table_uart[index + 1])
 #define TX (iomux_table_uart[index])
 
+machine_uart_obj_t *DEBUG_UART = NULL;
+
+
 bool lpuart_set_iomux(int8_t uart) {
     int index = (uart - 1) * 2;
 
     if (TX.muxRegister != 0) {
         IOMUXC_SetPinMux(TX.muxRegister, TX.muxMode, TX.inputRegister, TX.inputDaisy, TX.configRegister, 0U);
-        IOMUXC_SetPinConfig(TX.muxRegister, TX.muxMode, TX.inputRegister, TX.inputDaisy, TX.configRegister, 0x10B0u);
+        IOMUXC_SetPinConfig(TX.muxRegister, TX.muxMode, TX.inputRegister, TX.inputDaisy, TX.configRegister,
+            pin_generate_config(PIN_PULL_UP_100K, PIN_MODE_OUT, PIN_DRIVE_POWER_6, TX.configRegister));
 
         IOMUXC_SetPinMux(RX.muxRegister, RX.muxMode, RX.inputRegister, RX.inputDaisy, RX.configRegister, 0U);
-        IOMUXC_SetPinConfig(RX.muxRegister, RX.muxMode, RX.inputRegister, RX.inputDaisy, RX.configRegister, 0x10B0u);
+        IOMUXC_SetPinConfig(RX.muxRegister, RX.muxMode, RX.inputRegister, RX.inputDaisy, RX.configRegister,
+            pin_generate_config(PIN_PULL_UP_100K, PIN_MODE_IN, PIN_DRIVE_POWER_6, RX.configRegister));
         return true;
     } else {
         return false;
     }
-}
-
-uint32_t UART_SrcFreq(void) {
-    uint32_t freq;
-    // To make it simple, we assume default PLL and divider settings, and the
-    // only variable from application is use PLL3 source or OSC source.
-    if (CLOCK_GetMux(kCLOCK_UartMux) == 0) { // PLL3 div6 80M
-        freq = (CLOCK_GetPllFreq(kCLOCK_PllUsb1) / 6U) / (CLOCK_GetDiv(kCLOCK_UartDiv) + 1U);
-    } else {
-        freq = CLOCK_GetOscFreq() / (CLOCK_GetDiv(kCLOCK_UartDiv) + 1U);
-    }
-    return freq;
 }
 
 void LPUART_UserCallback(LPUART_Type *base, lpuart_handle_t *handle, status_t status, void *userData) {
@@ -230,7 +226,7 @@ STATIC mp_obj_t machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args
             self->timeout_char = min_timeout_char;
         }
 
-        LPUART_Init(self->lpuart, &self->config, UART_SrcFreq()); // ??
+        LPUART_Init(self->lpuart, &self->config, BOARD_BOOTCLOCKRUN_UART_CLK_ROOT);
         LPUART_TransferCreateHandle(self->lpuart, &self->handle,  LPUART_UserCallback, self);
         uint8_t *buffer = m_new(uint8_t, rxbuf_len + 1);
         LPUART_TransferStartRingBuffer(self->lpuart, &self->handle, buffer, rxbuf_len);
@@ -269,7 +265,7 @@ STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, 
 
     // Get UART bus.
     int uart_id = mp_obj_get_int(args[0]);
-    if (uart_id < 1 || uart_id > MICROPY_HW_UART_NUM) {
+    if (uart_id < 0 || uart_id > MICROPY_HW_UART_NUM || uart_index_table[uart_id] == 0) {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("UART(%d) doesn't exist"), uart_id);
     }
 
@@ -278,6 +274,7 @@ STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, 
     machine_uart_obj_t *self = m_new_obj(machine_uart_obj_t);
     self->base.type = &machine_uart_type;
     self->id = uart_id;
+    self->hw_id = uart_hw_id;
     self->lpuart = uart_base_ptr_table[uart_hw_id];
     self->invert = false;
     self->timeout = 1;
@@ -286,11 +283,19 @@ STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, 
     LPUART_GetDefaultConfig(&self->config);
 
     // Configure board-specific pin MUX based on the hardware device number.
-    lpuart_set_iomux(uart_hw_id);
+    bool uart_present = lpuart_set_iomux(uart_hw_id);
 
-    mp_map_t kw_args;
-    mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
-    return machine_uart_init_helper(self, n_args - 1, args + 1, &kw_args);
+    if (uart_present) {
+        if (uart_id == 0) {
+            DEBUG_UART = self;
+        }
+
+        mp_map_t kw_args;
+        mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
+        return machine_uart_init_helper(self, n_args - 1, args + 1, &kw_args);
+    } else {
+        return mp_const_none;
+    }
 }
 
 // uart.init(baud, [kwargs])
@@ -444,6 +449,33 @@ STATIC mp_uint_t machine_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint
         ret = MP_STREAM_ERROR;
     }
     return ret;
+}
+
+void debug_uart_write(const char *str, mp_uint_t len) {
+    int errcode;
+    if (DEBUG_UART != NULL && len > 0) {
+        machine_uart_write(DEBUG_UART, str, len, &errcode);
+    }
+}
+
+int debug_uart_rx_chr(void) {
+    int8_t buf[1] = { 0 };
+    int errcode;
+    if (DEBUG_UART != NULL) {
+        DEBUG_UART->timeout = 0xffff;
+        DEBUG_UART->timeout_char = 0xffff;
+        machine_uart_read(DEBUG_UART, buf, 1, &errcode);
+    }
+    return buf[0];
+}
+
+int debug_uart_poll(void) {
+    int errcode;
+    int ret = 0;
+    if (DEBUG_UART != NULL) {
+        ret = machine_uart_ioctl(DEBUG_UART, MP_STREAM_POLL, MP_STREAM_POLL_RD, &errcode);
+    }
+    return ret & MP_STREAM_POLL_RD ? MP_STREAM_POLL_RD : 0;
 }
 
 STATIC const mp_stream_p_t uart_stream_p = {

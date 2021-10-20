@@ -15,10 +15,10 @@
 // LPUART8 on A1/A0  -> 4
 
 #define MICROPY_HW_UART_NUM     (sizeof(uart_index_table) / sizeof(uart_index_table)[0])
-#define MICROPY_HW_UART_INDEX   { 0, 3, 2, 6, 8 }
+#define MICROPY_HW_UART_INDEX   { 1, 3, 2, 6, 8 }
 
 #define IOMUX_TABLE_UART \
-    { 0 }, { 0 }, \
+    { IOMUXC_GPIO_AD_B0_12_LPUART1_TX }, { IOMUXC_GPIO_AD_B0_13_LPUART1_RX }, \
     { IOMUXC_GPIO_AD_B1_02_LPUART2_TX }, { IOMUXC_GPIO_AD_B1_03_LPUART2_RX }, \
     { IOMUXC_GPIO_AD_B1_06_LPUART3_TX }, { IOMUXC_GPIO_AD_B1_07_LPUART3_RX }, \
     { 0 }, { 0 }, \

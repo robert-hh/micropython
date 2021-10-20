@@ -31,12 +31,19 @@
 #include "extmod/machine_spi.h"
 #include "modmachine.h"
 #include "dma_channel.h"
+#include "clock_config.h"
 
-#include "fsl_cache.h"
 #include "fsl_dmamux.h"
 #include "fsl_iomuxc.h"
 #include "fsl_lpspi.h"
 #include "fsl_lpspi_edma.h"
+
+#if defined(CPU_MIMXRT1176_cm7)
+#include "cm7/fsl_cache.h"
+#else
+#include "fsl_cache.h"
+#endif
+
 
 #define DEFAULT_SPI_BAUDRATE    (1000000)
 #define DEFAULT_SPI_POLARITY    (0)
@@ -46,6 +53,12 @@
 #define DEFAULT_SPI_DRIVE       (6)
 
 #define CLOCK_DIVIDER           (1)
+
+#if defined(CPU_MIMXRT1176_cm7)
+#define LPSPI_DMAMUX            DMAMUX0
+#else
+#define LPSPI_DMAMUX            DMAMUX
+#endif
 
 #define MICROPY_HW_SPI_NUM MP_ARRAY_SIZE(spi_index_table)
 
@@ -87,19 +100,19 @@ bool lpspi_set_iomux(int8_t spi, uint8_t drive) {
     if (SCK.muxRegister != 0) {
         IOMUXC_SetPinMux(SCK.muxRegister, SCK.muxMode, SCK.inputRegister, SCK.inputDaisy, SCK.configRegister, 0U);
         IOMUXC_SetPinConfig(SCK.muxRegister, SCK.muxMode, SCK.inputRegister, SCK.inputDaisy, SCK.configRegister,
-            0x1080u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
+            pin_generate_config(PIN_PULL_UP_100K, PIN_MODE_OUT, drive, SCK.configRegister));
 
         IOMUXC_SetPinMux(CS0.muxRegister, CS0.muxMode, CS0.inputRegister, CS0.inputDaisy, CS0.configRegister, 0U);
         IOMUXC_SetPinConfig(CS0.muxRegister, CS0.muxMode, CS0.inputRegister, CS0.inputDaisy, CS0.configRegister,
-            0x1080u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
+            pin_generate_config(PIN_PULL_UP_100K, PIN_MODE_OUT, drive, CS0.configRegister));
 
         IOMUXC_SetPinMux(SDO.muxRegister, SDO.muxMode, SDO.inputRegister, SDO.inputDaisy, SDO.configRegister, 0U);
         IOMUXC_SetPinConfig(SDO.muxRegister, SDO.muxMode, SDO.inputRegister, SDO.inputDaisy, SDO.configRegister,
-            0x1080u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
+            pin_generate_config(PIN_PULL_UP_100K, PIN_MODE_OUT, drive, SDO.configRegister));
 
         IOMUXC_SetPinMux(SDI.muxRegister, SDI.muxMode, SDI.inputRegister, SDI.inputDaisy, SDI.configRegister, 0U);
         IOMUXC_SetPinConfig(SDI.muxRegister, SDI.muxMode, SDI.inputRegister, SDI.inputDaisy, SDI.configRegister,
-            0x1080u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
+            pin_generate_config(PIN_PULL_UP_100K, PIN_MODE_IN, drive, SDI.configRegister));
 
         return true;
     } else {
@@ -129,8 +142,6 @@ mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         { MP_QSTR_drive,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_SPI_DRIVE} },
     };
 
-    static bool clk_init = true;
-
     // Parse the arguments.
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -154,12 +165,6 @@ mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         drive = DEFAULT_SPI_DRIVE;
     }
 
-    if (clk_init) {
-        clk_init = false;
-        /*Set clock source for LPSPI*/
-        CLOCK_SetMux(kCLOCK_LpspiMux, 1);  // Clock source is kCLOCK_Usb1PllPfd1Clk
-        CLOCK_SetDiv(kCLOCK_LpspiDiv, CLOCK_DIVIDER);
-    }
     lpspi_set_iomux(spi_index_table[spi_id], drive);
     LPSPI_Reset(self->spi_inst);
     LPSPI_Enable(self->spi_inst, false);  // Disable first before new settings are applies
@@ -176,7 +181,7 @@ mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     if (args[ARG_gap_ns].u_int != -1) {
         self->master_config->betweenTransferDelayInNanoSec = args[ARG_gap_ns].u_int;
     }
-    LPSPI_MasterInit(self->spi_inst, self->master_config, CLOCK_GetFreq(kCLOCK_Usb1PllPfd0Clk) / (CLOCK_DIVIDER + 1));
+    LPSPI_MasterInit(self->spi_inst, self->master_config, BOARD_BOOTCLOCKRUN_LPSPI_CLK_ROOT);
 
     return MP_OBJ_FROM_PTR(self);
 }
@@ -219,7 +224,7 @@ STATIC void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
         self->master_config->betweenTransferDelayInNanoSec = args[ARG_gap_ns].u_int;
     }
     LPSPI_Enable(self->spi_inst, false);  // Disable first before new settings are applies
-    LPSPI_MasterInit(self->spi_inst, self->master_config, CLOCK_GetFreq(kCLOCK_Usb1PllPfd0Clk) / (CLOCK_DIVIDER + 1));
+    LPSPI_MasterInit(self->spi_inst, self->master_config, BOARD_BOOTCLOCKRUN_LPSPI_CLK_ROOT);
 }
 
 void LPSPI_EDMAMasterCallback(LPSPI_Type *base, lpspi_master_edma_handle_t *handle, status_t status, void *self_in) {
@@ -245,13 +250,14 @@ STATIC void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
         edma_config_t userConfig;
 
         /* DMA MUX init*/
-        DMAMUX_Init(DMAMUX);
 
-        DMAMUX_SetSource(DMAMUX, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source
-        DMAMUX_EnableChannel(DMAMUX, chan_rx);
+        DMAMUX_Init(LPSPI_DMAMUX);
 
-        DMAMUX_SetSource(DMAMUX, chan_tx, dma_req_src_tx[self->spi_hw_id]);
-        DMAMUX_EnableChannel(DMAMUX, chan_tx);
+        DMAMUX_SetSource(LPSPI_DMAMUX, chan_rx, dma_req_src_rx[self->spi_hw_id]); // ## SPIn source
+        DMAMUX_EnableChannel(LPSPI_DMAMUX, chan_rx);
+
+        DMAMUX_SetSource(LPSPI_DMAMUX, chan_tx, dma_req_src_tx[self->spi_hw_id]);
+        DMAMUX_EnableChannel(LPSPI_DMAMUX, chan_tx);
 
         EDMA_GetDefaultConfig(&userConfig);
         EDMA_Init(DMA0, &userConfig);

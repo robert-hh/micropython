@@ -29,19 +29,14 @@
 #include "py/mperrno.h"
 #include "extmod/machine_i2c.h"
 #include "modmachine.h"
+#include "clock_config.h"
+#include "pin.h"
 
 #include "fsl_iomuxc.h"
 #include "fsl_lpi2c.h"
 
 #define DEFAULT_I2C_FREQ        (400000)
 #define DEFAULT_I2C_DRIVE       (6)
-
-// Select USB1 PLL (480 MHz) as master lpi2c clock source
-#define LPI2C_CLOCK_SOURCE_SELECT (0U)
-// Clock divider for master lpi2c clock source
-#define LPI2C_CLOCK_SOURCE_DIVIDER (1U)
-// Get frequency of lpi2c clock = 30 MHz
-#define LPI2C_CLOCK_FREQUENCY ((CLOCK_GetFreq(kCLOCK_Usb1PllClk) / 8) / (LPI2C_CLOCK_SOURCE_DIVIDER + 1U))
 
 typedef struct _machine_i2c_obj_t {
     mp_obj_base_t base;
@@ -72,15 +67,14 @@ static const iomux_table_t iomux_table[] = { IOMUX_TABLE_I2C };
 
 bool lpi2c_set_iomux(int8_t hw_i2c, uint8_t drive) {
     int index = (hw_i2c - 1) * 2;
+    uint16_t pad_config = pin_generate_config(PIN_PULL_UP_100K, PIN_MODE_OPEN_DRAIN, drive, SCL.configRegister);
 
     if (SCL.muxRegister != 0) {
         IOMUXC_SetPinMux(SCL.muxRegister, SCL.muxMode, SCL.inputRegister, SCL.inputDaisy, SCL.configRegister, 1U);
-        IOMUXC_SetPinConfig(SCL.muxRegister, SCL.muxMode, SCL.inputRegister, SCL.inputDaisy, SCL.configRegister,
-            0xF880u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
+        IOMUXC_SetPinConfig(SCL.muxRegister, SCL.muxMode, SCL.inputRegister, SCL.inputDaisy, SCL.configRegister, pad_config);
 
         IOMUXC_SetPinMux(SDA.muxRegister, SDA.muxMode, SDA.inputRegister, SDA.inputDaisy, SDA.configRegister, 1U);
-        IOMUXC_SetPinConfig(SDA.muxRegister, SDA.muxMode, SDA.inputRegister, SDA.inputDaisy, SDA.configRegister,
-            0xF880u | drive << IOMUXC_SW_PAD_CTL_PAD_DSE_SHIFT);
+        IOMUXC_SetPinConfig(SDA.muxRegister, SDA.muxMode, SDA.inputRegister, SDA.inputDaisy, SDA.configRegister, pad_config);
         return true;
     } else {
         return false;
@@ -100,8 +94,6 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         { MP_QSTR_freq, MP_ARG_INT, {.u_int = DEFAULT_I2C_FREQ} },
         { MP_QSTR_drive, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_I2C_DRIVE} },
     };
-
-    static bool clk_init = true;
 
     // Parse args.
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
@@ -125,20 +117,13 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         drive = DEFAULT_I2C_DRIVE;
     }
 
-    if (clk_init) {
-        clk_init = false;
-        // Set clock source for LPI2C
-        CLOCK_SetMux(kCLOCK_Lpi2cMux, LPI2C_CLOCK_SOURCE_SELECT); // USB1 PLL (480 MHz)
-        CLOCK_SetDiv(kCLOCK_Lpi2cDiv, LPI2C_CLOCK_SOURCE_DIVIDER);
-    }
-
     // Initialise the I2C peripheral if any arguments given, or it was not initialised previously.
     lpi2c_set_iomux(self->i2c_hw_id, drive);
     self->master_config = m_new_obj(lpi2c_master_config_t);
     LPI2C_MasterGetDefaultConfig(self->master_config);
     // Initialise the I2C peripheral.
     self->master_config->baudRate_Hz = args[ARG_freq].u_int;
-    LPI2C_MasterInit(self->i2c_inst, self->master_config, LPI2C_CLOCK_FREQUENCY);
+    LPI2C_MasterInit(self->i2c_inst, self->master_config, BOARD_BOOTCLOCKRUN_LPI2C_CLK_ROOT);
 
     return MP_OBJ_FROM_PTR(self);
 }

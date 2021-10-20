@@ -7,6 +7,12 @@ import sys
 import mimxrt
 from machine import Pin
 
+try:
+    from machine import UART
+    uart0=UART(0, 115200)
+except:
+    pass
+
 bdev = mimxrt.Flash()
 try:
     vfs = os.VfsLfs2(bdev, progsize=256)

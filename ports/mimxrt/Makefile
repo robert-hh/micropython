@@ -31,6 +31,9 @@ LD_MEMORY_CONFIG_DEFINES += \
 	MICROPY_HW_SDRAM_SIZE=$(MICROPY_HW_SDRAM_SIZE)
 endif
 
+ifdef $(MULTI_CORE)
+LD_MEMORY_CONFIG_DEFINES += MULTI_CORE
+endif	
 # Qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 QSTR_GLOBAL_DEPENDENCIES = $(BOARD_DIR)/mpconfigboard.h
@@ -79,18 +82,23 @@ INC += -I$(TOP)/lib/tinyusb/src
 
 CFLAGS_MCU = -mtune=cortex-m7 -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-d16
 CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 -nostdlib -mthumb $(CFLAGS_MCU)
-CFLAGS += -DCPU_$(MCU_SERIES) -DCPU_$(MCU_VARIANT) -DBOARD_$(BOARD)
+CFLAGS += -DCPU_$(MCU_SERIES)$(MCU_CORE) -DCPU_$(MCU_VARIANT) -DBOARD_$(BOARD)
 CFLAGS += -DXIP_EXTERNAL_FLASH=1 \
 	-DXIP_BOOT_HEADER_ENABLE=1 \
 	-DFSL_SDK_ENABLE_DRIVER_CACHE_CONTROL=1 \
-	-DCFG_TUSB_MCU=OPT_MCU_MIMXRT10XX \
 	-D__STARTUP_CLEAR_BSS \
 	-D__STARTUP_INITIALIZE_RAMFUNCTION \
 	-D__START=main \
-	-DCPU_HEADER_H='<$(MCU_SERIES).h>' \
+	-DCPU_HEADER_H='<$(MCU_SERIES)$(MCU_CORE).h>' \
 	-DBOARD_FLASH_SIZE=$(MICROPY_HW_FLASH_SIZE) \
 	-DMICROPY_HW_FLASH_SIZE=$(MICROPY_HW_FLASH_SIZE) \
 	-DBOARD_FLASH_CONFIG_HEADER_H=\"$(BOARD)_flexspi_nor_config.h\"
+
+ifeq ($(MCU_SERIES), MIMXRT1176)
+CFLAGS += -DCFG_TUSB_MCU=OPT_MCU_MIMXRT11XX
+else
+CFLAGS += -DCFG_TUSB_MCU=OPT_MCU_MIMXRT10XX
+endif
 
 ifeq ($(MICROPY_HW_FLASH_TYPE), qspi_nor)
 CFLAGS += -DBOARD_FLASH_OPS_HEADER_H=\"hal/flexspi_nor_flash.h\"
@@ -178,8 +186,6 @@ SRC_TINYUSB_C += \
 	lib/tinyusb/src/tusb.c
 
 SRC_HAL_IMX_C += \
-	$(MCU_DIR)/drivers/fsl_adc.c \
-	$(MCU_DIR)/drivers/fsl_cache.c \
 	$(MCU_DIR)/drivers/fsl_clock.c \
 	$(MCU_DIR)/drivers/fsl_common.c \
 	$(MCU_DIR)/drivers/fsl_dmamux.c \
@@ -198,7 +204,7 @@ SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/fsl_trng.c \
 	$(MCU_DIR)/drivers/fsl_wdog.c \
 	$(MCU_DIR)/project_template/clock_config.c \
-	$(MCU_DIR)/system_$(MCU_SERIES).c \
+	$(MCU_DIR)/system_$(MCU_SERIES)$(MCU_CORE).c \
 	$(MCU_DIR)/xip/fsl_flexspi_nor_boot.c \
 
 ifeq ($(MICROPY_HW_SDRAM_AVAIL), 1)
@@ -208,6 +214,27 @@ endif
 ifeq ($(MICROPY_PY_MACHINE_SDCARD),1)
 SRC_HAL_IMX_C += $(MCU_DIR)/drivers/fsl_usdhc.c
 endif
+
+ifeq ($(MCU_SERIES), MIMXRT1176)
+INC += -I$(TOP)/$(MCU_DIR)/drivers/cm7
+
+SRC_HAL_IMX_C += \
+	$(MCU_DIR)/drivers/cm7/fsl_cache.c \
+	$(MCU_DIR)/drivers/fsl_dcdc.c \
+	$(MCU_DIR)/drivers/fsl_pmu.c \
+	$(MCU_DIR)/drivers/fsl_common_arm.c \
+	$(MCU_DIR)/drivers/fsl_anatop_ai.c \
+	$(MCU_DIR)/drivers/fsl_caam.c \
+	$(MCU_DIR)/drivers/fsl_lpadc.c \
+	$(BOARD_DIR)/clock_config.c
+else
+SRC_HAL_IMX_C += \
+	$(MCU_DIR)/drivers/fsl_adc.c \
+	$(MCU_DIR)/drivers/fsl_cache.c \
+	$(MCU_DIR)/drivers/fsl_trng.c \
+	$(MCU_DIR)/project_template/clock_config.c
+endif
+
 
 SRC_C += \
 	board_init.c \
@@ -372,7 +399,7 @@ $(LIBM_O): CFLAGS := $(filter-out -Wdouble-promotion -Wfloat-conversion, $(CFLAG
 endif
 
 SRC_SS = \
-	$(MCU_DIR)/gcc/startup_$(MCU_SERIES).S \
+	$(MCU_DIR)/gcc/startup_$(MCU_SERIES)$(MCU_CORE).S \
 	hal/resethandler_MIMXRT10xx.S
 
 SRC_S += shared/runtime/gchelper_m3.s \
@@ -439,9 +466,8 @@ $(HEADER_BUILD)/qstrdefs.generated.h: $(BOARD_DIR)/mpconfigboard.h
 
 $(GEN_FLEXRAM_CONFIG_SRC):
 	$(ECHO) "Create $@"
-	$(Q)$(PYTHON) $(MAKE_FLEXRAM_LD) -d $(TOP)/$(MCU_DIR)/$(MCU_SERIES).h \
-		-f $(TOP)/$(MCU_DIR)/$(MCU_SERIES)_features.h -l boards/$(MCU_SERIES).ld -c $(MCU_SERIES) > $(GEN_FLEXRAM_CONFIG_SRC)
-
+	$(Q)$(PYTHON) $(MAKE_FLEXRAM_LD) -d $(TOP)/$(MCU_DIR)/$(MCU_SERIES)$(MCU_CORE).h \
+		-f $(TOP)/$(MCU_DIR)/$(MCU_SERIES)$(MCU_CORE)_features.h -l boards/$(MCU_SERIES).ld -c $(MCU_SERIES) > $(GEN_FLEXRAM_CONFIG_SRC)
 
 # Use a pattern rule here so that make will only call make-pins.py once to make
 # both pins_gen.c and pins.h

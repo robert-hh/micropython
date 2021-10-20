@@ -36,7 +36,12 @@
 #include "extmod/vfs_fat.h"
 #include "extmod/vfs_lfs.h"
 #include "genhdr/mpversion.h"
+
+#if defined(CPU_MIMXRT1176_cm7)
+#include "fsl_caam.h"
+#else
 #include "fsl_trng.h"
+#endif
 
 STATIC const qstr os_uname_info_fields[] = {
     MP_QSTR_sysname, MP_QSTR_nodename,
@@ -65,6 +70,51 @@ STATIC mp_obj_t os_uname(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(os_uname_obj, os_uname);
 
 static bool initialized = false;
+
+#if defined(CPU_MIMXRT1176_cm7)
+STATIC caam_handle_t caam_handle;
+STATIC caam_rng_state_handle_t caam_state_handle = kCAAM_RngStateHandle0;
+
+#if defined(FSL_FEATURE_HAS_L1CACHE) || defined(__DCACHE_PRESENT)
+AT_NONCACHEABLE_SECTION(static caam_job_ring_interface_t s_jrif0);
+#else
+static caam_job_ring_interface_t s_jrif0;
+#endif
+
+STATIC void trng_start(void) {
+    caam_config_t config;
+
+    if (!initialized) {
+        CAAM_GetDefaultConfig(&config);
+        config.jobRingInterface[0] = &s_jrif0;
+        CAAM_Init(CAAM, &config);
+        initialized = true;
+    }
+}
+
+uint32_t trng_random_u32(void) {
+    uint32_t rngval;
+
+    trng_start();
+    CAAM_RNG_GetRandomData(CAAM, &caam_handle, caam_state_handle, &rngval, 4,
+        kCAAM_RngDataAny, NULL);
+    return rngval;
+}
+
+STATIC mp_obj_t os_urandom(mp_obj_t num) {
+    mp_int_t n = mp_obj_get_int(num);
+    vstr_t vstr;
+    vstr_init_len(&vstr, n);
+
+    trng_start();
+    CAAM_RNG_GetRandomData(CAAM, &caam_handle, caam_state_handle, vstr.buf, n,
+        kCAAM_RngDataAny, NULL);
+
+    return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_urandom_obj, os_urandom);
+
+#else
 
 STATIC void trng_start(void) {
     trng_config_t trngConfig;
@@ -97,6 +147,7 @@ STATIC mp_obj_t os_urandom(mp_obj_t num) {
     return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_urandom_obj, os_urandom);
+#endif
 
 #if MICROPY_PY_OS_DUPTERM
 STATIC mp_obj_t os_dupterm_notify(mp_obj_t obj_in) {
