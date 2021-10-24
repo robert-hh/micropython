@@ -9,7 +9,8 @@ from machine import Pin
 
 try:
     from machine import UART
-    uart0=UART(0, 115200)
+
+    uart0 = UART(0, 115200)
 except:
     pass
 

@@ -45,16 +45,17 @@ extern uint8_t __sdram_start;
 void mimxrt_sdram_init(void) {
 
     #if defined(CPU_MIMXRT1176_cm7)
-        SEMC->IPCMD = 0xA55A000D;
-        while ((SEMC->INTR & 0x3) == 0)
-            ;
-        SEMC->INTR                                = 0x3;
-        SEMC->DCCR                                = 0x0B;
-        // Currently we are using SEMC parameter which fit both 166MHz and 200MHz, only
-        // need to change the SEMC clock root here. If customer is using their own DCD and
-        // want to switch from 166MHz to 200MHz, extra SEMC configuration might need to be
-        // adjusted here to fine tune the SDRAM performance
-        CCM->CLOCK_ROOT[kCLOCK_Root_Semc].CONTROL = 0x602;
+    SEMC->IPCMD = 0xA55A000D;
+    while ((SEMC->INTR & 0x3) == 0) {
+        ;
+    }
+    SEMC->INTR = 0x3;
+    SEMC->DCCR = 0x0B;
+    // Currently we are using SEMC parameter which fit both 166MHz and 200MHz, only
+    // need to change the SEMC clock root here. If customer is using their own DCD and
+    // want to switch from 166MHz to 200MHz, extra SEMC configuration might need to be
+    // adjusted here to fine tune the SDRAM performance
+    CCM->CLOCK_ROOT[kCLOCK_Root_Semc].CONTROL = 0x602;
     #else
     // Set Clocks
     CLOCK_InitSysPfd(kCLOCK_Pfd2, 29);   // '29' PLL2 PFD2 frequency = 528MHz * 18 / 29 = 327.72MHz (with 528MHz = PLL2 frequency)
@@ -148,7 +149,7 @@ void mimxrt_sdram_init(void) {
     IOMUXC_SetPinMux(MIMXRT_IOMUXC_SEMC_DQS, 1UL);
     IOMUXC_SetPinConfig(MIMXRT_IOMUXC_SEMC_DQS, SDRAM_PIN_CONFIG);
 
-#if defined(CPU_MIMXRT1176_cm7)
+    #if defined(CPU_MIMXRT1176_cm7)
     // Data Pins 16..31
     IOMUXC_SetPinMux(MIMXRT_IOMUXC_SEMC_DATA16, 0UL);
     IOMUXC_SetPinConfig(MIMXRT_IOMUXC_SEMC_DATA16, SDRAM_PIN_CONFIG);
@@ -188,7 +189,7 @@ void mimxrt_sdram_init(void) {
     IOMUXC_SetPinMux(MIMXRT_IOMUXC_SEMC_DM03, 0UL);
     IOMUXC_SetPinConfig(MIMXRT_IOMUXC_SEMC_DM03, SDRAM_PIN_CONFIG);
 
-#endif
+    #endif
 
     // Chip Select Pins
     #ifndef MIMXRT_IOMUXC_SEMC_CS0
@@ -219,14 +220,14 @@ void mimxrt_sdram_init(void) {
     semc_cfg.dqsMode = kSEMC_Loopbackdqspad;  // For more accurate timing.
     SEMC_Init(SEMC, &semc_cfg);
 
-#if defined(CPU_MIMXRT1176_cm7)
+    #if defined(CPU_MIMXRT1176_cm7)
 
     uint32_t clock_freq = CLOCK_GetRootClockFreq(kCLOCK_Root_Semc);
 
     semc_sdram_config_t sdram_cfg = {
         .csxPinMux = kSEMC_MUXCSX0,
         .address = 0x80000000,
-        .memsize_kbytes = (MICROPY_HW_SDRAM_SIZE >> 10), 
+        .memsize_kbytes = (MICROPY_HW_SDRAM_SIZE >> 10),
         .portSize = kSEMC_PortSize32Bit, /*two 16-bit SDRAMs make up 32-bit portsize*/
         .burstLen = kSEMC_Sdram_BurstLen8,
         .columnAddrBitNum = kSEMC_SdramColunm_9bit,
@@ -247,7 +248,7 @@ void mimxrt_sdram_init(void) {
         .delayChain = 2,
     };
 
-#else
+    #else
 
     uint32_t clock_freq = CLOCK_GetFreq(kCLOCK_SemcClk);
     semc_sdram_config_t sdram_cfg = {
@@ -274,7 +275,7 @@ void mimxrt_sdram_init(void) {
         .refreshBurstLen = 1
     };
 
-#endif
+    #endif
 
     (status_t)SEMC_ConfigureSDRAM(SEMC, kSEMC_SDRAM_CS0, &sdram_cfg, clock_freq);
 }

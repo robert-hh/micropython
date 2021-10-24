@@ -196,16 +196,14 @@ def mimxrt_1176_gen_code(extract_dict):
     print(".equ __iomux_gpr18_adr, 0x{:08X}".format(extract_dict["gpr_base_addr"] + 0x48))
     print(
         ".equ __iomux_gpr17_value, 0x{:08X} /* {}k OCRAM (512k OCRAM, {}k from FlexRAM), {}k DTCM, {}k ITCM */".format(
-            int(flexram_bank_cfg, 2) & 0xffff,
+            int(flexram_bank_cfg, 2) & 0xFFFF,
             extract_dict["ocram_size"] // 1024,
             flexram_configurable_ocram // 1024,
             extract_dict["dtcm_size"] // 1024,
             extract_dict["itcm_size"] // 1024,
         )
     )
-    print(
-        ".equ __iomux_gpr18_value, 0x{:08X}".format((int(flexram_bank_cfg, 2) >> 16) & 0xffff)
-    )
+    print(".equ __iomux_gpr18_value, 0x{:08X}".format((int(flexram_bank_cfg, 2) >> 16) & 0xFFFF))
 
 
 def main(defines_file, features_file, ld_script, controller):

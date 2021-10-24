@@ -187,4 +187,3 @@ const mp_obj_type_t machine_adc_type = {
     .make_new = adc_obj_make_new,
     .locals_dict = (mp_obj_dict_t *)&adc_locals_dict,
 };
-

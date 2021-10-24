@@ -186,8 +186,8 @@ void BOARD_InitBootClocks(void);
 
 
 // Configuration for all instances of peripherals are identical
-#define BOARD_BOOTCLOCKRUN_LPI2C_CLK_ROOT             33000000UL  // 33MHz 
-#define BOARD_BOOTCLOCKRUN_LPSPI_CLK_ROOT             90000000UL  // 90MHz 
+#define BOARD_BOOTCLOCKRUN_LPI2C_CLK_ROOT             33000000UL  // 33MHz
+#define BOARD_BOOTCLOCKRUN_LPSPI_CLK_ROOT             90000000UL  // 90MHz
 #define BOARD_BOOTCLOCKRUN_PERCLK_CLK_ROOT            120000000UL // 120MHz
 #define BOARD_BOOTCLOCKRUN_UART_CLK_ROOT              24000000UL  // 24MHz
 /*******************************************************************************
@@ -208,4 +208,3 @@ void BOARD_BootClockRUN(void);
 #endif /* __cplusplus*/
 
 #endif /* _CLOCK_CONFIG_H_ */
-

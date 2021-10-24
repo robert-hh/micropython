@@ -688,9 +688,9 @@ void sdcard_init(mimxrt_sdcard_obj_t *card, uint32_t base_clk) {
     rootCfg.mux = 4;
     rootCfg.div = 2;
     CLOCK_SetRootClock(kCLOCK_Root_Usdhc1, &rootCfg);
-    
+
     #else
-    
+
     // Configure PFD0 of PLL2 (system PLL) fractional divider to 24 resulting in:
     //  with PFD0_clk = PLL2_clk * 18 / N
     //       PFD0_clk = 528MHz   * 18 / 24 = 396MHz
