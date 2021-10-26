@@ -38,10 +38,11 @@
 #include CPU_HEADER_H
 
 #if defined CPU_MIMXRT1176_cm7
-extern void debug_uart_write(const char *str, mp_uint_t len);
-extern int debug_uart_rx_chr(void);
-extern int debug_uart_poll(void);
+#define REPL_ON_USB  1
+#else
+#define REPL_ON_USB  1
 #endif
+
 STATIC uint8_t stdin_ringbuf_array[260];
 ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0, 0};
 
@@ -52,13 +53,17 @@ int mp_interrupt_char = -1;
 void tud_cdc_rx_wanted_cb(uint8_t itf, char wanted_char) {
     (void)itf;
     (void)wanted_char;
+    #if REPL_ON_USB
     tud_cdc_read_char(); // discard interrupt char
+    #endif
     mp_sched_keyboard_interrupt();
 }
 
 void mp_hal_set_interrupt_char(int c) {
     mp_interrupt_char = c;
+    #if REPL_ON_USB
     tud_cdc_set_wanted_char(c);
+    #endif
 }
 
 #endif
@@ -68,11 +73,10 @@ uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
     if ((poll_flags & MP_STREAM_POLL_RD) && ringbuf_peek(&stdin_ringbuf) != -1) {
         ret |= MP_STREAM_POLL_RD;
     }
+    #if REPL_ON_USB
     if (tud_cdc_connected() && tud_cdc_available()) {
         ret |= MP_STREAM_POLL_RD;
     }
-    #if defined CPU_MIMXRT1176_cm7
-    ret = debug_uart_poll();
     #endif
     return ret;
 }
@@ -83,6 +87,7 @@ int mp_hal_stdin_rx_chr(void) {
         if (c != -1) {
             return c;
         }
+        #if REPL_ON_USB
         if (tud_cdc_connected() && tud_cdc_available()) {
             uint8_t buf[1];
             uint32_t count = tud_cdc_read(buf, sizeof(buf));
@@ -90,16 +95,13 @@ int mp_hal_stdin_rx_chr(void) {
                 return buf[0];
             }
         }
-        #if defined CPU_MIMXRT1176_cm7
-        if (debug_uart_poll()) {
-            return debug_uart_rx_chr();
-        }
         #endif
         MICROPY_EVENT_POLL_HOOK
     }
 }
 
 void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
+    #if REPL_ON_USB
     if (tud_cdc_connected()) {
         for (size_t i = 0; i < len;) {
             uint32_t n = len - i;
@@ -114,10 +116,8 @@ void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
             i += n2;
         }
     }
-    mp_uos_dupterm_tx_strn(str, len);
-    #if defined CPU_MIMXRT1176_cm7
-    debug_uart_write(str, len);
     #endif
+    mp_uos_dupterm_tx_strn(str, len);
 }
 
 uint64_t mp_hal_time_ns(void) {

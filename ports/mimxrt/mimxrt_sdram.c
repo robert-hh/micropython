@@ -36,7 +36,7 @@ extern uint8_t __sdram_start;
 
 #if defined(CPU_MIMXRT1176_cm7)
 // Pull Up, High drive strength
-#define SDRAM_PIN_CONFIG  (0x06UL)
+#define SDRAM_PIN_CONFIG  (0x07UL)
 #else
 // Pull up 22K, high slew rate
 #define SDRAM_PIN_CONFIG  (0xE1UL)
@@ -44,19 +44,7 @@ extern uint8_t __sdram_start;
 
 void mimxrt_sdram_init(void) {
 
-    #if defined(CPU_MIMXRT1176_cm7)
-    SEMC->IPCMD = 0xA55A000D;
-    while ((SEMC->INTR & 0x3) == 0) {
-        ;
-    }
-    SEMC->INTR = 0x3;
-    SEMC->DCCR = 0x0B;
-    // Currently we are using SEMC parameter which fit both 166MHz and 200MHz, only
-    // need to change the SEMC clock root here. If customer is using their own DCD and
-    // want to switch from 166MHz to 200MHz, extra SEMC configuration might need to be
-    // adjusted here to fine tune the SDRAM performance
-    CCM->CLOCK_ROOT[kCLOCK_Root_Semc].CONTROL = 0x602;
-    #else
+    #if !defined(CPU_MIMXRT1176_cm7)
     // Set Clocks
     CLOCK_InitSysPfd(kCLOCK_Pfd2, 29);   // '29' PLL2 PFD2 frequency = 528MHz * 18 / 29 = 327.72MHz (with 528MHz = PLL2 frequency)
     CLOCK_SetMux(kCLOCK_SemcAltMux, 0);  // '0'  PLL2 PFD2 will be selected as alternative clock for SEMC root clock

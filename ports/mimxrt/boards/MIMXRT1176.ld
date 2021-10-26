@@ -44,8 +44,8 @@ sdram_start         = 0x80000000;
 sdram_size          = MICROPY_HW_SDRAM_SIZE;
 #endif
 
-/* 32kiB stack. */
-__stack_size__ = 0x8000;
+/* 64kiB stack. */
+__stack_size__ = 0x10000;
 _estack = __StackTop;
 _sstack = __StackLimit;
 

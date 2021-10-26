@@ -32,6 +32,7 @@
 #if defined(MICROPY_HW_ETH_MDC)
 
 #include "lwip/netif.h"
+#include "lwip/apps/mdns.h"
 
 typedef struct _network_lan_obj_t {
     mp_obj_base_t base;

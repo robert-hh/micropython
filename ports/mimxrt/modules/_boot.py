@@ -8,9 +8,11 @@ import mimxrt
 from machine import Pin
 
 try:
-    from machine import UART
+    from machine import UART, Timer
 
     uart0 = UART(0, 115200)
+    t=Timer(0, period=10, callback=lambda t: os.dupterm_notify(uart0))
+    os.dupterm(uart0, 2)
 except:
     pass
 

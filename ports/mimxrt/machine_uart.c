@@ -286,10 +286,6 @@ STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, 
     bool uart_present = lpuart_set_iomux(uart_hw_id);
 
     if (uart_present) {
-        if (uart_id == 0) {
-            DEBUG_UART = self;
-        }
-
         mp_map_t kw_args;
         mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
         return machine_uart_init_helper(self, n_args - 1, args + 1, &kw_args);
@@ -450,35 +446,6 @@ STATIC mp_uint_t machine_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint
     }
     return ret;
 }
-
-#if 1
-void debug_uart_write(const char *str, mp_uint_t len) {
-    int errcode;
-    if (DEBUG_UART != NULL && len > 0) {
-        machine_uart_write(DEBUG_UART, str, len, &errcode);
-    }
-}
-
-int debug_uart_rx_chr(void) {
-    int8_t buf[1] = { 0 };
-    int errcode;
-    if (DEBUG_UART != NULL) {
-        DEBUG_UART->timeout = 0xffff;
-        DEBUG_UART->timeout_char = 0xffff;
-        machine_uart_read(DEBUG_UART, buf, 1, &errcode);
-    }
-    return buf[0];
-}
-
-int debug_uart_poll(void) {
-    int errcode;
-    int ret = 0;
-    if (DEBUG_UART != NULL) {
-        ret = machine_uart_ioctl(DEBUG_UART, MP_STREAM_POLL, MP_STREAM_POLL_RD, &errcode);
-    }
-    return ret & MP_STREAM_POLL_RD ? MP_STREAM_POLL_RD : 0;
-}
-#endif
 
 STATIC const mp_stream_p_t uart_stream_p = {
     .read = machine_uart_read,

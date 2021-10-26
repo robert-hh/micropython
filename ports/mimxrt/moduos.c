@@ -114,7 +114,7 @@ STATIC void trng_start(void) {
 
 void trng_random_data(unsigned char *output, size_t len) {
     trng_start();
-    TRNG_GetRandomData(TRNG, ouput, len);
+    TRNG_GetRandomData(TRNG, output, len);
 }
 
 #endif

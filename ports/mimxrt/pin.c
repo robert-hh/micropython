@@ -65,7 +65,6 @@ uint32_t pin_get_af(const machine_pin_obj_t *pin) {
 uint32_t pin_generate_config(const uint32_t pull, const uint32_t mode, const uint32_t drive, uint32_t config_register) {
     uint32_t pad_config = 0x0UL;
 
-    // No support for GPIO_LPSR yet.
     #if defined CPU_MIMXRT1176_cm7
 
     // Set Pull-up
@@ -76,7 +75,7 @@ uint32_t pin_generate_config(const uint32_t pull, const uint32_t mode, const uin
             pad_config |= IOMUXC_SW_PAD_CTL_PAD_PUE(1) | // Pull Enabled
                 IOMUXC_SW_PAD_CTL_PAD_PUS(pull != PIN_PULL_DOWN_100K); // Up or DOWn
         }
-    } else {
+    } else { // GPIO_SD_Bx_xx
         if (pull == PIN_PULL_DISABLED) {
             pad_config |= IOMUXC_SW_PAD_CTL_PAD_PULL(0b11);
         } else if (pull == PIN_PULL_DOWN_100K) {
