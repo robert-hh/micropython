@@ -28,8 +28,9 @@
 
 #include "py/runtime.h"
 #include "py/gc.h"
-#include "fsl_trng.h"
 #include "mbedtls_config.h"
+
+extern void trng_random_data(uint8_t *output, size_t len);
 
 #define DEBUG (0)
 
@@ -85,7 +86,7 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
 
     // assumes that TRNG_Init was called during startup
     *olen = len;
-    TRNG_GetRandomData(TRNG, output, len);
+    trng_random_data(output, len);
 
     return 0;
 }

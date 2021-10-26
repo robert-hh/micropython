@@ -92,27 +92,11 @@ STATIC void trng_start(void) {
     }
 }
 
-uint32_t trng_random_u32(void) {
-    uint32_t rngval;
-
+void trng_random_data(unsigned char *output, size_t len) {
     trng_start();
-    CAAM_RNG_GetRandomData(CAAM, &caam_handle, caam_state_handle, &rngval, 4,
+    CAAM_RNG_GetRandomData(CAAM, &caam_handle, caam_state_handle, output, len,
         kCAAM_RngDataAny, NULL);
-    return rngval;
 }
-
-STATIC mp_obj_t os_urandom(mp_obj_t num) {
-    mp_int_t n = mp_obj_get_int(num);
-    vstr_t vstr;
-    vstr_init_len(&vstr, n);
-
-    trng_start();
-    CAAM_RNG_GetRandomData(CAAM, &caam_handle, caam_state_handle, vstr.buf, n,
-        kCAAM_RngDataAny, NULL);
-
-    return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_urandom_obj, os_urandom);
 
 #else
 
@@ -128,11 +112,18 @@ STATIC void trng_start(void) {
     }
 }
 
+void trng_random_data(unsigned char *output, size_t len) {
+    trng_start();
+    TRNG_GetRandomData(TRNG, ouput, len);
+}
+
+#endif
+
 uint32_t trng_random_u32(void) {
     uint32_t rngval;
 
     trng_start();
-    TRNG_GetRandomData(TRNG, (uint8_t *)&rngval, 4);
+    trng_random_data((uint8_t *)&rngval, 4);
     return rngval;
 }
 
@@ -142,12 +133,11 @@ STATIC mp_obj_t os_urandom(mp_obj_t num) {
     vstr_init_len(&vstr, n);
 
     trng_start();
-    TRNG_GetRandomData(TRNG, vstr.buf, n);
+    trng_random_data((uint8_t *)vstr.buf, n);
 
     return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_urandom_obj, os_urandom);
-#endif
 
 #if MICROPY_PY_OS_DUPTERM
 STATIC mp_obj_t os_dupterm_notify(mp_obj_t obj_in) {
