@@ -451,6 +451,7 @@ STATIC mp_uint_t machine_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint
     return ret;
 }
 
+#if 1
 void debug_uart_write(const char *str, mp_uint_t len) {
     int errcode;
     if (DEBUG_UART != NULL && len > 0) {
@@ -477,6 +478,7 @@ int debug_uart_poll(void) {
     }
     return ret & MP_STREAM_POLL_RD ? MP_STREAM_POLL_RD : 0;
 }
+#endif
 
 STATIC const mp_stream_p_t uart_stream_p = {
     .read = machine_uart_read,

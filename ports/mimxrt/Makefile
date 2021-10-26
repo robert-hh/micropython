@@ -201,9 +201,7 @@ SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/fsl_ocotp.c \
 	$(MCU_DIR)/drivers/fsl_pit.c \
 	$(MCU_DIR)/drivers/fsl_snvs_lp.c \
-	$(MCU_DIR)/drivers/fsl_trng.c \
 	$(MCU_DIR)/drivers/fsl_wdog.c \
-	$(MCU_DIR)/project_template/clock_config.c \
 	$(MCU_DIR)/system_$(MCU_SERIES)$(MCU_CORE).c \
 	$(MCU_DIR)/xip/fsl_flexspi_nor_boot.c \
 

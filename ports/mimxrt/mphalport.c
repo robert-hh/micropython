@@ -37,6 +37,11 @@
 
 #include CPU_HEADER_H
 
+#if defined CPU_MIMXRT1176_cm7
+extern void debug_uart_write(const char *str, mp_uint_t len);
+extern int debug_uart_rx_chr(void);
+extern int debug_uart_poll(void);
+#endif
 STATIC uint8_t stdin_ringbuf_array[260];
 ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array), 0, 0};
 
@@ -110,6 +115,9 @@ void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
         }
     }
     mp_uos_dupterm_tx_strn(str, len);
+    #if defined CPU_MIMXRT1176_cm7
+    debug_uart_write(str, len);
+    #endif
 }
 
 uint64_t mp_hal_time_ns(void) {
@@ -125,10 +133,17 @@ uint64_t mp_hal_time_ns(void) {
 // Generate a random locally administered MAC address (LAA)
 void mp_hal_generate_laa_mac(int idx, uint8_t buf[6]) {
     // Take the MAC addr from the OTP's Configuration and Manufacturing Info
+    #if defined CPU_MIMXRT1176_cm7
+    OCOTP_Init(OCOTP, 0U);
+    buf[0] = 0x02; // Locally Administered MAC
+    *(uint32_t *)&buf[1] = OCOTP->FUSEN[0x10].FUSE;
+    *(uint16_t *)&buf[4] = (uint16_t)OCOTP->FUSEN[0x11].FUSE;
+    #else
     OCOTP_Init(OCOTP, CLOCK_GetFreq(kCLOCK_IpgClk));
     buf[0] = 0x02; // Locally Administered MAC
     *(uint32_t *)&buf[1] = OCOTP->CFG0 ^ (OCOTP->CFG0 >> 8);
     *(uint16_t *)&buf[4] = (uint16_t)(OCOTP->CFG1 ^ (OCOTP->CFG1 >> 16));
+    #endif
 }
 
 // A board can override this if needed

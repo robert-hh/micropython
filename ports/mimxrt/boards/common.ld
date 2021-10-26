@@ -200,10 +200,7 @@ SECTIONS
   {
     . = ALIGN(4);
     __ram_function_start__ = .;
-<<<<<<< HEAD
-=======
     *(.text*)
->>>>>>> mimxrt1170: Bring the 1176 port in sync with MP Master.
     *(.ram_functions*)
     /* remaining .text and .rodata; i.e. stuff we exclude above because we want it in RAM */
     *(.text*)
