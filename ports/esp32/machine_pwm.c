@@ -85,17 +85,12 @@ STATIC ledc_timer_config_t timers[PWM_TIMER_MAX];
 // duty_u16() and duty_ns() use 16-bit resolution or less
 
 // Possible highest resolution in device
-#if (LEDC_TIMER_BIT_MAX - 1) < LEDC_TIMER_16_BIT
 #define HIGHEST_PWM_RES (LEDC_TIMER_BIT_MAX - 1)
-#else
-#define HIGHEST_PWM_RES (LEDC_TIMER_16_BIT) // 20 bit for ESP32, but 16 bit is used
-#endif
+
 // Duty resolution of user interface in `duty_u16()` and `duty_u16` parameter in constructor/initializer
 #define UI_RES_16_BIT (16)
 // Maximum duty value on highest user interface resolution
 #define UI_MAX_DUTY ((1 << UI_RES_16_BIT) - 1)
-// How much to shift from the HIGHEST_PWM_RES duty resolution to the user interface duty resolution UI_RES_16_BIT
-#define UI_RES_SHIFT (UI_RES_16_BIT - HIGHEST_PWM_RES) // 0 for ESP32, 2 for S2, S3, C3
 
 // If the PWM frequency is less than EMPIRIC_FREQ, then LEDC_REF_CLK_HZ(1 MHz) source is used, else LEDC_APB_CLK_HZ(80 MHz) source is used
 #define EMPIRIC_FREQ (10) // Hz
@@ -355,7 +350,7 @@ STATIC void set_duty_u10(machine_pwm_obj_t *self, int duty) {
     if ((duty < 0) || (duty > MAX_DUTY_U10)) {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("duty must be from 0 to %u"), MAX_DUTY_U10);
     }
-    set_duty_u16(self, duty << (HIGHEST_PWM_RES + UI_RES_SHIFT - PWRES));
+    set_duty_u16(self, duty << (UI_RES_16_BIT - LEDC_TIMER_10_BIT));
     self->duty_x = PWRES;
     self->duty_u10 = duty;
 }
