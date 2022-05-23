@@ -186,11 +186,6 @@
 #define MICROPY_USE_INTERVAL_FLS_FS         (1)
 #define MICROPY_USE_FROZEN_SCRIPT           (1)
 
-// use vfs's functions for import stat and builtin open
-#define mp_import_stat mp_vfs_import_stat
-#define mp_builtin_open mp_vfs_open
-#define mp_builtin_open_obj mp_vfs_open_obj
-
 // extra built in names to add to the global namespace
 #define MICROPY_PORT_BUILTINS \
     { MP_OBJ_NEW_QSTR(MP_QSTR_input), (mp_obj_t)&mp_builtin_input_obj }, \

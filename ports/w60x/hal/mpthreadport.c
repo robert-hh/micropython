@@ -87,20 +87,20 @@ typedef struct tskTaskControlBlock
 } tskTCB;
 
 // this structure forms a linked list, one node per active thread
-typedef struct _thread_t {
+typedef struct _mp_thread_t {
     xTaskHandle id;        // system id of thread
     int ready;              // whether the thread is ready and running
     void *arg;              // thread Python args, a GC root pointer
     void *stack;            // pointer to the stack
     size_t stack_len;       // number of words in the stack
-    struct _thread_t *next;
+    struct _mp_thread_t *next;
     void *p;
-} thread_t;
+} mp_thread_t;
 
 // the mutex controls access to the linked list
 STATIC mp_thread_mutex_t thread_mutex;
-STATIC thread_t thread_entry0;
-STATIC thread_t *thread; // root pointer, handled bp mp_thread_gc_others
+STATIC mp_thread_t thread_entry0;
+STATIC mp_thread_t *thread; // root pointer, handled bp mp_thread_gc_others
 
 void mp_thread_init(void *stack, uint32_t stack_len) {
     mp_thread_mutex_init(&thread_mutex);
@@ -118,7 +118,7 @@ void mp_thread_init(void *stack, uint32_t stack_len) {
 
 void mp_thread_gc_others(void) {
     mp_thread_mutex_lock(&thread_mutex, 1);
-    for (thread_t *th = thread; th != NULL; th = th->next) {
+    for (mp_thread_t *th = thread; th != NULL; th = th->next) {
         gc_collect_root((void **)&th, 1);
         gc_collect_root(&th->arg, 1); // probably not needed
         if (th->id == xTaskGetCurrentTaskHandle()) {
@@ -131,22 +131,22 @@ void mp_thread_gc_others(void) {
     mp_thread_mutex_unlock(&thread_mutex);
 }
 
-mp_state_thread_t *mp_thread_get_state(void) {
-    mp_state_thread_t *p;
+mp_state_mp_thread_t *mp_thread_get_state(void) {
+    mp_state_mp_thread_t *p;
     mp_thread_mutex_lock(&thread_mutex, 1);
-    for (thread_t *th = thread; th != NULL; th = th->next) {
+    for (mp_thread_t *th = thread; th != NULL; th = th->next) {
         if (th->id == xTaskGetCurrentTaskHandle()) {
             p = th->p;
             break;
         }
     }
     mp_thread_mutex_unlock(&thread_mutex);
-    return (mp_state_thread_t *)p;
+    return (mp_state_mp_thread_t *)p;
 }
 
-void mp_thread_set_state(struct _mp_state_thread_t *state) {
+void mp_thread_set_state(struct _mp_state_mp_thread_t *state) {
     mp_thread_mutex_lock(&thread_mutex, 1);
-    for (thread_t *th = thread; th != NULL; th = th->next) {
+    for (mp_thread_t *th = thread; th != NULL; th = th->next) {
         if (th->id == xTaskGetCurrentTaskHandle()) {
             th->p = state;
             break;
@@ -181,7 +181,7 @@ void mp_thread_create(void *(*entry)(void *), void *arg, size_t *stack_size) {
     }
 
     // allocate linked-list node (must be outside thread_mutex lock)
-    thread_t *th = m_new_obj(thread_t);
+    mp_thread_t *th = m_new_obj(mp_thread_t);
 
     mp_thread_mutex_lock(&thread_mutex, 1);
 
@@ -216,7 +216,7 @@ void mp_thread_create(void *(*entry)(void *), void *arg, size_t *stack_size) {
 
 void mp_thread_finish(void) {
     mp_thread_mutex_lock(&thread_mutex, 1);
-    for (thread_t *th = thread; th != NULL; th = th->next) {
+    for (mp_thread_t *th = thread; th != NULL; th = th->next) {
         if (th->id == xTaskGetCurrentTaskHandle()) {
             th->stack = NULL;
             break;
