@@ -159,3 +159,4 @@ const mp_obj_module_t w600_module = {
     .globals = (mp_obj_dict_t *) &w600_module_globals,
 };
 
+MP_REGISTER_MODULE(MP_QSTR_w600, w600_module);

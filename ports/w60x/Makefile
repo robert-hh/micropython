@@ -34,6 +34,7 @@ FROZEN_MANIFEST ?= manifest.py
 
 # include py core make definitions
 include $(TOP)/py/py.mk
+include $(TOP)/extmod/extmod.mk
 
 INC += -I.
 INC += -I./include
@@ -58,6 +59,8 @@ COMPILER_OS_CYGWIN=0
 endif
 export COMPILER_OS_CYGWIN
 include $(TOPDIR)/Tools/verbose.mk
+
+CFLAGS += -g  # always include debug info in the ELF
 
 ifeq ($(COMPILER_OS_CYGWIN),1)
 $(shell mkdir $(BUILD))
@@ -137,7 +140,7 @@ endif
 #---------------------------------------------------------------------------
 # mpy Source section
 #---------------------------------------------------------------------------
-MPY_SRC_C = main.c \
+MPY_SRC_C += main.c \
     hal/fatfs_port.c \
     hal/gccollect.c \
     hal/help.c \
@@ -166,13 +169,8 @@ MPY_SRC_C = main.c \
     modules/modw600.c \
     modules/moduhashlib.c \
     tools/ftpserver.c \
-    $(SRC_MOD)
 
-EXTMOD_SRC_C = $(addprefix extmod/,\
-	modonewire.c \
-	)
-
-LIB_SRC_C = $(addprefix lib/,\
+LIB_SRC_C += $(addprefix lib/,\
 	libm/math.c \
     libm/nearbyintf.c \
     libm/wf_lgamma.c \
@@ -212,6 +210,7 @@ LIB_SRC_C += $(addprefix shared/,\
 	)
 
 ifeq ($(MICROPY_USE_FATFS), 1)
+CFLAGS += -DFFCONF_H='"lib/oofatfs/ffconf.h"'
 LIB_SRC_C += \
 	lib/oofatfs/ff.c \
 	lib/oofatfs/ffunicode.c
@@ -225,7 +224,7 @@ LIB_SRC_C += \
 	lib/littlefs/lfs2_util.c
 endif
 
-DRIVERS_SRC_C = $(addprefix drivers/,\
+DRIVERS_SRC_C += $(addprefix drivers/,\
 	bus/softspi.c \
 	dht/dht.c \
 	)
@@ -233,6 +232,7 @@ DRIVERS_SRC_C = $(addprefix drivers/,\
 ifeq ($(MICROPY_SSL_MBEDTLS),1)
 CFLAGS_MOD += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
 INC += -I./mbedtls
+INC += -I$(TOP)/lib/mbedtls/include
 MBEDTLS_SRC_C = mbedtls/aes_alt.c \
     mbedtls/arc4_alt.c \
     mbedtls/des_alt.c \
@@ -243,7 +243,7 @@ MBEDTLS_SRC_C = mbedtls/aes_alt.c \
 endif
 
 SRC_O += \
-	shared/runtime/gchelper_m3.o
+	shared/runtime/gchelper_thumb2.o
 
 OBJ_MP =
 OBJ_MP += $(PY_O)
@@ -252,6 +252,7 @@ OBJ_MP += $(addprefix $(BUILD)/, $(MPY_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(EXTMOD_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(LIB_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(DRIVERS_SRC_C:.c=.o))
+OBJ_MP += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(SRC_O:.s=.o))
 
 ifeq ($(MICROPY_SSL_MBEDTLS),1)
@@ -285,6 +286,9 @@ CFLAGS += -DW60X_USE_FATFS=1
 endif
 ifeq ($(MICROPY_USE_LITTLEFS), 1)
 CFLAGS += -DW60X_USE_LITTLEFS=1
+endif
+ifdef MICROPY_PY_THREAD
+CFLAGS += -DMICROPY_PY_THREAD=$(MICROPY_PY_THREAD)
 endif
 
 CFLAGS += -Wno-unused-variable -Wno-unused-function -Os -DNDEBUG
