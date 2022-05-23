@@ -254,10 +254,17 @@ soft_reset:
 #if MICROPY_USE_FROZEN_SCRIPT
     // run boot-up scripts
     pyexec_frozen_module("_boot.py");
-    pyexec_file("boot.py");
-
-    if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
-        pyexec_file("main.py");
+    // Execute user scripts.
+    int ret = pyexec_file_if_exists("boot.py");
+    if (ret & PYEXEC_FORCED_EXIT) {
+        goto soft_reset_exit;
+    }
+    // Do not execute main.py if boot.py failed
+    if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL && ret != 0) {
+        ret = pyexec_file_if_exists("main.py");
+        if (ret & PYEXEC_FORCED_EXIT) {
+            goto soft_reset_exit;
+        }
     }
 #endif
 
@@ -273,7 +280,9 @@ soft_reset:
         }
     }
 
-    int coldboot = 0;
+    int coldboot;
+soft_reset_exit:
+    coldboot = 0;
 #if MICROPY_PY_THREAD
     coldboot = mp_thread_deinit();
 #endif
