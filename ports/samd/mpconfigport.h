@@ -96,6 +96,8 @@
 #define MICROPY_PY_URANDOM                  (1)
 #define MICROPY_PY_UZLIB                    (1)
 #define MICROPY_PY_UASYNCIO                 (1)
+#define MICROPY_PY_MACHINE_SOFTI2C          (1)
+#define MICROPY_PY_MACHINE_SOFTSPI          (1)
 
 // Use VfsLfs's types for fileio/textio
 #define mp_type_fileio mp_type_vfs_lfs1_fileio
