@@ -53,7 +53,7 @@
 #define MICROPY_PY_BUILTINS_HELP            (1)
 #define MICROPY_PY_BUILTINS_HELP_TEXT       samd_help_text
 #define MICROPY_PY_BUILTINS_HELP_MODULES    (1)
-
+#define MICROPY_ENABLE_SCHEDULER            (1)
 // fixes sys/usys import issue
 #define MICROPY_MODULE_WEAK_LINKS           (1)
 // Control over Python builtins
@@ -106,6 +106,10 @@
 // Use VfsLfs's types for fileio/textio
 #define mp_type_fileio mp_type_vfs_lfs1_fileio
 #define mp_type_textio mp_type_vfs_lfs1_textio
+
+#define MICROPY_PORT_ROOT_POINTERS \
+    const char *readline_hist[8]; \
+    void *machine_pin_irq_objects[16]; \
 
 #define MP_STATE_PORT MP_STATE_VM
 
