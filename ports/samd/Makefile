@@ -116,6 +116,7 @@ SRC_C = \
 	lib/tinyusb/src/portable/microchip/samd/dcd_samd.c \
 	lib/tinyusb/src/tusb.c \
 	drivers/bus/softspi.c \
+	shared/runtime/mpirq.c \
 	shared/libc/printf.c \
 	shared/libc/string0.c \
 	shared/readline/readline.c \
@@ -145,6 +146,7 @@ SRC_QSTR += \
 	modmachine.c \
 	modsamd.c \
 	samd_flash.c \
+	shared/runtime/mpirq.c \
 
 SRC_QSTR += $(SRC_MOD) $(SRC_CXX)
 
