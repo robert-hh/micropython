@@ -141,6 +141,7 @@ SRC_QSTR += \
 	machine_adc.c \
 	machine_led.c \
 	machine_pin.c \
+	machine_pwm.c \
 	modutime.c \
 	modmachine.c \
 	modsamd.c \
