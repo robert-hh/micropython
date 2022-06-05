@@ -91,6 +91,7 @@ SRC_C = \
 	machine_adc.c \
 	machine_led.c \
 	machine_pin.c \
+	machine_spi.c \
 	machine_uart.c \
 	main.c \
 	modutime.c \
@@ -143,6 +144,7 @@ SRC_QSTR += \
 	machine_led.c \
 	machine_pin.c \
 	machine_pwm.c \
+	machine_spi.c \
 	machine_uart.c \
 	modutime.c \
 	modmachine.c \
