@@ -88,6 +88,7 @@ endif
 SRC_C = \
 	clock_config.c \
 	help.c \
+	machine_adc.c \
 	machine_led.c \
 	machine_pin.c \
 	main.c \
@@ -136,6 +137,7 @@ endif
 
 # List of sources for qstr extraction
 SRC_QSTR += \
+	machine_adc.c \
 	machine_led.c \
 	machine_pin.c \
 	modutime.c \
