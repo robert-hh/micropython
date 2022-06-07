@@ -89,6 +89,7 @@ SRC_C = \
 	clock_config.c \
 	help.c \
 	machine_adc.c \
+	machine_dac.c \
 	machine_i2c.c \
 	machine_led.c \
 	machine_pin.c \
@@ -147,6 +148,7 @@ endif
 # List of sources for qstr extraction
 SRC_QSTR += \
 	machine_adc.c \
+	machine_dac.c \
 	machine_i2c.c \
 	machine_led.c \
 	machine_pin.c \
