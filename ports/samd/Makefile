@@ -160,6 +160,7 @@ SRC_QSTR += \
 	shared/readline/readline.c \
 	extmod/uos_dupterm.c \
 	shared/runtime/mpirq.c \
+	shared/runtime/sys_stdio_mphal.c \
 
 SRC_QSTR += $(SRC_MOD) $(SRC_CXX)
 

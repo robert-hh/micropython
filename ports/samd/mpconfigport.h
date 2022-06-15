@@ -40,8 +40,6 @@
 
 // MicroPython emitters
 #define MICROPY_PERSISTENT_CODE_LOAD        (1)
-#define MICROPY_EMIT_THUMB                  (0)
-#define MICROPY_EMIT_INLINE_THUMB           (0)
 
 // Compiler configuration
 #define MICROPY_COMP_CONST                  (1)
@@ -55,39 +53,23 @@
 #define MICROPY_ENABLE_SOURCE_LINE          (1)
 #define MICROPY_STREAMS_NON_BLOCK           (1)
 #define MICROPY_ERROR_REPORTING             (MICROPY_ERROR_REPORTING_TERSE)
-#define MICROPY_CPYTHON_COMPAT              (0)
-#define MICROPY_CAN_OVERRIDE_BUILTINS       (1)
 #define MICROPY_PY_BUILTINS_HELP            (1)
 #define MICROPY_PY_BUILTINS_HELP_TEXT       samd_help_text
 #define MICROPY_PY_BUILTINS_HELP_MODULES    (1)
 #define MICROPY_ENABLE_SCHEDULER            (1)
-// fixes sys/usys import issue
 #define MICROPY_MODULE_WEAK_LINKS           (1)
+
 // Control over Python builtins
-#define MICROPY_PY_ASYNC_AWAIT              (0)
-#define MICROPY_PY_BUILTINS_STR_COUNT       (0)
 #define MICROPY_PY_BUILTINS_MEMORYVIEW      (1)
-#define MICROPY_PY_BUILTINS_SET             (0)
-#define MICROPY_PY_BUILTINS_FROZENSET       (0)
-#define MICROPY_PY_BUILTINS_PROPERTY        (0)
-#define MICROPY_PY_BUILTINS_ENUMERATE       (1)
-#define MICROPY_PY_BUILTINS_FILTER          (0)
-#define MICROPY_PY_BUILTINS_REVERSED        (0)
-#define MICROPY_PY_BUILTINS_NOTIMPLEMENTED  (1)
-#define MICROPY_PY_BUILTINS_MIN_MAX         (1)
 #define MICROPY_PY_BUILTINS_INPUT           (1)
-#define MICROPY_PY___FILE__                 (0)
 #define MICROPY_PY_MICROPYTHON_MEM_INFO     (1)
 #define MICROPY_PY_ARRAY_SLICE_ASSIGN       (1)
-#define MICROPY_PY_ATTRTUPLE                (1)
-#define MICROPY_PY_COLLECTIONS              (0)
 #define MICROPY_PY_SYS                      (1)
 #define MICROPY_PY_SYS_PLATFORM             "samd"
 #define MICROPY_PY_SYS_EXIT                 (1)
 #define MICROPY_PY_SYS_STDFILES             (1)
 #define MICROPY_PY_SYS_MAXSIZE              (1)
 #define MICROPY_PY_IO_FILEIO                (1)
-#define MICROPY_PY_IO                       (1)
 #define MICROPY_PY_IO_IOBASE                (1)
 
 // Extended modules
@@ -129,7 +111,6 @@
 
 #define MP_STATE_PORT MP_STATE_VM
 
-// Miscellaneous settings
 // Miscellaneous settings
 __attribute__((always_inline)) static inline void enable_irq(uint32_t state) {
     __set_PRIMASK(state);
