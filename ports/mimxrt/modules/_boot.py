@@ -25,7 +25,7 @@ def fs_type(bdev):
 bdev = mimxrt.Flash()
 
 # In case of MSC support mount as FAT
-# Create a FAT FS is needed
+# Create a FAT FS if needed
 if hasattr(mimxrt, "MSC"):
     try:
         vfs = vfs.VfsFat(bdev)
@@ -35,7 +35,7 @@ if hasattr(mimxrt, "MSC"):
         vfs = vfs.VfsFat(bdev)
         os.mount(vfs, "/flash")
 # otherwise analyze the boot sector an mount accordingly
-# if no valid boot sector, creat a LFS file system
+# without a valid boot sector create a LFS file system
 else:
     fs = fs_type(bdev)
     if fs == FS_LITTLEFS:
