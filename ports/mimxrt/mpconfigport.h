@@ -155,13 +155,12 @@ uint32_t trng_random_u32(void);
 #define MICROPY_HW_USB_CDC                  (1)
 // by default do not enable MSC support
 #ifndef MICROPY_HW_USB_MSC
-#define MICROPY_HW_USB_MSC                  (1)
+#define MICROPY_HW_USB_MSC                  (0)
 #endif
 
 #if MICROPY_HW_USB_MSC
 #define MICROPY_FATFS_USE_LABEL             (1)
 #define MICROPY_FATFS_MULTI_PARTITION       (1)
-#define MICROPY_HW_USB_MSC_EXCLUSIVE_ACCESS (1)
 #endif
 // Hooks to add builtins
 
