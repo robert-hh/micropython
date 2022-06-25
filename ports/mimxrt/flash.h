@@ -49,6 +49,17 @@ extern uint8_t __vfs_start;
 extern uint8_t __vfs_end;
 extern uint8_t __flash_start;
 
+extern flexspi_nor_config_t qspiflash_config;
+
+enum {
+    MOUNTED = 0,
+    EJECTED,
+    TRANSIT
+};
+
+// --------------------------------------------------------------------+
+// Global Function Declarations
+// --------------------------------------------------------------------+
 void flash_init(void);
 status_t flash_erase_sector(uint32_t erase_addr);
 status_t flash_erase_block(uint32_t erase_addr);
