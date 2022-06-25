@@ -63,6 +63,7 @@ void board_init(void);
 int main(void) {
     board_init();
     ticks_init();
+    led_init();
     pendsv_init();
 
     #if MICROPY_PY_LWIP
