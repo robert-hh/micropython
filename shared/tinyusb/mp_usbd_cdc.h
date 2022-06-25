@@ -31,9 +31,32 @@
 #define MICROPY_HW_USB_CDC_TX_TIMEOUT (500)
 #endif
 
-uintptr_t mp_usbd_cdc_poll_interfaces(uintptr_t poll_flags);
-void tud_cdc_rx_cb(uint8_t itf);
-mp_uint_t mp_usbd_cdc_tx_strn(const char *str, mp_uint_t len);
+#endif
 
+#if MICROPY_HW_USB_MSC_EXCLUSIVE_ACCESS
+#include "tusb.h"
+#include "extmod/vfs.h"
+#include "extmod/vfs_fat.h"
+static mp_sched_node_t mp_remount_sched_node;
 
-#endif // MICROPY_INCLUDED_SHARED_TINYUSB_MP_USBD_CDC_H
+STATIC void tud_msc_remount_task(mp_sched_node_t *node) {
+    mp_vfs_mount_t *vfs = NULL;
+    for (vfs = MP_STATE_VM(vfs_mount_table); vfs != NULL; vfs = vfs->next) {
+        if (vfs->len == 1) {
+            const char *path_str = "/";
+            mp_obj_t path = mp_obj_new_str(path_str, strlen(path_str));
+            nlr_buf_t nlr;
+            if (nlr_push(&nlr) == 0) {
+                mp_vfs_umount(vfs->obj);
+                mp_vfs_mount_and_chdir_protected(vfs->obj, path);
+                nlr_pop();
+            }
+            break;
+        }
+    }
+}
+
+void tud_msc_remount(void) {
+    mp_sched_schedule_node(&mp_remount_sched_node, tud_msc_remount_task);
+}
+#endif
