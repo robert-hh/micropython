@@ -125,6 +125,10 @@ int main(void) {
         if (ret & PYEXEC_FORCED_EXIT) {
             goto soft_reset_exit;
         }
+
+        // deferred tusb_init allowing a fs to be created before MSC access
+        tusb_init();
+
         // Do not execute main.py if boot.py failed
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL && ret != 0) {
             ret = pyexec_file_if_exists("main.py");
