@@ -34,6 +34,7 @@ FROZEN_MANIFEST ?= manifest.py
 
 # include py core make definitions
 include $(TOP)/py/py.mk
+include $(TOP)/extmod/extmod.mk
 
 INC += -I.
 INC += -I./include
@@ -137,7 +138,7 @@ endif
 #---------------------------------------------------------------------------
 # mpy Source section
 #---------------------------------------------------------------------------
-MPY_SRC_C = main.c \
+MPY_SRC_C += main.c \
     hal/fatfs_port.c \
     hal/gccollect.c \
     hal/help.c \
@@ -166,13 +167,12 @@ MPY_SRC_C = main.c \
     modules/modw600.c \
     modules/moduhashlib.c \
     tools/ftpserver.c \
-    $(SRC_MOD)
 
-EXTMOD_SRC_C = $(addprefix extmod/,\
+EXTMOD_SRC_C += $(addprefix extmod/,\
 	modonewire.c \
 	)
 
-LIB_SRC_C = $(addprefix lib/,\
+LIB_SRC_C += $(addprefix lib/,\
 	libm/math.c \
     libm/nearbyintf.c \
     libm/wf_lgamma.c \
@@ -225,7 +225,7 @@ LIB_SRC_C += \
 	lib/littlefs/lfs2_util.c
 endif
 
-DRIVERS_SRC_C = $(addprefix drivers/,\
+DRIVERS_SRC_C += $(addprefix drivers/,\
 	bus/softspi.c \
 	dht/dht.c \
 	)
@@ -252,6 +252,7 @@ OBJ_MP += $(addprefix $(BUILD)/, $(MPY_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(EXTMOD_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(LIB_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(DRIVERS_SRC_C:.c=.o))
+OBJ_mp += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(SRC_O:.s=.o))
 
 ifeq ($(MICROPY_SSL_MBEDTLS),1)
