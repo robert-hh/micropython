@@ -99,10 +99,6 @@
 #define MICROPY_PY_MACHINE_PWM_DUTY_U16_NS  (1)
 #define MICROPY_PY_MACHINE_PWM_INCLUDEFILE  "ports/samd/machine_pwm.c"
 
-// Use VfsLfs's types for fileio/textio
-#define mp_type_fileio mp_type_vfs_lfs1_fileio
-#define mp_type_textio mp_type_vfs_lfs1_textio
-
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
     void *machine_pin_irq_objects[16]; \
