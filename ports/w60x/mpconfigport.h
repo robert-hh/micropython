@@ -168,6 +168,7 @@
 #define MICROPY_PY_FRAMEBUF                 (1)
 #define MICROPY_PY_ONEWIRE                  (1)
 #define MICROPY_PY_MACHINE_BITSTREAM        (1)
+#define FFCONF_H                            "lib/oofatfs/ffconf.h"
 
 // fatfs configuration
 #define MICROPY_FATFS_ENABLE_LFN            (1)
@@ -187,10 +188,6 @@
 #define MICROPY_USE_FROZEN_SCRIPT           (1)
 
 #define MP_STATE_PORT MP_STATE_VM
-
-#define MICROPY_PORT_ROOT_POINTERS \
-    const char *readline_hist[8]; \
-    mp_obj_t machine_pin_irq_handler[48]; \
 
 // type definitions for the specific machine
 

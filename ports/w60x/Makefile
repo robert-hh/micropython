@@ -60,6 +60,8 @@ endif
 export COMPILER_OS_CYGWIN
 include $(TOPDIR)/Tools/verbose.mk
 
+CFLAGS += -g  # always include debug info in the ELF
+
 ifeq ($(COMPILER_OS_CYGWIN),1)
 $(shell mkdir $(BUILD))
 $(shell ./tools/cygwin.sh $(PWD) $(WMSDK_PATH))
@@ -168,10 +170,6 @@ MPY_SRC_C += main.c \
     modules/moduhashlib.c \
     tools/ftpserver.c \
 
-EXTMOD_SRC_C += $(addprefix extmod/,\
-	modonewire.c \
-	)
-
 LIB_SRC_C += $(addprefix lib/,\
 	libm/math.c \
     libm/nearbyintf.c \
@@ -212,6 +210,7 @@ LIB_SRC_C += $(addprefix shared/,\
 	)
 
 ifeq ($(MICROPY_USE_FATFS), 1)
+CFLAGS += -DFFCONF_H='"lib/oofatfs/ffconf.h"'
 LIB_SRC_C += \
 	lib/oofatfs/ff.c \
 	lib/oofatfs/ffunicode.c
@@ -252,7 +251,7 @@ OBJ_MP += $(addprefix $(BUILD)/, $(MPY_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(EXTMOD_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(LIB_SRC_C:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(DRIVERS_SRC_C:.c=.o))
-OBJ_mp += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
+OBJ_MP += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 OBJ_MP += $(addprefix $(BUILD)/, $(SRC_O:.s=.o))
 
 ifeq ($(MICROPY_SSL_MBEDTLS),1)

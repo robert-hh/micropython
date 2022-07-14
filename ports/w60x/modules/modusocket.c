@@ -320,7 +320,7 @@ mp_obj_t _socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in,
     }
 
     vstr.len = ret;
-    return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
+    return mp_obj_new_bytes_from_vstr(&vstr);
 }
 
 STATIC mp_obj_t socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
@@ -512,12 +512,13 @@ const mp_stream_p_t socket_stream_p = {
     .ioctl = socket_stream_ioctl
 };
 
-STATIC const mp_obj_type_t socket_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_socket,
-    .protocol = &socket_stream_p,
-    .locals_dict = (mp_obj_t) &socket_locals_dict,
-};
+MP_DEFINE_CONST_OBJ_TYPE(
+    socket_type,
+    MP_QSTR_socket,
+    MP_TYPE_FLAG_NONE,
+    protocol, &socket_stream_p,
+    locals_dict, &socket_locals_dict
+    );
 
 STATIC mp_obj_t get_socket(size_t n_args, const mp_obj_t *args) {
     socket_obj_t *sock = m_new_obj_with_finaliser(socket_obj_t);

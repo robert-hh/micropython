@@ -33,6 +33,7 @@
 #include "wm_osal.h"
 #include "wm_watchdog.h"
 
+#include "py/runtime.h"
 #include "py/mpconfig.h"
 #include "py/mpstate.h"
 #include "py/gc.h"
@@ -131,8 +132,8 @@ void mp_thread_gc_others(void) {
     mp_thread_mutex_unlock(&thread_mutex);
 }
 
-mp_state_mp_thread_t *mp_thread_get_state(void) {
-    mp_state_mp_thread_t *p;
+mp_state_thread_t *mp_thread_get_state(void) {
+    mp_state_thread_t *p = NULL;
     mp_thread_mutex_lock(&thread_mutex, 1);
     for (mp_thread_t *th = thread; th != NULL; th = th->next) {
         if (th->id == xTaskGetCurrentTaskHandle()) {
@@ -141,10 +142,10 @@ mp_state_mp_thread_t *mp_thread_get_state(void) {
         }
     }
     mp_thread_mutex_unlock(&thread_mutex);
-    return (mp_state_mp_thread_t *)p;
+    return (mp_state_thread_t *)p;
 }
 
-void mp_thread_set_state(struct _mp_state_mp_thread_t *state) {
+void mp_thread_set_state(struct _mp_state_thread_t *state) {
     mp_thread_mutex_lock(&thread_mutex, 1);
     for (mp_thread_t *th = thread; th != NULL; th = th->next) {
         if (th->id == xTaskGetCurrentTaskHandle()) {

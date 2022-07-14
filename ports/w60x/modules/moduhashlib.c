@@ -89,7 +89,7 @@ STATIC mp_obj_t sha256_digest(mp_obj_t self_in) {
     vstr_t vstr;
     vstr_init_len(&vstr, 32);
     psSha256Final(&self->state.sha256, (unsigned char *)vstr.buf);
-    return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
+    return mp_obj_new_bytes_from_vstr(&vstr);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(sha256_digest_obj, sha256_digest);
 
@@ -98,7 +98,7 @@ STATIC mp_obj_t sha1_digest(mp_obj_t self_in) {
     vstr_t vstr;
     vstr_init_len(&vstr, 20);
     tls_crypto_sha1_final(&self->state.sha1, (unsigned char *)vstr.buf);
-    return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
+    return mp_obj_new_bytes_from_vstr(&vstr);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(sha1_digest_obj, sha1_digest);
 
@@ -109,12 +109,13 @@ STATIC const mp_rom_map_elem_t sha256_locals_dict_table[] = {
 
 STATIC MP_DEFINE_CONST_DICT(sha256_locals_dict, sha256_locals_dict_table);
 
-STATIC const mp_obj_type_t sha256_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_sha256,
-    .make_new = sha256_make_new,
-    .locals_dict = (void *) &sha256_locals_dict,
-};
+MP_DEFINE_CONST_OBJ_TYPE(
+    sha256_type,
+    MP_QSTR_sha256,
+    MP_TYPE_FLAG_NONE,
+    make_new, sha256_make_new,
+    locals_dict, &sha256_locals_dict
+    );
 
 STATIC const mp_rom_map_elem_t sha1_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_update), MP_ROM_PTR(&sha1_update_obj) },
@@ -122,12 +123,13 @@ STATIC const mp_rom_map_elem_t sha1_locals_dict_table[] = {
 };
 STATIC MP_DEFINE_CONST_DICT(sha1_locals_dict, sha1_locals_dict_table);
 
-STATIC const mp_obj_type_t sha1_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_sha1,
-    .make_new = sha1_make_new,
-    .locals_dict = (void *) &sha1_locals_dict,
-};
+MP_DEFINE_CONST_OBJ_TYPE(
+    sha1_type,
+    MP_QSTR_sha1,
+    MP_TYPE_FLAG_NONE,
+    make_new, sha1_make_new,
+    locals_dict, &sha1_locals_dict
+    );
 
 STATIC const mp_rom_map_elem_t mp_module_hashlib_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_uhashlib) },
