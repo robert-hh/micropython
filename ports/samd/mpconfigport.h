@@ -99,12 +99,6 @@
 #define MICROPY_PY_MACHINE_PWM_DUTY_U16_NS  (1)
 #define MICROPY_PY_MACHINE_PWM_INCLUDEFILE  "ports/samd/machine_pwm.c"
 
-#define MICROPY_PORT_ROOT_POINTERS \
-    const char *readline_hist[8]; \
-    void *machine_pin_irq_objects[16]; \
-    void *samd_uart_rx_buffer[SERCOM_INST_NUM]; \
-    void *samd_uart_tx_buffer[SERCOM_INST_NUM];
-
 #define MP_STATE_PORT MP_STATE_VM
 
 // Miscellaneous settings

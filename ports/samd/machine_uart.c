@@ -371,7 +371,7 @@ STATIC mp_obj_t machine_uart_sendbreak(mp_obj_t self_in) {
     }
     #endif
     // Wait for the TX queue & register to clear
-    // Since the flags are not safe, just wait sufficiently long.
+    // Since the flags are not reliable, just wait sufficiently long.
     mp_hal_delay_us(2 * break_time_us);
     // Disable MUX
     PORT->Group[self->tx / 32].PINCFG[self->tx % 32].bit.PMUXEN = 0;
@@ -517,3 +517,6 @@ const mp_obj_type_t machine_uart_type = {
     .protocol = &uart_stream_p,
     .locals_dict = (mp_obj_dict_t *)&machine_uart_locals_dict,
 };
+
+MP_REGISTER_ROOT_POINTER(void *samd_uart_rx_buffer[SERCOM_INST_NUM]);
+MP_REGISTER_ROOT_POINTER(void *samd_uart_tx_buffer[SERCOM_INST_NUM]);

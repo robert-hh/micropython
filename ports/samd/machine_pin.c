@@ -514,3 +514,5 @@ mp_hal_pin_obj_t mp_hal_get_pin_obj(mp_obj_t obj) {
     machine_pin_obj_t *pin = MP_OBJ_TO_PTR(obj);
     return pin->id;
 }
+
+MP_REGISTER_ROOT_POINTER(void *machine_pin_irq_objects[16]);
