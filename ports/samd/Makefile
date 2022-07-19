@@ -109,7 +109,6 @@ SRC_C += \
 	samd_flash.c \
 	samd_isr.c \
 	samd_soc.c \
-	softtimer.c \
 	tusb_port.c \
 	lib/asf4/$(MCU_SERIES_LOWER)/hal/src/hal_atomic.c \
 	lib/asf4/$(MCU_SERIES_LOWER)/hal/src/hal_flash.c \
@@ -133,6 +132,7 @@ SRC_C += \
 	shared/runtime/gchelper_native.c \
 	shared/runtime/interrupt_char.c \
 	shared/runtime/pyexec.c \
+	shared/runtime/softtimer.c \
 	shared/runtime/stdout_helpers.c \
 	shared/runtime/sys_stdio_mphal.c \
 	shared/timeutils/timeutils.c \

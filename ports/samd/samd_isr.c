@@ -28,7 +28,7 @@
 #include "samd_soc.h"
 
 #include "pendsv.h"
-#include "softtimer.h"
+#include "shared/runtime/softtimer.h"
 
 typedef void (*ISR)(void);
 
