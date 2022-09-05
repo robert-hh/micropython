@@ -33,6 +33,8 @@
 #include "shared/runtime/gchelper.h"
 #include "shared/runtime/pyexec.h"
 #include "shared/runtime/softtimer.h"
+#include "dma_manager.h"
+#include "tc_manager.h"
 
 extern uint8_t _sstack, _estack, _sheap, _eheap;
 extern void adc_deinit_all(void);
@@ -81,6 +83,8 @@ void samd_main(void) {
 
     soft_reset_exit:
         mp_printf(MP_PYTHON_PRINTER, "MPY: soft reboot\n");
+        dma_deinit();
+        tc_deinit();
         adc_deinit_all();
         pin_irq_deinit_all();
         pwm_deinit_all();

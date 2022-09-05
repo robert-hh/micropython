@@ -83,6 +83,7 @@ endif
 
 SRC_C += \
 	mcu/$(MCU_SERIES_LOWER)/clock_config.c \
+	dma_manager.c \
 	help.c \
 	machine_adc.c \
 	machine_bitstream.c \
@@ -103,6 +104,7 @@ SRC_C += \
 	samd_flash.c \
 	samd_isr.c \
 	samd_soc.c \
+	tc_manager.c \
 	tusb_port.c \
 
 SHARED_SRC_C += \
