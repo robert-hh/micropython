@@ -134,10 +134,6 @@ adc_config_t get_adc_config(int pin_id, int32_t flag) {
     #endif
     if (pct_ptr->adc0 != 0xff && (flag & (1 << pct_ptr->adc0)) == 0) {
         return (adc_config_t) {0, pct_ptr->adc0};
-    #if defined(MUC_SAMD51)
-    } else if (pct_ptr->adc1 != 0xff && (flag & (1 << (pct_ptr->adc1 + 16))) == 0) {
-        return (adc_config_t) {1, pct_ptr->adc1};
-    #endif
     } else {
         mp_raise_ValueError(MP_ERROR_TEXT("ADC pin used"));
     }

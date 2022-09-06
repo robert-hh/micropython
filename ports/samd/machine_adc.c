@@ -33,6 +33,9 @@
 #include "sam.h"
 #include "pin_af.h"
 #include "modmachine.h"
+#include "samd_soc.h"
+#include "dma_manager.h"
+#include "tc_manager.h"
 
 typedef struct _machine_adc_obj_t {
     mp_obj_base_t base;
@@ -40,10 +43,32 @@ typedef struct _machine_adc_obj_t {
     uint8_t id;
     uint8_t avg;
     uint8_t bits;
+    uint8_t vref;
+    int8_t dma_channel;
+    int8_t tc_index;
 } machine_adc_obj_t;
 
 #define DEFAULT_ADC_BITS    12
 #define DEFAULT_ADC_AVG     16
+
+#if defined(MCU_SAMD21)
+static uint8_t adc_vref_table[] = {
+    ADC_REFCTRL_REFSEL_INT1V_Val, ADC_REFCTRL_REFSEL_INTVCC0_Val,
+    ADC_REFCTRL_REFSEL_INTVCC1_Val, ADC_REFCTRL_REFSEL_AREFA_Val, ADC_REFCTRL_REFSEL_AREFB_Val
+};
+#define DEFAULT_ADC_REF     (3)
+
+#define ADC_EVSYS_CHANNEL    0
+
+#elif defined(MCU_SAMD51)
+static uint8_t adc_vref_table[] = {
+    ADC_REFCTRL_REFSEL_INTREF_Val, ADC_REFCTRL_REFSEL_INTVCC1_Val,
+    ADC_REFCTRL_REFSEL_INTVCC0_Val, ADC_REFCTRL_REFSEL_AREFA_Val,
+    ADC_REFCTRL_REFSEL_AREFB_Val, ADC_REFCTRL_REFSEL_AREFC_Val
+};
+#define DEFAULT_ADC_REF     (3)
+
+#endif
 
 Adc *const adc_bases[] = ADC_INSTS;
 uint32_t busy_flags = 0;
@@ -62,21 +87,38 @@ mp_int_t log2i(mp_int_t num) {
     return res;
 }
 
+// Active just for SAMD21, stops the freerun mode
+// For SAMD51, just the INT flag is reset.
+void adc_irq_handler(int dma_channel) {
+
+    #if defined(MCU_SAMD21)
+    DMAC->CHID.reg = dma_channel;
+    DMAC->CHINTFLAG.reg = DMAC_CHINTFLAG_TCMPL;
+    ADC->EVCTRL.bit.STARTEI = 0;
+
+    #elif defined(MCU_SAMD51)
+    DMAC->Channel[dma_channel].CHINTFLAG.reg = DMAC_CHINTFLAG_TCMPL;
+    #endif
+}
+
 STATIC void adc_obj_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
     (void)kind;
     machine_adc_obj_t *self = MP_OBJ_TO_PTR(o);
 
-    mp_printf(print, "ADC(%s, device=%u, channel=%u, bits=%u, average=%u)",
-        pin_name(self->id), self->adc_config.device,
-        self->adc_config.channel, self->bits, 1 << self->avg);
+    mp_printf(print, "ADC(P%c%02u, ADC%u, channel=%u, bits=%u, average=%u, vref=%d)",
+        "ABCD"[self->id / 32], self->id % 32, self->adc_config.device,
+        self->adc_config.channel, self->bits, 1 << self->avg, self->vref);
 }
 
-STATIC mp_obj_t adc_obj_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    enum { ARG_id, ARG_bits, ARG_average };
+STATIC mp_obj_t adc_obj_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw,
+    const mp_obj_t *all_args) {
+
+    enum { ARG_id, ARG_bits, ARG_average, ARG_vref };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id,       MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_bits,     MP_ARG_INT, {.u_int = DEFAULT_ADC_BITS} },
         { MP_QSTR_average,  MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_ADC_AVG} },
+        { MP_QSTR_vref,     MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_ADC_REF} },
     };
 
     // Parse the arguments.
@@ -92,15 +134,23 @@ STATIC mp_obj_t adc_obj_make_new(const mp_obj_type_t *type, size_t n_args, size_
     self->id = id;
     self->adc_config = adc_config;
     self->bits = DEFAULT_ADC_BITS;
+
     uint16_t bits = args[ARG_bits].u_int;
-    if (bits >= 8 && bits <= 12) {
+    if (8 <= bits && bits <= 12) {
         self->bits = bits;
     }
     uint32_t avg = log2i(args[ARG_average].u_int);
     self->avg = (avg <= 10 ? avg : 10);
 
+    uint8_t vref = args[ARG_vref].u_int;
+    if (0 <= vref && vref < sizeof(adc_vref_table)) {
+        self->vref = vref;
+    }
+
     // flag the device/channel as being in use.
     busy_flags |= (1 << (self->adc_config.device * 16 + self->adc_config.channel));
+    self->dma_channel = -1;
+    self->tc_index = -1;
 
     adc_init(self);
 
@@ -116,6 +166,14 @@ STATIC mp_obj_t machine_adc_read_u16(mp_obj_t self_in) {
     adc->INPUTCTRL.reg = ADC_INPUTCTRL_MUXNEG_GND | self->adc_config.channel;
     // set resolution. Scale 8-16 to 0 - 4 for table access.
     adc->CTRLB.bit.RESSEL = resolution[(self->bits - 8) / 2];
+
+    #if defined(MCU_SAMD21)
+    // Stop the ADC sampling by timer
+    adc->EVCTRL.bit.STARTEI = 0;
+    #elif defined(MCU_SAMD51)
+    // Do not restart ADC after data has bee read
+    adc->DSEQCTRL.reg = 0;
+    #endif
     // Measure input voltage
     adc->SWTRIG.bit.START = 1;
     while (adc->INTFLAG.bit.RESRDY == 0) {
@@ -125,11 +183,110 @@ STATIC mp_obj_t machine_adc_read_u16(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_adc_read_u16_obj, machine_adc_read_u16);
 
+STATIC mp_obj_t machine_adc_read_timed(mp_obj_t self_in, mp_obj_t values, mp_obj_t freq_in) {
+    machine_adc_obj_t *self = self_in;
+    Adc *adc = adc_bases[self->adc_config.device];
+    mp_buffer_info_t src;
+    mp_get_buffer_raise(values, &src, MP_BUFFER_READ);
+    if (src.len >= 2) {
+        int freq = mp_obj_get_int(freq_in);
+        if (self->dma_channel == -1) {
+            self->dma_channel = allocate_dma_channel();
+            dma_init();
+        }
+        if (self->tc_index == -1) {
+            self->tc_index = allocate_tc_instance();
+        }
+        // Set Input channel and resolution
+        // Select the pin as positive input and gnd as negative input reference, non-diff mode by default
+        adc->INPUTCTRL.reg = ADC_INPUTCTRL_MUXNEG_GND | self->adc_config.channel;
+        // set resolution. Scale 8-16 to 0 - 4 for table access.
+        adc->CTRLB.bit.RESSEL = resolution[(self->bits - 8) / 2];
+
+        // Configure DMA for halfword output to the DAC
+        #if defined(MCU_SAMD21)
+        // dma irq just for SAMD21 to stop the timer based acquisition
+        dma_register_irq(self->dma_channel, adc_irq_handler);
+        configure_tc(self->tc_index, freq, TC_EVCTRL_OVFEO);
+        // Enable APBC clock
+        PM->APBCMASK.reg |= PM_APBCMASK_EVSYS;
+        // Set up the EVSYS channel
+        EVSYS->CTRL.bit.SWRST = 1;
+        EVSYS->USER.reg = EVSYS_USER_CHANNEL(ADC_EVSYS_CHANNEL + 1) |
+            EVSYS_USER_USER(EVSYS_ID_USER_ADC_START);
+        EVSYS->CHANNEL.reg = EVSYS_CHANNEL_CHANNEL(ADC_EVSYS_CHANNEL) |
+            EVSYS_CHANNEL_EVGEN(EVSYS_ID_GEN_TC3_OVF + 3 * self->tc_index) |
+            EVSYS_CHANNEL_PATH_ASYNCHRONOUS;
+
+        dma_desc[self->dma_channel].BTCTRL.reg =
+            DMAC_BTCTRL_VALID | DMAC_BTCTRL_BLOCKACT_NOACT |
+            DMAC_BTCTRL_BEATSIZE_HWORD | DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL |
+            DMAC_BTCTRL_STEPSIZE(DMAC_BTCTRL_STEPSIZE_X1_Val);
+        dma_desc[self->dma_channel].BTCNT.reg = src.len / 2;
+        dma_desc[self->dma_channel].SRCADDR.reg = (uint32_t)(&adc->RESULT.reg);
+        dma_desc[self->dma_channel].DSTADDR.reg = (uint32_t)(src.buf) + src.len;
+        dma_desc[self->dma_channel].DESCADDR.reg = 0; // ONE_SHOT
+        DMAC->CHID.reg = self->dma_channel;
+        DMAC->CHCTRLA.reg = 0;
+        while (DMAC->CHCTRLA.bit.ENABLE) {
+        }
+        DMAC->CHCTRLB.reg =
+            DMAC_CHCTRLB_LVL(0) |
+            DMAC_CHCTRLB_TRIGACT_BEAT |
+            DMAC_CHCTRLB_TRIGSRC(ADC_DMAC_ID_RESRDY);
+
+        DMAC->CHINTENSET.reg = DMAC_CHINTFLAG_TCMPL;
+        DMAC->CHCTRLA.reg |= DMAC_CHCTRLA_ENABLE;
+
+        NVIC_EnableIRQ(DMAC_IRQn);
+        adc->EVCTRL.bit.STARTEI = 1;
+
+        #elif defined(MCU_SAMD51)
+        configure_tc(self->tc_index, freq, 0);
+
+        // Restart ADC after data has bee read
+        adc->DSEQCTRL.reg = ADC_DSEQCTRL_AUTOSTART;
+        // Start the first sampling to ensure we get a proper first value.
+        adc->SWTRIG.bit.START = 1;
+        while (adc->INTFLAG.bit.RESRDY == 0) {
+        }
+
+        dma_desc[self->dma_channel].BTCTRL.reg =
+            DMAC_BTCTRL_VALID | DMAC_BTCTRL_BLOCKACT_NOACT |
+            DMAC_BTCTRL_BEATSIZE_HWORD | DMAC_BTCTRL_DSTINC | DMAC_BTCTRL_STEPSEL |
+            DMAC_BTCTRL_STEPSIZE(DMAC_BTCTRL_STEPSIZE_X1_Val);
+        dma_desc[self->dma_channel].BTCNT.reg = src.len / 2;
+        dma_desc[self->dma_channel].SRCADDR.reg = (uint32_t)(&adc->RESULT.reg);
+        dma_desc[self->dma_channel].DSTADDR.reg = (uint32_t)(src.buf) + src.len;
+        dma_desc[self->dma_channel].DESCADDR.reg = 0; // ONE_SHOT
+
+        DMAC->Channel[self->dma_channel].CHCTRLA.reg =
+            DMAC_CHCTRLA_BURSTLEN(DMAC_CHCTRLA_BURSTLEN_SINGLE_Val) |
+            DMAC_CHCTRLA_TRIGACT(DMAC_CHCTRLA_TRIGACT_BURST_Val) |
+            DMAC_CHCTRLA_TRIGSRC(TC0_DMAC_ID_OVF + 3 * self->tc_index);
+        DMAC->Channel[self->dma_channel].CHCTRLA.reg |= DMAC_CHCTRLA_ENABLE;
+
+        #endif // defined SAMD21 or SAMD51
+
+    }
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_3(machine_adc_read_timed_obj, machine_adc_read_timed);
+
 // deinit() : release the ADC channel
 STATIC mp_obj_t machine_adc_deinit(mp_obj_t self_in) {
     machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     busy_flags &= ~((1 << (self->adc_config.device * 16 + self->adc_config.channel)));
+    if (self->dma_channel >= 0) {
+        dac_stop_dma(self->dma_channel, true);
+        free_dma_channel(self->dma_channel);
+        self->dma_channel = -1;
+    }
+    if (self->tc_index >= 0) {
+        free_tc_instance(self->tc_index);
+        self->tc_index = -1;
+    }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_adc_deinit_obj, machine_adc_deinit);
@@ -142,6 +299,7 @@ void adc_deinit_all(void) {
 
 STATIC const mp_rom_map_elem_t adc_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_read_u16), MP_ROM_PTR(&machine_adc_read_u16_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read_timed), MP_ROM_PTR(&machine_adc_read_timed_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&machine_adc_deinit_obj) },
 };
 
@@ -165,9 +323,9 @@ static void adc_init(machine_adc_obj_t *self) {
 
         #if defined(MCU_SAMD21)
         // Configuration SAMD21
-        // Enable APBD clocks and PCHCTRL clocks; GCLK2 at 48 MHz
+        // Enable APBD clocks and PCHCTRL clocks; GCLK5 at 48 MHz
         PM->APBCMASK.reg |= PM_APBCMASK_ADC;
-        GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK2 | GCLK_CLKCTRL_ID_ADC;
+        GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK5 | GCLK_CLKCTRL_ID_ADC;
         while (GCLK->STATUS.bit.SYNCBUSY) {
         }
         // Reset ADC registers
@@ -180,10 +338,10 @@ static void adc_init(machine_adc_obj_t *self) {
         linearity |= ((*((uint32_t *)ADC_FUSES_LINEARITY_1_ADDR) & ADC_FUSES_LINEARITY_1_Msk) >> ADC_FUSES_LINEARITY_1_Pos) << 5;
         /* Write the calibration data. */
         ADC->CALIB.reg = ADC_CALIB_BIAS_CAL(bias) | ADC_CALIB_LINEARITY_CAL(linearity);
-        // Divide 48MHz clock by 32 to obtain 1.5 MHz clock to adc
+        // Divide a 48MHz clock by 32 to obtain 1.5 MHz clock to adc
         adc->CTRLB.reg = ADC_CTRLB_PRESCALER_DIV32;
         // Select external AREFA as reference voltage.
-        adc->REFCTRL.reg = ADC_REFCTRL_REFSEL_AREFA;
+        adc->REFCTRL.reg = adc_vref_table[self->vref];
         // Average: Accumulate samples and scale them down accordingly
         adc->AVGCTRL.reg = self->avg | ADC_AVGCTRL_ADJRES(self->avg);
         // Enable ADC and wait to be ready
@@ -193,12 +351,12 @@ static void adc_init(machine_adc_obj_t *self) {
 
         #elif defined(MCU_SAMD51)
         // Configuration SAMD51
-        // Enable APBD clocks and PCHCTRL clocks; GCLK2 at 48 MHz
+        // Enable APBD clocks and PCHCTRL clocks; GCLK5 at 48 MHz
         if (self->adc_config.device == 0) {
-            GCLK->PCHCTRL[ADC0_GCLK_ID].reg = GCLK_PCHCTRL_GEN_GCLK2 | GCLK_PCHCTRL_CHEN;
+            GCLK->PCHCTRL[ADC0_GCLK_ID].reg = GCLK_PCHCTRL_GEN_GCLK5 | GCLK_PCHCTRL_CHEN;
             MCLK->APBDMASK.bit.ADC0_ = 1;
         } else {
-            GCLK->PCHCTRL[ADC1_GCLK_ID].reg = GCLK_PCHCTRL_GEN_GCLK2 | GCLK_PCHCTRL_CHEN;
+            GCLK->PCHCTRL[ADC1_GCLK_ID].reg = GCLK_PCHCTRL_GEN_GCLK5 | GCLK_PCHCTRL_CHEN;
             MCLK->APBDMASK.bit.ADC1_ = 1;
         }
         // Reset ADC registers
@@ -220,10 +378,12 @@ static void adc_init(machine_adc_obj_t *self) {
         }
         /* Write the calibration data. */
         adc->CALIB.reg = ADC_CALIB_BIASCOMP(biascomp) | ADC_CALIB_BIASR2R(biasr2r) | ADC_CALIB_BIASREFBUF(biasrefbuf);
-        // Divide 48MHz clock by 32 to obtain 1.5 MHz clock to adc
-        adc->CTRLA.reg = ADC_CTRLA_PRESCALER_DIV32;
-        // Select external AREFA as reference voltage.
-        adc->REFCTRL.reg = ADC_REFCTRL_REFSEL_AREFA;
+        // Divide 48MHz clock by 4 to obtain 12 MHz clock to adc
+        adc->CTRLA.reg = ADC_CTRLA_PRESCALER_DIV4;
+        // Enable the offset compensation
+        adc->SAMPCTRL.reg = ADC_SAMPCTRL_OFFCOMP;
+        // Set the reference voltage. Default: external AREFA.
+        adc->REFCTRL.reg = adc_vref_table[self->vref];
         // Average: Accumulate samples and scale them down accordingly
         adc->AVGCTRL.reg = self->avg | ADC_AVGCTRL_ADJRES(self->avg);
         // Enable ADC and wait to be ready
