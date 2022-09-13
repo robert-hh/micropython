@@ -38,6 +38,7 @@
 
 extern uint8_t _sstack, _estack, _sheap, _eheap;
 extern void adc_deinit_all(void);
+extern void dac_deinit_channel(void);
 extern void pin_irq_deinit_all(void);
 extern void pwm_deinit_all(void);
 extern void sercom_deinit_all(void);
@@ -86,6 +87,7 @@ void samd_main(void) {
         dma_deinit();
         tc_deinit();
         adc_deinit_all();
+        dac_deinit_channel();
         pin_irq_deinit_all();
         pwm_deinit_all();
         sercom_deinit_all();
