@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include "py/obj.h"
 #include "py/runtime.h"
+#include "py/mperrno.h"
 #include "py/mphal.h"
 
 #include "sam.h"
@@ -45,6 +46,7 @@ typedef struct _dac_obj_t {
     uint8_t vref;
     int8_t dma_channel;
     int8_t tc_index;
+    bool busy;
     uint32_t count;
     mp_obj_t callback;
 } dac_obj_t;
@@ -62,8 +64,8 @@ STATIC dac_obj_t dac_obj[] = {
 #elif defined(MCU_SAMD51)
 
 STATIC dac_obj_t dac_obj[] = {
-    {{&machine_dac_type}, 0, 0, PIN_PA02, 2, -1, -1, 1, NULL},
-    {{&machine_dac_type}, 1, 0, PIN_PA05, 2, -1, -1, 1, NULL},
+    {{&machine_dac_type}, 0, 0, PIN_PA02, 2, -1, -1, false, 1, NULL},
+    {{&machine_dac_type}, 1, 0, PIN_PA05, 2, -1, -1, false, 1, NULL},
 };
 // According to Errata 2.9.2, VDDANA as ref value is not available. However it worked
 // in tests. So I keep the selection here but set the default to Aref, which is usually
@@ -94,6 +96,7 @@ void dac_irq_handler(int dma_channel) {
         dma_desc[self->dma_channel].BTCTRL.reg |= DMAC_BTCTRL_VALID;
         DMAC->CHCTRLA.reg |= DMAC_CHCTRLA_ENABLE;
     } else {
+        self->busy = false;
         if (self->callback != MP_OBJ_NULL) {
             mp_sched_schedule(self->callback, self);
         }
@@ -111,6 +114,7 @@ void dac_irq_handler(int dma_channel) {
         dma_desc[self->dma_channel].BTCTRL.reg |= DMAC_BTCTRL_VALID;
         DMAC->Channel[self->dma_channel].CHCTRLA.reg |= DMAC_CHCTRLA_ENABLE;
     } else {
+        self->busy = false;
         if (self->callback != MP_OBJ_NULL) {
             mp_sched_schedule(self->callback, self);
         }
@@ -215,6 +219,10 @@ STATIC void dac_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t
 STATIC mp_obj_t dac_write(mp_obj_t self_in, mp_obj_t value_in) {
     Dac *dac = dac_bases[0]; // Just one DAC
     dac_obj_t *self = self_in;
+    if (self->busy != false) {
+        mp_raise_OSError(MP_EBUSY);
+    }
+
     int value = mp_obj_get_int(value_in);
 
     if (value < 0 || value > MAX_DAC_VALUE) {
@@ -257,6 +265,8 @@ STATIC mp_obj_t dac_write_timed(size_t n_args, const mp_obj_t *args) {
         }
         // Configure TC; no need to check the return value
         configure_tc(self->tc_index, freq, 0);
+        self->busy = true;
+
         // Configure DMA for halfword output to the DAC
         #if defined(MCU_SAMD21)
 
@@ -335,9 +345,17 @@ STATIC mp_obj_t dac_deinit(mp_obj_t self_in) {
         self->tc_index = -1;
     }
     self->callback = MP_OBJ_NULL;
+    self->busy = false;
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(dac_deinit_obj, dac_deinit);
+
+// busy() : Report, if  the DAC device is busy
+STATIC mp_obj_t machine_dac_busy(mp_obj_t self_in) {
+    dac_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    return self->busy ? mp_const_true : mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_dac_busy_obj, machine_dac_busy);
 
 // Clear the DMA channel entry in the DAC object.
 void dac_deinit_channel(void) {
@@ -348,6 +366,7 @@ void dac_deinit_channel(void) {
 }
 
 STATIC const mp_rom_map_elem_t dac_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_busy), MP_ROM_PTR(&machine_dac_busy_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&dac_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&dac_write_obj) },
     { MP_ROM_QSTR(MP_QSTR_write_timed), MP_ROM_PTR(&dac_write_timed_obj) },

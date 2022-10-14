@@ -340,6 +340,7 @@ STATIC mp_obj_t machine_adc_deinit(mp_obj_t self_in) {
         #if defined(MCU_SAMD51)
         if (self->dma_channel == device_mgmt[self->adc_config.device].dma_channel) {
             device_mgmt[self->adc_config.device].dma_channel = -1;
+            device_mgmt[self->adc_config.device].busy = 0;
         }
         #endif
         dac_stop_dma(self->dma_channel, true);
@@ -354,6 +355,13 @@ STATIC mp_obj_t machine_adc_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_adc_deinit_obj, machine_adc_deinit);
 
+// busy() : Report, if  the ADC device is busy
+STATIC mp_obj_t machine_adc_busy(mp_obj_t self_in) {
+    machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    return device_mgmt[self->adc_config.device].busy ? mp_const_true : mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_adc_busy_obj, machine_adc_busy);
+
 void adc_deinit_all(void) {
     ch_busy_flags = 0;
     device_mgmt[0].init = 0;
@@ -365,6 +373,7 @@ void adc_deinit_all(void) {
 }
 
 STATIC const mp_rom_map_elem_t adc_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_busy), MP_ROM_PTR(&machine_adc_busy_obj) },
     { MP_ROM_QSTR(MP_QSTR_read_u16), MP_ROM_PTR(&machine_adc_read_u16_obj) },
     { MP_ROM_QSTR(MP_QSTR_read_timed), MP_ROM_PTR(&machine_adc_read_timed_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&machine_adc_deinit_obj) },
