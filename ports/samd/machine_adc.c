@@ -217,6 +217,17 @@ STATIC mp_obj_t machine_adc_read_u16(mp_obj_t self_in) {
     adc->CTRLB.bit.RESSEL = resolution[(self->bits - 8) / 2];
 
     #if defined(MCU_SAMD21)
+    /*
+     RJS some samd21 have no guaranteed external VREF
+          (trinket, xiao) have open VREF pins,
+          (QTPY Samd21) has AREF to Ax pins, not guranteed
+	   (Feather M0) has AREF to header, not guranteed
+     for those using internal Vref (2)
+    */
+    if (self->vref == 2) {               // internal vref
+      adc->INPUTCTRL.reg |= 0x0F000000;  // div2  for internal
+    }
+
     // Stop the ADC sampling by timer
     adc->EVCTRL.bit.STARTEI = 0;
     #elif defined(MCU_SAMD51)
@@ -255,6 +266,16 @@ STATIC mp_obj_t machine_adc_read_timed(mp_obj_t self_in, mp_obj_t values, mp_obj
 
         // Configure DMA for halfword output to the DAC
         #if defined(MCU_SAMD21)
+        /*
+          RJS some samd21 have no guaranteed external VREF
+              (trinket, xiao) have open VREF pins,
+              (QTPY Samd21) has AREF to Ax pins, not guranteed
+	      (Feather M0) has AREF to header, not guranteed
+          for those using internal Vref (2) 
+        */
+	if (self->vref == 2) {               // internal vref
+	  adc->INPUTCTRL.reg |= 0x0F000000;  // div2  for internal
+	}
         configure_tc(self->tc_index, freq, TC_EVCTRL_OVFEO);
         // Enable APBC clock
         PM->APBCMASK.reg |= PM_APBCMASK_EVSYS;
@@ -422,6 +443,10 @@ static void adc_init(machine_adc_obj_t *self) {
         adc->AVGCTRL.reg = self->avg | ADC_AVGCTRL_ADJRES(self->avg);
         // Enable ADC and wait to be ready
         adc->CTRLA.bit.ENABLE = 1;
+        // RJS samd21 does not have ADC_SAMPCTRL_OFFCOMP bit -
+	//     needs to have something here?  Default is 0 seems to function
+	//     sets settling time
+	//adc->SAMPCTRL.reg = ADC_SAMPCTRL(5);  //RJS e.g.  5 is used in arduino analogRead()
         while (adc->STATUS.bit.SYNCBUSY) {
         }
 
