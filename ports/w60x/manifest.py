@@ -1,5 +1,5 @@
 freeze("$(PORT_DIR)/scripts")
-freeze('$(MPY_DIR)/../pye', 'pye.py')
-freeze("$(MPY_DIR)/../upysh", "upysh.py")
+# freeze('$(MPY_DIR)/../pye', 'pye.py')
+freeze("$(MPY_DIR)/lib/micropython-lib/micropython/upysh", "upysh.py")
 include("$(MPY_DIR)/extmod/uasyncio")
 require("neopixel")
