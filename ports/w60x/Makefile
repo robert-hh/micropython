@@ -232,6 +232,7 @@ DRIVERS_SRC_C += $(addprefix drivers/,\
 ifeq ($(MICROPY_SSL_MBEDTLS),1)
 CFLAGS_MOD += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
 INC += -I./mbedtls
+INC += -I$(TOP)/lib/mbedtls/include
 MBEDTLS_SRC_C = mbedtls/aes_alt.c \
     mbedtls/arc4_alt.c \
     mbedtls/des_alt.c \
