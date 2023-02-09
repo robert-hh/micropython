@@ -460,6 +460,9 @@ ifneq ($(SRC_CXX)$(SRC_USERMOD_CXX)$(SRC_USERMOD_LIB_CXX),)
 LIBSTDCPP_FILE_NAME = "$(shell $(CXX) $(CXXFLAGS) -print-file-name=libstdc++.a)"
 LDFLAGS += -L"$(shell dirname $(LIBSTDCPP_FILE_NAME))"
 endif
+ifdef MICROPY_PY_THREAD
+	CFLAGS += -DMICROPY_PY_THREAD=$(MICROPY_PY_THREAD)
+endif
 
 # Configure respective board flash type
 # Add hal/flexspi_nor_flash.h or hal/flexspi_hyper_flash.h respectively

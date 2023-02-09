@@ -218,6 +218,7 @@ extern const struct _mp_obj_type_t network_lan_type;
 #define MP_STATE_PORT MP_STATE_VM
 
 // Miscellaneous settings
+<<<<<<< HEAD
 #ifndef MICROPY_HW_USB_VID
 #define MICROPY_HW_USB_VID (0xf055)
 #endif
@@ -226,7 +227,8 @@ extern const struct _mp_obj_type_t network_lan_type;
 #define MICROPY_HW_USB_PID (0x9802)
 #endif
 
-#ifndef  MICROPY_EVENT_POLL_HOOK
+#ifndef MICROPY_EVENT_POLL_HOOK
+
 #if MICROPY_PY_THREAD
 
 #define MICROPY_EVENT_POLL_HOOK \
@@ -242,8 +244,6 @@ extern const struct _mp_obj_type_t network_lan_type;
         } \
     } while (0);
 
-#define MICROPY_THREAD_YIELD() pyb_thread_yield()
-
 #else
 
 #define MICROPY_EVENT_POLL_HOOK \
@@ -251,8 +251,9 @@ extern const struct _mp_obj_type_t network_lan_type;
         mp_handle_pending(MP_HANDLE_PENDING_CALLBACKS_AND_EXCEPTIONS); \
         __WFE(); \
     } while (0);
-#define MICROPY_THREAD_YIELD() pyb_thread_yield()
-#endif
+#endif  // MICROPY_PY_THREAD
+
+#endif  // MICROPY_EVENT_POLL_HOOK
 
 #define MICROPY_MAKE_POINTER_CALLABLE(p) ((void *)((mp_uint_t)(p) | 1))
 

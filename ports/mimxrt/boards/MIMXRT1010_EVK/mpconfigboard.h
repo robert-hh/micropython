@@ -1,6 +1,10 @@
 #define MICROPY_HW_BOARD_NAME "i.MX RT1010 EVK"
 #define MICROPY_HW_MCU_NAME   "MIMXRT1011DAE5A"
 
+#ifndef MICROPY_PY_THREAD
+#define MICROPY_PY_THREAD (0)
+#endif
+
 // i.MX RT1010 EVK has 1 board LED
 #define MICROPY_HW_LED1_PIN (pin_GPIO_11)
 #define MICROPY_HW_LED_ON(pin) (mp_hal_pin_high(pin))
