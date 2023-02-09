@@ -33,6 +33,7 @@
 void *pendsv_object;
 
 #if defined(PENDSV_DISPATCH_NUM_SLOTS)
+uint32_t pendsv_dispatch_active;
 pendsv_dispatch_t pendsv_dispatch_table[PENDSV_DISPATCH_NUM_SLOTS];
 #endif
 
@@ -118,19 +119,11 @@ __attribute__((naked)) void PendSV_Handler(void) {
         "ldr r0, [r1]\n"
         "cmp r0, #0\n"
         "beq .no_obj\n"
-        #if defined(PENDSV_DEBUG)
-        "str r0, [sp, #8]\n"            // store to r0 on stack
-        #else
         "str r0, [sp, #0]\n"            // store to r0 on stack
-        #endif
         "mov r0, #0\n"
         "str r0, [r1]\n"                // clear pendsv_object
         "ldr r0, nlr_jump_ptr\n"
-        #if defined(PENDSV_DEBUG)
-        "str r0, [sp, #32]\n"           // store to pc on stack
-        #else
         "str r0, [sp, #24]\n"           // store to pc on stack
-        #endif
         "bx lr\n"                       // return from interrupt; will return to nlr_jump
         ".no_obj:\n"                    // pendsv_object==NULL
 
