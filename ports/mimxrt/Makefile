@@ -433,6 +433,10 @@ CFLAGS += \
 	-Wfloat-conversion \
 	-Wno-error=unused-parameter
 
+ifdef MICROPY_PY_THREAD
+	CFLAGS += -DMICROPY_PY_THREAD=$(MICROPY_PY_THREAD)
+endif
+
 # Configure respective board flash type
 # Add hal/flexspi_nor_flash.h or hal/flexspi_hyper_flash.h respectively
 CFLAGS += -DBOARD_FLASH_OPS_HEADER_H=\"hal/flexspi_$(subst qspi_,,$(FLEXSPI_FLASH_TYPE)).h\"
