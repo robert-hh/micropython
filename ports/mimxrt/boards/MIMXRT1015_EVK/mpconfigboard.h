@@ -1,6 +1,10 @@
 #define MICROPY_HW_BOARD_NAME "i.MX RT1015 EVK"
 #define MICROPY_HW_MCU_NAME   "MIMXRT1015DAF5A"
 
+#ifndef MICROPY_PY_THREAD
+#define MICROPY_PY_THREAD (0)
+#endif
+
 // i.MX RT1015 EVK has 3 board LED
 // Todo: think about replacing the define with searching in the generated pins?
 #define MICROPY_HW_LED1_PIN (pin_GPIO_SD_B1_00)
