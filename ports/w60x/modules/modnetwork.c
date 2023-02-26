@@ -72,25 +72,25 @@ STATIC void require_if(mp_obj_t wlan_if, int if_no) {
 }
 
 STATIC void w600_wifi_status_callback(u8 status) {
-    switch(status) {
-    case NETIF_IP_NET_UP: {
-        wifi_sta_connected = true;
-        break;
-    }
-    case NETIF_WIFI_DISCONNECTED: {
-        wifi_sta_connected = false;
-        wifi_sta_connect_requested = false;
-        break;
-    }
-    case NETIF_WIFI_JOIN_FAILED: {
-        wifi_sta_connected = false;
-        wifi_sta_connect_requested = false;
-        wifi_sta_connect_failed = true;
-        break;
-    }
-    default: {
-        break;
-    }
+    switch (status) {
+        case NETIF_IP_NET_UP: {
+            wifi_sta_connected = true;
+            break;
+        }
+        case NETIF_WIFI_DISCONNECTED: {
+            wifi_sta_connected = false;
+            wifi_sta_connect_requested = false;
+            break;
+        }
+        case NETIF_WIFI_JOIN_FAILED: {
+            wifi_sta_connected = false;
+            wifi_sta_connect_requested = false;
+            wifi_sta_connect_failed = true;
+            break;
+        }
+        default: {
+            break;
+        }
     }
 
     return;
@@ -187,10 +187,10 @@ STATIC mp_obj_t w600_connect(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
     tls_wifi_softap_destroy();
 
     u8 wireless_protocol;
-    tls_param_get(TLS_PARAM_ID_WPROTOCOL, (void *) &wireless_protocol, FALSE);
+    tls_param_get(TLS_PARAM_ID_WPROTOCOL, (void *)&wireless_protocol, FALSE);
     if (IEEE80211_MODE_INFRA != wireless_protocol) {
         wireless_protocol = IEEE80211_MODE_INFRA;
-        tls_param_set(TLS_PARAM_ID_WPROTOCOL, (void *) &wireless_protocol, TRUE);
+        tls_param_set(TLS_PARAM_ID_WPROTOCOL, (void *)&wireless_protocol, TRUE);
     }
 
     // connect to the WiFi AP
@@ -236,12 +236,13 @@ STATIC mp_obj_t w600_status(size_t n_args, const mp_obj_t *args) {
                 // No connection or error, but is requested = Still connecting
                 return MP_OBJ_NEW_SMALL_INT(STAT_CONNECTING);
             } else if (wifi_sta_connect_failed) {
-                if (WM_WIFI_EKEY == tls_wifi_get_errno())
+                if (WM_WIFI_EKEY == tls_wifi_get_errno()) {
                     return MP_OBJ_NEW_SMALL_INT(STAT_WRONG_PASSWORD);
-                else if (WM_WIFI_ENOAP == tls_wifi_get_errno())
+                } else if (WM_WIFI_ENOAP == tls_wifi_get_errno()) {
                     return MP_OBJ_NEW_SMALL_INT(STAT_NO_AP_FOUND);
-                else
+                } else {
                     return MP_OBJ_NEW_SMALL_INT(STAT_CONNECT_FAIL);
+                }
             } else {
                 // No activity, No error = Idle
                 return MP_OBJ_NEW_SMALL_INT(STAT_IDLE);
@@ -252,30 +253,30 @@ STATIC mp_obj_t w600_status(size_t n_args, const mp_obj_t *args) {
 
     // one argument: return status based on query parameter
     switch ((uintptr_t)args[1]) {
-    case (uintptr_t)MP_OBJ_NEW_QSTR(MP_QSTR_stations): {
-        // return list of connected stations, only if in soft-AP mode
-        require_if(args[0], IEEE80211_MODE_AP);
-        u32 stanum = 0;
-        u8 stalist[64] = {0};
-        struct tls_sta_info_t *sta;
-        tls_wifi_get_authed_sta_info(&stanum, stalist, sizeof(stalist));
-        sta = (struct tls_sta_info_t *)stalist;
-        mp_obj_t list = mp_obj_new_list(0, NULL);
-        for (int i = 0; i < stanum; ++i) {
-            mp_obj_tuple_t *t = mp_obj_new_tuple(1, NULL);
-            t->items[0] = mp_obj_new_bytes(sta[i].mac_addr, sizeof(sta[i].mac_addr));
-            mp_obj_list_append(list, t);
+        case (uintptr_t)MP_OBJ_NEW_QSTR(MP_QSTR_stations): {
+            // return list of connected stations, only if in soft-AP mode
+            require_if(args[0], IEEE80211_MODE_AP);
+            u32 stanum = 0;
+            u8 stalist[64] = {0};
+            struct tls_sta_info_t *sta;
+            tls_wifi_get_authed_sta_info(&stanum, stalist, sizeof(stalist));
+            sta = (struct tls_sta_info_t *)stalist;
+            mp_obj_t list = mp_obj_new_list(0, NULL);
+            for (int i = 0; i < stanum; ++i) {
+                mp_obj_tuple_t *t = mp_obj_new_tuple(1, NULL);
+                t->items[0] = mp_obj_new_bytes(sta[i].mac_addr, sizeof(sta[i].mac_addr));
+                mp_obj_list_append(list, t);
+            }
+            return list;
         }
-        return list;
-    }
-    case (uintptr_t)MP_OBJ_NEW_QSTR(MP_QSTR_rssi): {
-        struct tls_curr_bss_t currbss;
-        memset(&currbss, 0, sizeof(currbss));
-        tls_wifi_get_current_bss(&currbss);
-        return MP_OBJ_NEW_SMALL_INT(-currbss.rssi);
-    }
-    default:
-        mp_raise_ValueError("unknown status param");
+        case (uintptr_t)MP_OBJ_NEW_QSTR(MP_QSTR_rssi): {
+            struct tls_curr_bss_t currbss;
+            memset(&currbss, 0, sizeof(currbss));
+            tls_wifi_get_current_bss(&currbss);
+            return MP_OBJ_NEW_SMALL_INT(-currbss.rssi);
+        }
+        default:
+            mp_raise_ValueError("unknown status param");
     }
 
     return mp_const_none;
@@ -327,7 +328,7 @@ STATIC mp_obj_t w600_scan(mp_obj_t self_in) {
         t->items[1] = mp_obj_new_bytes(bss_info->bssid, sizeof(bss_info->bssid));
         t->items[2] = MP_OBJ_NEW_SMALL_INT(bss_info->channel);
         t->items[3] = MP_OBJ_NEW_SMALL_INT(-(0x100 - bss_info->rssi));
-        t->items[4] = MP_OBJ_NEW_SMALL_INT(bss_info->privacy);//only open and not open!!!
+        t->items[4] = MP_OBJ_NEW_SMALL_INT(bss_info->privacy);// only open and not open!!!
         t->items[5] = (0 == bss_info->ssid_len) ? mp_const_true : mp_const_false;
         mp_obj_list_append(list, MP_OBJ_FROM_PTR(t));
         bss_info++;
@@ -431,48 +432,48 @@ STATIC mp_obj_t w600_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwarg
 
 #define QS(x) (uintptr_t)MP_OBJ_NEW_QSTR(x)
                 switch ((uintptr_t)kwargs->table[i].key) {
-                case QS(MP_QSTR_mac): {
-                    mp_buffer_info_t bufinfo;
-                    mp_get_buffer_raise(kwargs->table[i].value, &bufinfo, MP_BUFFER_READ);
-                    if (bufinfo.len != 6) {
-                        mp_raise_ValueError("invalid buffer length");
+                    case QS(MP_QSTR_mac): {
+                        mp_buffer_info_t bufinfo;
+                        mp_get_buffer_raise(kwargs->table[i].value, &bufinfo, MP_BUFFER_READ);
+                        if (bufinfo.len != 6) {
+                            mp_raise_ValueError("invalid buffer length");
+                        }
+                        wpa_supplicant_set_mac(bufinfo.buf);
+                        tls_set_mac_addr(bufinfo.buf);
+                        break;
                     }
-                    wpa_supplicant_set_mac(bufinfo.buf);
-                    tls_set_mac_addr(bufinfo.buf);
-                    break;
-                }
-                case QS(MP_QSTR_essid): {
-                    size_t len;
-                    req_if = IEEE80211_MODE_AP;
-                    const char *s = mp_obj_str_get_data(kwargs->table[i].value, &len);
-                    len = MIN(len, sizeof(apinfo.ssid) - 1);
-                    memcpy(apinfo.ssid, s, len);
-                    apinfo.ssid[len] = '\0';
-                    break;
-                }
-                case QS(MP_QSTR_authmode): {
-                    req_if = IEEE80211_MODE_AP;
-                    apinfo.encrypt = mp_obj_get_int(kwargs->table[i].value);
-                    break;
-                }
-                case QS(MP_QSTR_password): {
-                    size_t len;
-                    req_if = IEEE80211_MODE_AP;
-                    const char *s = mp_obj_str_get_data(kwargs->table[i].value, &len);
-                    len = MIN(len, sizeof(apinfo.keyinfo.key));
-                    memcpy(apinfo.keyinfo.key, s, len);
-                    apinfo.keyinfo.key_len = len;
-                    apinfo.keyinfo.format = 1;//hex???
-                    apinfo.keyinfo.index = 1;
-                    break;
-                }
-                case QS(MP_QSTR_channel): {
-                    req_if = IEEE80211_MODE_AP;
-                    apinfo.channel = mp_obj_get_int(kwargs->table[i].value);
-                    break;
-                }
-                default:
-                    goto unknown;
+                    case QS(MP_QSTR_essid): {
+                        size_t len;
+                        req_if = IEEE80211_MODE_AP;
+                        const char *s = mp_obj_str_get_data(kwargs->table[i].value, &len);
+                        len = MIN(len, sizeof(apinfo.ssid) - 1);
+                        memcpy(apinfo.ssid, s, len);
+                        apinfo.ssid[len] = '\0';
+                        break;
+                    }
+                    case QS(MP_QSTR_authmode): {
+                        req_if = IEEE80211_MODE_AP;
+                        apinfo.encrypt = mp_obj_get_int(kwargs->table[i].value);
+                        break;
+                    }
+                    case QS(MP_QSTR_password): {
+                        size_t len;
+                        req_if = IEEE80211_MODE_AP;
+                        const char *s = mp_obj_str_get_data(kwargs->table[i].value, &len);
+                        len = MIN(len, sizeof(apinfo.keyinfo.key));
+                        memcpy(apinfo.keyinfo.key, s, len);
+                        apinfo.keyinfo.key_len = len;
+                        apinfo.keyinfo.format = 1;// hex???
+                        apinfo.keyinfo.index = 1;
+                        break;
+                    }
+                    case QS(MP_QSTR_channel): {
+                        req_if = IEEE80211_MODE_AP;
+                        apinfo.channel = mp_obj_get_int(kwargs->table[i].value);
+                        break;
+                    }
+                    default:
+                        goto unknown;
                 }
 #undef QS
 
@@ -509,36 +510,36 @@ STATIC mp_obj_t w600_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwarg
 
 #define QS(x) (uintptr_t)MP_OBJ_NEW_QSTR(x)
     switch ((uintptr_t)args[1]) {
-    case QS(MP_QSTR_mac): {
-        uint8_t *mac;
-        mac = wpa_supplicant_get_mac();
-        return mp_obj_new_bytes(mac, 6);
-    }
-    case QS(MP_QSTR_essid): {
-        struct tls_param_ssid params_ssid;
-        if (self->if_id == IEEE80211_MODE_INFRA) {
-            tls_param_get(TLS_PARAM_ID_SSID, (void *)&params_ssid, 1);
-            val = mp_obj_new_str((char *)&params_ssid.ssid, params_ssid.ssid_len);
-        } else {
-            tls_param_get(TLS_PARAM_ID_SOFTAP_SSID, (void *)&params_ssid, 1);
-            val = mp_obj_new_str((char *)&params_ssid.ssid, params_ssid.ssid_len);
+        case QS(MP_QSTR_mac): {
+            uint8_t *mac;
+            mac = wpa_supplicant_get_mac();
+            return mp_obj_new_bytes(mac, 6);
         }
-    }
-    break;
-    case QS(MP_QSTR_authmode):
-        req_if = IEEE80211_MODE_AP;
-        u8 encrypt;
-        tls_param_get(TLS_PARAM_ID_SOFTAP_ENCRY, (void *)&encrypt, 1);
-        val = MP_OBJ_NEW_SMALL_INT(encrypt);
+        case QS(MP_QSTR_essid): {
+            struct tls_param_ssid params_ssid;
+            if (self->if_id == IEEE80211_MODE_INFRA) {
+                tls_param_get(TLS_PARAM_ID_SSID, (void *)&params_ssid, 1);
+                val = mp_obj_new_str((char *)&params_ssid.ssid, params_ssid.ssid_len);
+            } else {
+                tls_param_get(TLS_PARAM_ID_SOFTAP_SSID, (void *)&params_ssid, 1);
+                val = mp_obj_new_str((char *)&params_ssid.ssid, params_ssid.ssid_len);
+            }
+        }
         break;
-    case QS(MP_QSTR_channel):
-        req_if = IEEE80211_MODE_AP;
-        u8 channel;
-        tls_param_get(TLS_PARAM_ID_SOFTAP_CHANNEL, (void *)&channel, 1);
-        val = MP_OBJ_NEW_SMALL_INT(channel);
-        break;
-    default:
-        goto unknown;
+        case QS(MP_QSTR_authmode):
+            req_if = IEEE80211_MODE_AP;
+            u8 encrypt;
+            tls_param_get(TLS_PARAM_ID_SOFTAP_ENCRY, (void *)&encrypt, 1);
+            val = MP_OBJ_NEW_SMALL_INT(encrypt);
+            break;
+        case QS(MP_QSTR_channel):
+            req_if = IEEE80211_MODE_AP;
+            u8 channel;
+            tls_param_get(TLS_PARAM_ID_SOFTAP_CHANNEL, (void *)&channel, 1);
+            val = MP_OBJ_NEW_SMALL_INT(channel);
+            break;
+        default:
+            goto unknown;
     }
 #undef QS
 
@@ -622,7 +623,7 @@ STATIC MP_DEFINE_CONST_DICT(mp_module_network_globals, mp_module_network_globals
 
 const mp_obj_module_t mp_module_network = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t *) &mp_module_network_globals,
+    .globals = (mp_obj_dict_t *)&mp_module_network_globals,
 };
 
 MP_REGISTER_MODULE(MP_QSTR_network, mp_module_network);

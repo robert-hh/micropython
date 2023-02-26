@@ -64,12 +64,12 @@ STATIC mp_obj_t machine_rtc_datetime_helper(mp_uint_t n_args, const mp_obj_t *ar
         tls_get_rtc(&tblock);
 
         mp_uint_t seconds = timeutils_mktime(tblock.tm_year + W600_YEAR_BASE, tblock.tm_mon, tblock.tm_mday,
-                                             tblock.tm_hour, tblock.tm_min, tblock.tm_sec);
+            tblock.tm_hour, tblock.tm_min, tblock.tm_sec);
         timeutils_struct_time_t tm;
         timeutils_seconds_since_2000_to_struct_time(seconds, &tm);
 
-        //Zeller
-        //tm.tm_wday = ((((tblock.tm_year + W600_YEAR_BASE) / 100) / 4) - 2 * ((tblock.tm_year + W600_YEAR_BASE) / 100) + ((tblock.tm_year + W600_YEAR_BASE) % 100) + (((tblock.tm_year + W600_YEAR_BASE) % 100) / 4) + (13 * ((tblock.tm_mon < 3 ? (12 + tblock.tm_mon) : tblock.tm_mon) + 1) / 5) + tblock.tm_mday - 1) % 7;
+        // Zeller
+        // tm.tm_wday = ((((tblock.tm_year + W600_YEAR_BASE) / 100) / 4) - 2 * ((tblock.tm_year + W600_YEAR_BASE) / 100) + ((tblock.tm_year + W600_YEAR_BASE) % 100) + (((tblock.tm_year + W600_YEAR_BASE) % 100) / 4) + (13 * ((tblock.tm_mon < 3 ? (12 + tblock.tm_mon) : tblock.tm_mon) + 1) / 5) + tblock.tm_mday - 1) % 7;
 
         mp_obj_t tuple[8] = {
             mp_obj_new_int(tm.tm_year),
@@ -141,9 +141,9 @@ STATIC mp_obj_t machine_rtc_alarm(size_t n_args, const mp_obj_t *args) {
     tls_rtc_timer_start(&tblock);
 
     self->alarm_seconds = timeutils_mktime(tblock.tm_year + W600_YEAR_BASE,
-                                           tblock.tm_mon, tblock.tm_mday,
-                                           tblock.tm_hour, tblock.tm_min,
-                                           tblock.tm_sec);
+        tblock.tm_mon, tblock.tm_mday,
+        tblock.tm_hour, tblock.tm_min,
+        tblock.tm_sec);
 
     return mp_const_none;
 }
@@ -158,9 +158,9 @@ STATIC mp_obj_t machine_rtc_alarm_left(size_t n_args, const mp_obj_t *args) {
     tls_get_rtc(&tblock);
 
     seconds = timeutils_mktime(tblock.tm_year + W600_YEAR_BASE,
-                               tblock.tm_mon, tblock.tm_mday,
-                               tblock.tm_hour, tblock.tm_min,
-                               tblock.tm_sec);
+        tblock.tm_mon, tblock.tm_mday,
+        tblock.tm_hour, tblock.tm_min,
+        tblock.tm_sec);
 
     ms_left = (self->alarm_seconds - seconds) * 1000;
 
@@ -181,7 +181,7 @@ STATIC void machine_rtc_alarm_irq(void *arg) {
     machine_rtc_obj_t *self = (machine_rtc_obj_t *)arg;
 
     if (self->handler) {
-        mp_sched_schedule(self->handler, self);//MP_OBJ_FROM_PTR(self));
+        mp_sched_schedule(self->handler, self);// MP_OBJ_FROM_PTR(self));
     }
 }
 
@@ -206,7 +206,7 @@ STATIC mp_obj_t machine_rtc_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     }
 
     // return the irq object
-    return mp_const_none;//MP_OBJ_FROM_PTR(&machine_rtc_irq_object);
+    return mp_const_none;// MP_OBJ_FROM_PTR(&machine_rtc_irq_object);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_rtc_irq_obj, 1, machine_rtc_irq);
 

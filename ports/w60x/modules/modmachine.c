@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "wm_include.h"
 #include "wm_cpu.h"
@@ -47,6 +48,7 @@
 #include "modmachine.h"
 
 extern uint8_t *wpa_supplicant_get_mac(void);
+extern void bootloader_helper(void);
 
 #if MICROPY_PY_MACHINE
 
@@ -106,18 +108,20 @@ STATIC mp_obj_t machine_sleep_helper(sleep_type_t sleep_type, size_t n_args, con
 
     mp_int_t operate = args[ARG_operate].u_int;
 
-    switch(sleep_type) {
-    case MP_PS_SLEEP:
-        if (n_args != 1)
-            mp_raise_ValueError("invalid param format");
-        tls_wl_if_ps(operate);//MP_OP_PS_WAKEUP,MP_OP_PS_SLEEP
-        break;
-    case MP_DEEP_SLEEP:
-        if (n_args != 2)
-            mp_raise_ValueError("invalid param format");
-        mp_int_t sleeptime = args[ARG_sleep_s].u_int;
-        tls_wl_if_standby(operate, 0, sleeptime);//MP_OP_GPIO_WAKEUP,MP_OP_TIMER_WAKEUP
-        break;
+    switch (sleep_type) {
+        case MP_PS_SLEEP:
+            if (n_args != 1) {
+                mp_raise_ValueError("invalid param format");
+            }
+            tls_wl_if_ps(operate);// MP_OP_PS_WAKEUP,MP_OP_PS_SLEEP
+            break;
+        case MP_DEEP_SLEEP:
+            if (n_args != 2) {
+                mp_raise_ValueError("invalid param format");
+            }
+            mp_int_t sleeptime = args[ARG_sleep_s].u_int;
+            tls_wl_if_standby(operate, 0, sleeptime);// MP_OP_GPIO_WAKEUP,MP_OP_TIMER_WAKEUP
+            break;
     }
     return mp_const_none;
 }
@@ -133,10 +137,11 @@ STATIC mp_obj_t machine_deepsleep(size_t n_args, const mp_obj_t *pos_args, mp_ma
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_deepsleep_obj, 0,  machine_deepsleep);
 
 STATIC mp_obj_t machine_reset_cause(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    if (tls_reg_read32(HR_PMU_INTERRUPT_SRC) & (1 << 8))
+    if (tls_reg_read32(HR_PMU_INTERRUPT_SRC) & (1 << 8)) {
         return MP_OBJ_NEW_SMALL_INT(MP_DEEPSLEEP_RESET);
-    else
+    } else {
         return MP_OBJ_NEW_SMALL_INT(MP_PWRON_RESET);
+    }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_reset_cause_obj, 0,  machine_reset_cause);
 
@@ -152,6 +157,12 @@ STATIC mp_obj_t machine_reset(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_reset_obj, machine_reset);
 
+STATIC mp_obj_t machine_bootloader(void) {
+    bootloader_helper();
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_bootloader_obj, machine_bootloader);
+
 STATIC mp_obj_t machine_unique_id(void) {
     uint8_t *chipid;
     chipid = wpa_supplicant_get_mac();
@@ -160,7 +171,7 @@ STATIC mp_obj_t machine_unique_id(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_unique_id_obj, machine_unique_id);
 
 STATIC mp_obj_t machine_idle(void) {
-    taskYIELD();
+    MICROPY_EVENT_POLL_HOOK
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
@@ -179,14 +190,18 @@ STATIC mp_obj_t machine_enable_irq(mp_obj_t state_in) {
 MP_DEFINE_CONST_FUN_OBJ_1(machine_enable_irq_obj, machine_enable_irq);
 
 STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_umachine) },
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_machine) },
 
     { MP_ROM_QSTR(MP_QSTR_freq), MP_ROM_PTR(&machine_freq_obj) },
     { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&machine_reset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_bootloader), MP_ROM_PTR(&machine_bootloader_obj) },
     { MP_ROM_QSTR(MP_QSTR_unique_id), MP_ROM_PTR(&machine_unique_id_obj) },
     { MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&machine_sleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_deepsleep), MP_ROM_PTR(&machine_deepsleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_idle), MP_ROM_PTR(&machine_idle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_mem8), MP_ROM_PTR(&machine_mem8_obj) },
+    { MP_ROM_QSTR(MP_QSTR_mem16), MP_ROM_PTR(&machine_mem16_obj) },
+    { MP_ROM_QSTR(MP_QSTR_mem32), MP_ROM_PTR(&machine_mem32_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_disable_irq), MP_ROM_PTR(&machine_disable_irq_obj) },
     { MP_ROM_QSTR(MP_QSTR_enable_irq), MP_ROM_PTR(&machine_enable_irq_obj) },
@@ -210,7 +225,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_bitstream),           MP_ROM_PTR(&machine_bitstream_obj) },
     #endif
 
-    //7816 i2s lcd dma..
+    // 7816 i2s lcd dma..
 
     // wake abilities
     { MP_ROM_QSTR(MP_QSTR_PSWAKEUP), MP_ROM_INT(MP_OP_PS_WAKEUP) },
@@ -231,10 +246,9 @@ STATIC MP_DEFINE_CONST_DICT(machine_module_globals, machine_module_globals_table
 
 const mp_obj_module_t mp_module_machine = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t *) &machine_module_globals,
+    .globals = (mp_obj_dict_t *)&machine_module_globals,
 };
 
-MP_REGISTER_MODULE(MP_QSTR_umachine, mp_module_machine);
+MP_REGISTER_EXTENSIBLE_MODULE(MP_QSTR_machine, mp_module_machine);
 
 #endif // MICROPY_PY_MACHINE
-

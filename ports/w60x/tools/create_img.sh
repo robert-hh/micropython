@@ -3,7 +3,9 @@ TARGET=wm_w600
 _ENV_TARGET=""
 _REVI_TARGET=""
 
-BUILD=build
+BUILD=$1
+SECBOOT_FLAG=$2
+
 MKIMG=${BUILD}/wm_tool
 LOGGER=logger
 
@@ -43,7 +45,15 @@ shell_do_cmd()
 
 main()
 {
+	if [ 1 = ${SECBOOT_FLAG} ]; then
+	{
 	./${MKIMG} -b "${BUILD}/${SOBJ}.bin" -sb "${SECBOOT}" -fc compress -it 1M -ua 90000 -ra 10100 -df -o "${BUILD}/${TARGET}"
+	} 
+	else
+	{
+	./${MKIMG} -b "${BUILD}/${SOBJ}.bin" -fc compress -it 1M -ua 90000 -ra 2100 -df -o "${BUILD}/${TARGET}"
+	}
+	fi
 }
 
 usage()

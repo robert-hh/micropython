@@ -57,7 +57,7 @@ typedef struct _machine_hw_spi_obj_t {
     uint8_t spi_type;/* 0-lspi, 1-hspi */
 } machine_hw_spi_obj_t;
 
-STATIC size_t   machine_spi_rx_len = 0;
+STATIC size_t machine_spi_rx_len = 0;
 STATIC uint8_t *machine_spi_rx_buf = NULL;
 
 STATIC s16 machine_spi_rx_cmd_callback(char *buf) {
@@ -70,25 +70,23 @@ STATIC s16 machine_spi_rx_data_callback(char *buf) {
     return 0;
 }
 
-STATIC void w600_spi_set_endian(u8 endian)
-{
-	u32 reg_val;
+STATIC void w600_spi_set_endian(u8 endian) {
+    u32 reg_val;
 
-	reg_val = tls_reg_read32(HR_SPI_SPICFG_REG);
+    reg_val = tls_reg_read32(HR_SPI_SPICFG_REG);
 
-	if (endian == 0) {
-		reg_val &= ~(0x01U << 3);
-		reg_val |= SPI_BIG_ENDIAN;
-	} else if(endian == 1) {
-		reg_val &= ~(0x01U << 3);
-		reg_val |= SPI_LITTLE_ENDIAN;
-	}
+    if (endian == 0) {
+        reg_val &= ~(0x01U << 3);
+        reg_val |= SPI_BIG_ENDIAN;
+    } else if (endian == 1) {
+        reg_val &= ~(0x01U << 3);
+        reg_val |= SPI_LITTLE_ENDIAN;
+    }
 
-	tls_reg_write32(HR_SPI_SPICFG_REG, reg_val);
+    tls_reg_write32(HR_SPI_SPICFG_REG, reg_val);
 }
 
-STATIC u8 w600_spi_write(u8 *data, u32 len)
-{
+STATIC u8 w600_spi_write(u8 *data, u32 len) {
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -96,13 +94,11 @@ STATIC u8 w600_spi_write(u8 *data, u32 len)
     cnt = 0;
     remain = len;
 
-    if(len > SPI_DMA_BUF_MAX_SIZE)
-    {
+    if (len > SPI_DMA_BUF_MAX_SIZE) {
         repeat = len / SPI_DMA_BUF_MAX_SIZE;
         remain = len % SPI_DMA_BUF_MAX_SIZE;
 
-        while(cnt < (repeat * SPI_DMA_BUF_MAX_SIZE))
-        {
+        while (cnt < (repeat * SPI_DMA_BUF_MAX_SIZE)) {
             tls_spi_write(data + cnt, SPI_DMA_BUF_MAX_SIZE);
             cnt += SPI_DMA_BUF_MAX_SIZE;
         }
@@ -111,8 +107,7 @@ STATIC u8 w600_spi_write(u8 *data, u32 len)
     return tls_spi_write(data + cnt, remain);
 }
 
-STATIC u8 w600_spi_read(u8 *data, u32 len)
-{
+STATIC u8 w600_spi_read(u8 *data, u32 len) {
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -120,13 +115,11 @@ STATIC u8 w600_spi_read(u8 *data, u32 len)
     cnt = 0;
     remain = len;
 
-    if(len > SPI_DMA_BUF_MAX_SIZE)
-    {
+    if (len > SPI_DMA_BUF_MAX_SIZE) {
         repeat = len / SPI_DMA_BUF_MAX_SIZE;
         remain = len % SPI_DMA_BUF_MAX_SIZE;
 
-        while(cnt < (repeat * SPI_DMA_BUF_MAX_SIZE))
-        {
+        while (cnt < (repeat * SPI_DMA_BUF_MAX_SIZE)) {
             tls_spi_read(data + cnt, SPI_DMA_BUF_MAX_SIZE);
             cnt += SPI_DMA_BUF_MAX_SIZE;
         }
@@ -135,8 +128,7 @@ STATIC u8 w600_spi_read(u8 *data, u32 len)
     return tls_spi_read(data + cnt, remain);
 }
 
-STATIC u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len)
-{
+STATIC u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len) {
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -144,13 +136,11 @@ STATIC u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len)
     cnt = 0;
     remain = len;
 
-    if(len > SPI_DMA_BUF_MAX_SIZE)
-    {
+    if (len > SPI_DMA_BUF_MAX_SIZE) {
         repeat = len / SPI_DMA_BUF_MAX_SIZE;
         remain = len % SPI_DMA_BUF_MAX_SIZE;
 
-        while(cnt < (repeat * SPI_DMA_BUF_MAX_SIZE))
-        {
+        while (cnt < (repeat * SPI_DMA_BUF_MAX_SIZE)) {
             tls_spi_write_readinto(tx_data + cnt, rx_data + cnt, SPI_DMA_BUF_MAX_SIZE);
             cnt += SPI_DMA_BUF_MAX_SIZE;
         }
@@ -160,17 +150,16 @@ STATIC u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len)
 }
 
 STATIC void machine_spi_init_internal(
-    machine_hw_spi_obj_t    *self,
-    int32_t                 baudrate,
-    int8_t                  polarity,
-    int8_t                  phase,
-    int8_t                  bits,
-    int8_t                  firstbit,
-    int8_t                  sck,
-    int8_t                  mosi,
-    int8_t                  miso,
-    int8_t                  cs) 
-{
+    machine_hw_spi_obj_t *self,
+    int32_t baudrate,
+    int8_t polarity,
+    int8_t phase,
+    int8_t bits,
+    int8_t firstbit,
+    int8_t sck,
+    int8_t mosi,
+    int8_t miso,
+    int8_t cs) {
     int ret;
     u8 mode = TLS_SPI_MODE_0;
 
@@ -243,7 +232,7 @@ STATIC void machine_hw_spi_transfer(mp_obj_base_t *self_in, size_t len, const ui
     machine_hw_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     if (0 == self->spi_type) {
-        if (src && dest && len)  {
+        if (src && dest && len) {
             ret = w600_spi_write_read((u8 *)src, dest, len);
         } else if (src && len) {
             ret = w600_spi_write((u8 *)src, len);
@@ -266,13 +255,13 @@ STATIC void machine_hw_spi_transfer(mp_obj_base_t *self_in, size_t len, const ui
 STATIC void machine_hw_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_hw_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "SPI(id=%u, baudrate=%u, polarity=%u, phase=%u, bits=%u, firstbit=%u, sck=%d, mosi=%d, miso=%d, cs=%d)",
-              self->spi_type, self->baudrate, self->polarity,
-              self->phase, self->bits, self->firstbit,
-              self->sck, self->mosi, self->miso, self->cs);
+        self->spi_type, self->baudrate, self->polarity,
+        self->phase, self->bits, self->firstbit,
+        self->sck, self->mosi, self->miso, self->cs);
 }
 
 STATIC void machine_hw_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    machine_hw_spi_obj_t *self = (machine_hw_spi_obj_t *) self_in;
+    machine_hw_spi_obj_t *self = (machine_hw_spi_obj_t *)self_in;
 
     enum { ARG_id, ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_sck, ARG_mosi, ARG_miso, ARG_cs };
     static const mp_arg_t allowed_args[] = {
@@ -290,7 +279,7 @@ STATIC void machine_hw_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_
 
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args),
-                     allowed_args, args);
+        allowed_args, args);
 
     if (args[ARG_id].u_int == 1) {
         self->spi_type = 1;
@@ -311,7 +300,7 @@ STATIC void machine_hw_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_
         args[ARG_mosi].u_obj == MP_OBJ_NULL ? WM_IO_PB_18 : machine_pin_get_id(args[ARG_mosi].u_obj),
         args[ARG_miso].u_obj == MP_OBJ_NULL ? WM_IO_PB_17 : machine_pin_get_id(args[ARG_miso].u_obj),
         args[ARG_cs].u_obj == MP_OBJ_NULL ? 0 : machine_pin_get_id(args[ARG_cs].u_obj));
-        // args[ARG_cs].u_obj == MP_OBJ_NULL ? WM_IO_PB_15 : machine_pin_get_id(args[ARG_cs].u_obj));
+    // args[ARG_cs].u_obj == MP_OBJ_NULL ? WM_IO_PB_15 : machine_pin_get_id(args[ARG_cs].u_obj));
 }
 
 mp_obj_t machine_hw_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
