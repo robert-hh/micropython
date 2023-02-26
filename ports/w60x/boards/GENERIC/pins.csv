@@ -1,0 +1,3 @@
+#
+# When pins.csv is empty, the cpu pins are mapped to the boards pins.
+#
