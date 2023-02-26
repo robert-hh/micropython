@@ -45,6 +45,7 @@
 extern ringbuf_t stdin_ringbuf;
 
 uint32_t mp_hal_ticks_us(void);
+uint32_t mp_hal_ticks_ms(void);
 
 void mp_hal_delay_us(uint32_t);
 void mp_hal_delay_us_fast(uint32_t);
@@ -56,11 +57,11 @@ static inline uint32_t mp_hal_ticks_cpu(void) {
 }
 
 static inline void mp_hal_pin_high(uint32_t reg, uint32_t mask) {
-		*(TLS_REG *)reg |= mask;	/* write high */
+    *(TLS_REG *)reg |= mask;                    /* write high */
 }
 
 static inline void mp_hal_pin_low(uint32_t reg, uint32_t mask) {
-		*(TLS_REG *)reg &= mask;	/* write low */
+    *(TLS_REG *)reg &= mask;                    /* write low */
 }
 
 static inline uint32_t mp_hal_ticks_bitstream(void) {
@@ -76,7 +77,7 @@ static inline uint32_t mp_hal_ticks_bitstream(void) {
 // C-level pin HAL
 mp_hal_pin_obj_t machine_pin_get_id(mp_obj_t pin_in);
 #define mp_hal_get_pin_obj(o) machine_pin_get_id(o)
-#define mp_obj_get_pin(o) machine_pin_get_id(o)
+// #define mp_obj_get_pin(o) machine_pin_get_id(o)
 #define mp_hal_pin_name(p) (p)
 // #define mp_hal_pin_low(p) tls_gpio_write(p, 0);
 // #define mp_hal_pin_high(p) tls_gpio_write(p, 1);
@@ -91,4 +92,3 @@ static inline int mp_hal_pin_read(mp_hal_pin_obj_t pin) {
 void mp_hal_pin_write(mp_hal_pin_obj_t pin, int v);
 
 #endif // INCLUDED_MPHALPORT_H
-

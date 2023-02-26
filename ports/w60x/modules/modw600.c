@@ -47,6 +47,7 @@ extern const u8 SysCreatedTime[];
 
 extern int tls_fls_get_param(u8 type, void *param);
 extern void w600_ftps_start(int port, const char *user, const char *pass);
+extern const mp_obj_type_t w600_flash_type;
 
 STATIC mp_obj_t w600_flash_read(mp_obj_t offset_in, mp_obj_t buf_in) {
     mp_int_t offset = mp_obj_get_int(offset_in);
@@ -113,25 +114,29 @@ STATIC mp_obj_t w600_run_ftpserver(size_t n_args, const mp_obj_t *pos_args, mp_m
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(0, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
     int port = args[ARG_port].u_int;
-    const char *username  = (args[ARG_username].u_obj == MP_OBJ_NULL) ? NULL : mp_obj_str_get_str(args[ARG_username].u_obj);
+    const char *username = (args[ARG_username].u_obj == MP_OBJ_NULL) ? NULL : mp_obj_str_get_str(args[ARG_username].u_obj);
     const char *password = (args[ARG_password].u_obj == MP_OBJ_NULL) ? NULL : mp_obj_str_get_str(args[ARG_password].u_obj);
     w600_ftps_start(port, username, password);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(w600_run_ftpserver_obj, 0, w600_run_ftpserver);
 
+STATIC mp_obj_t rtos_task_info(void) {
+    tls_os_disp_task_stat_info();
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(rtos_task_info_obj, rtos_task_info);
+
 STATIC mp_obj_t w600_get_version(void) {
     char buf[128];
-    int len = sprintf(buf, "%s,%s,%c%x.%02x.%02x.%02x%02x,%c%x.%02x.%02x@ %s %s",
-                      MICROPY_W600_VERSION,
-#ifdef W60X_USE_2M_FLASH
-                      "2M Flash",
-#else
-                      "1M Flash",
-#endif
-                      HwVer[0], HwVer[1], HwVer[2], HwVer[3], HwVer[4], HwVer[5],
-                      FirmWareVer[0], FirmWareVer[1], FirmWareVer[2], FirmWareVer[3],
-                      SysCreatedTime, SysCreatedDate);
+    mp_uint_t flssize = 0;
+    tls_fls_get_param(TLS_FLS_PARAM_TYPE_SIZE, &flssize);
+    int len = sprintf(buf, "%s, %ldM Flash, %c%x.%02x.%02x.%02x%02x, %c%x.%02x.%02x @ %s %s",
+        MICROPY_W600_VERSION,
+        flssize / 1048576,
+        HwVer[0], HwVer[1], HwVer[2], HwVer[3], HwVer[4], HwVer[5],
+        FirmWareVer[0], FirmWareVer[1], FirmWareVer[2], FirmWareVer[3],
+        SysCreatedTime, SysCreatedDate);
     return mp_obj_new_str(buf, len);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(w600_get_version_obj, w600_get_version);
@@ -149,14 +154,16 @@ STATIC const mp_rom_map_elem_t w600_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_run_ftpserver), MP_ROM_PTR(&w600_run_ftpserver_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_version), MP_ROM_PTR(&w600_get_version_obj) },
+    { MP_ROM_QSTR(MP_QSTR_rtos_task_info), MP_ROM_PTR(&rtos_task_info_obj) },
     { MP_ROM_QSTR(MP_QSTR_dht_readinto), MP_ROM_PTR(&dht_readinto_obj) },
- };
+    { MP_ROM_QSTR(MP_QSTR_Flash),    MP_ROM_PTR(&w600_flash_type) },
+};
 
 STATIC MP_DEFINE_CONST_DICT(w600_module_globals, w600_module_globals_table);
 
 const mp_obj_module_t w600_module = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t *) &w600_module_globals,
+    .globals = (mp_obj_dict_t *)&w600_module_globals,
 };
 
 MP_REGISTER_MODULE(MP_QSTR_w600, w600_module);

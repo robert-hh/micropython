@@ -10,7 +10,7 @@ TARGET=wm_w600
 _ENV_TARGET=""
 _REVI_TARGET=""
 
-BUILD=build
+BUILD=$1
 DLIMG=${BUILD}/wm_tool
 LOGGER=logger
 
@@ -59,15 +59,14 @@ main()
 
 #	./${DLIMG} -c ${SERIAL_NAME} -ds 2M -dl "${BUILD}/${TARGET}.fls" -eo all -ws 115200 -rs at
  	./${DLIMG} -c ${SERIAL_NAME} -ds 2M -dl "${BUILD}/${TARGET}.fls" -eo secboot -rs rts
-#	./${DLIMG} -c ${SERIAL_NAME} -ds 2M -dl "${BUILD}/${TARGET}.fls" -eo all -rs rts
 }
 
 usage()
 {
 	echo -ne "\n$0 [-e ENV | -r RVERSION | -h]\n\n"
-	echo -ne "\t-e ENV   Compiler Environment, default is NOT SETTED\n"
+	echo -ne "\t-e ENV   Compiler Environment, default is NOT SET\n"
 	echo -ne "\t-h       This help information\n"
-	echo -ne "\t-r REVISION    SVN-Reversion number, default is NOT SETTED\n"
+	echo -ne "\t-r REVISION    SVN-Reversion number, default is NOT SET\n"
 	echo -ne "\n"
 }
 

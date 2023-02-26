@@ -55,21 +55,21 @@ mp_obj_t machine_adc_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
     mp_int_t chn = mp_obj_get_int(args[0]);
 
     switch (chn) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-        break;
-    default:
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "ADC channel (%d) doesn't exist", chn));
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+            break;
+        default:
+            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "ADC channel (%d) doesn't exist", chn));
     }
 
     // create ADC object from the given channel id

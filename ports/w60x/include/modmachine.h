@@ -18,4 +18,3 @@ extern const mp_obj_type_t machine_uart_type;
 extern const mp_obj_type_t machine_rtc_type;
 
 #endif // MICROPY_INCLUDED_W600_MODMACHINE_H
-

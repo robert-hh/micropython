@@ -1,5 +1,5 @@
-/* Linker script to configure memory regions. 
- * Need modifying for a specific board. 
+/* Linker script to configure memory regions.
+ * Need modifying for a specific board.
  *   FLASH.ORIGIN: starting address of flash
  *   FLASH.LENGTH: length of flash
  *   RAM.ORIGIN: starting address of RAM bank 0
@@ -7,15 +7,16 @@
  */
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x8010100, LENGTH = 768K 
-  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 0x38000 /* 224KB */
+	/* The Code address and size is set in Makefile */
+  FLASH (rx) : ORIGIN = _codeaddress, LENGTH = _codesize - 0x100
+  RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 0x38000 - 8 /* 224KB */
 }
 
 /* Linker script to place sections and symbol values. Should be used together
  * with other linker script that defines memory regions FLASH and RAM.
  * It references following symbols, which must be defined in code:
  *   Reset_Handler : Entry of reset handler
- * 
+ *
  * It defines following symbols, which code can use without definition:
  *   __exidx_start
  *   __exidx_end
@@ -72,7 +73,7 @@ SECTIONS
 		KEEP(*(.eh_frame*))
 	} > FLASH
 
-	.ARM.extab : 
+	.ARM.extab :
 	{
 		*(.ARM.extab* .gnu.linkonce.armextab.*)
 	} > FLASH
@@ -85,7 +86,7 @@ SECTIONS
 	__exidx_end = .;
 
 	__etext = .;
-		
+
 	.data : AT (__etext)
 	{
 		__data_start__ = .;
@@ -120,7 +121,7 @@ SECTIONS
 		__data_end__ = .;
 
 	} > RAM
-	
+
 	.stack_dummy (COPY):
 	{
 		. = ALIGN(8);
@@ -137,21 +138,22 @@ SECTIONS
 		*(COMMON)
 		. = ALIGN(4);
 		__bss_end__ = .;
-	} > RAM 
-	
+	} > RAM
+
 	.heap (COPY):
 	{
 		__end__ = .;
 		PROVIDE(end = .);
 		*(.heap*)
 		__HeapLimit = .;
-	} > RAM	
+	} > RAM
 
 	__StackTop = __stack_end__;
 	__StackLimit = __StackTop - SIZEOF(.stack_dummy);
-	PROVIDE(__stack = __StackTop);	
-	
+	PROVIDE(__stack = __StackTop);
+
 	ASSERT(__StackTop <= 0x20028000, "stack address error")
+	ASSERT(__HeapLimit <= 0x20038000, "heap size error")
 }
 
 _ram_end = ORIGIN(RAM) + LENGTH(RAM);

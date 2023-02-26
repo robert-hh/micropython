@@ -36,7 +36,7 @@ const char w600_help_text[] =
     "For access to the hardware use the 'machine' module:\n"
     "\n"
     "import machine\n"
-    "pb26 = machine.Pin(machine.Pin.PB_26, machine.Pin.OUT, machine.Pin.PULL_DOWN)\n"
+    "pb26 = machine.Pin(machine.Pin.PB_26, machine.Pin.OUT)\n"
     "pb26.value(1)\n"
     "pb27 = machine.Pin(machine.Pin.PB_27, machine.Pin.IN, machine.Pin.PULL_UP)\n"
     "print(pb27.value())\n"
@@ -59,5 +59,4 @@ const char w600_help_text[] =
     "\n"
     "For further help on a specific object, type help(obj)\n"
     "For a list of available modules, type help('modules')\n"
-    ;
-
+;
