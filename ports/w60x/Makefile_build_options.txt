@@ -1,0 +1,44 @@
+# Makefile build options:
+
+Make is called in the form:
+
+make option1=value1 option2=value2 .... V=s target
+
+Options:
+
+BOARD ?= GENERIC
+    
+    Specifies the board for which the binary is built. The only
+    difference will be the Pin.board set of names.
+
+SECBOOT ?= 0
+
+    Controls the use of the secondary bootloader by the firmware and
+    the bootloader. Without the secondary bootloader, 56k more space
+    is available for the flash file system.
+
+CODESIZE ?= 0xc0000
+
+    The amount of flash reserved for the MicroPyhton code. Lowering
+    it increases the size of the flash file system, and the opposite.
+
+MICROPY_USE_FATFS ?= 0
+
+    Whether FAT file system support is built-in. Only needed if SD cards
+    are to be used.
+
+MICROPY_PY_THREAD ?= 0
+
+    Control threading support of the firmware. Threading needs more
+    RAM & Flash.
+
+MICROPY_PY_SSL ?= 1
+
+    Control of SSL support using MBEDTLS.
+
+FROZEN_MANIFEST ?= manifest.py
+
+    Specifies the name of the manifest file.
+
+
+All options can be set in the command line or by changing Makefile.

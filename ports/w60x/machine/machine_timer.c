@@ -37,8 +37,8 @@
 #include "wm_include.h"
 #include "wm_timer.h"
 
-//#include "modmachine.h"
-//#include "mphalport.h"
+// #include "modmachine.h"
+// #include "mphalport.h"
 
 typedef struct _machine_timer_obj_t {
     mp_obj_base_t base;
@@ -101,8 +101,7 @@ STATIC mp_obj_t machine_timer_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_timer_deinit_obj, machine_timer_deinit);
 
-STATIC void machine_timer_callback(void *arg)
-{
+STATIC void machine_timer_callback(void *arg) {
     machine_timer_obj_t *self = (machine_timer_obj_t *)arg;
 
     if (self->callback) {
@@ -110,8 +109,7 @@ STATIC void machine_timer_callback(void *arg)
     }
 }
 
-STATIC void machine_soft_timer_callback(void *ptmr, void *parg)
-{
+STATIC void machine_soft_timer_callback(void *ptmr, void *parg) {
     machine_timer_obj_t *self = (machine_timer_obj_t *)parg;
 
     if (self->callback) {
@@ -168,8 +166,8 @@ STATIC mp_obj_t machine_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t
         }
     } else {
         tls_os_timer_create(&self->stimer,
-                            machine_soft_timer_callback,
-                            self, self->timeout / (1000 / HZ), self->is_repeat, NULL);
+            machine_soft_timer_callback,
+            self, self->timeout / (1000 / HZ), self->is_repeat, NULL);
         tls_os_timer_start(self->stimer);
     }
 

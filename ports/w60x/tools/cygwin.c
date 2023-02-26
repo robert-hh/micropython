@@ -1,6 +1,6 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static int sep_path_array(const char *path, char **arpath) {
     int cnt = 0;
@@ -71,8 +71,9 @@ static char *calc_relative_path(const char *patha, const char *pathb) {
     ret = malloc(256);
     memset(ret, 0, 256);
     if (k) {
-        if (i == j)
+        if (i == j) {
             i--;
+        }
         strcat(ret, "./");
         for (k = 0; k < (patha_num - (i + 1)); k++) {
             strcat(ret, "../");
@@ -104,8 +105,9 @@ static char *calc_relative_path(const char *patha, const char *pathb) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 3)
+    if (argc != 3) {
         return -1;
+    }
 
     char *r = calc_relative_path(argv[1], argv[2]);
 
@@ -115,4 +117,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-

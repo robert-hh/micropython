@@ -17,11 +17,11 @@ Argument | Description
 ```-v``` | show version.
 ```-b <binary>``` | original binary file.
 ```-o <output>``` | output firmware file. the default is the same as the original binary file name.
-```-sb <secboot> ```| second boot file, used to generate fls file.
-```-fc <uncompress | compress>``` | whether the firmware is compressed, default is uncompressed.
-```-it <old | new>``` | firmware image layout type, default is old layout.
-```-ua <address>``` | upgrade storage location (hexadecimal).
-```-ra <address>``` | runtime position (hexadecimal).
+```-sb <secboot> ```| second boot file, used to generate fls file. If omitted, the second boot file is not included.
+```-fc <uncompress / compress>``` | whether the firmware is compressed, default is uncompressed.
+```-it <old / new>``` | Deprecated. Former use: firmware image layout type, default is old layout.
+```-ua <address>``` | Deprecated. Former use: upgrade storage location offset in the flash memory (hexadecimal).
+```-ra <address>``` | runtime position offset in the flash memory (hexadecimal).
 ```-df``` | generate debug firmware for openocd.
 ```-l``` | list the local serial port.
 ```-c <serial>``` | connect a serial port.
@@ -35,17 +35,17 @@ Argument | Description
 Examples
 --------
 
-##### Generate 1M Flash firmware
+### Generate Flash firmware with a secboot image
 ```
-wm_tool -b wm_w600.bin -sb secboot.img -fc compress -it old -ua 90000 -ra 10100 -df -o wm_w600
-```
-
-##### Generate 2M Flash firmware
-```
-wm_tool -b "../Bin/wm_w600.bin" -sb "../Bin/secboot.img" -fc compress -it new -ua 100000 -ra 10100 -df -o "../Bin/wm_w600"
+wm_tool -b wm_w600.bin -sb secboot.img -fc compress -ua 90000 -ra 10100 -df -o wm_w600
 ```
 
-##### Use the AT command reset module to download firmware
+### Generate Flash firmware without a secboot image
+```
+wm_tool -b wm_w600.bin -fc compress -ua 90000 -ra 2100 -df -o wm_w600
+```
+
+### Use the AT command reset module to download firmware
 ```
 wm_tool -c COM7 -ds 2M -dl wm_w600_gz.img -ws 115200 -rs at
 ```
@@ -54,7 +54,7 @@ or:
 wm_tool -c COM7 -ds 2M -dl wm_w600.fls -eo secboot -ws 115200 -rs at
 ```
 
-##### Use the RTS pin instruction to reset the module to download firmware
+### Use the RTS pin instruction to reset the module to download firmware
 ```
 wm_tool -c COM7 -ds 2M -dl wm_w600_gz.img -rs rts
 ```
@@ -63,7 +63,7 @@ or:
 wm_tool -c COM7 -ds 2M -dl wm_w600.fls -eo secboot -rs rts
 ```
 
-##### Capture serial port log
+### Capture serial port log
 ```
 wm_tool -c COM7 -ws 115200 -sl str
 ```

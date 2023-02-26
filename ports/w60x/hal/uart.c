@@ -36,6 +36,7 @@
 #include "py/mpstate.h"
 #include "py/mphal.h"
 #include "py/stream.h"
+#include "extmod/misc.h"
 
 extern int sendchar(int ch);
 
@@ -48,6 +49,9 @@ uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
         ret |= MP_STREAM_POLL_RD;
     }
     return ret;
+    #if MICROPY_PY_OS_DUPTERM
+    ret |= mp_os_dupterm_poll(poll_flags);
+    #endif
 }
 
 // Receive single character
@@ -57,19 +61,28 @@ int mp_hal_stdin_rx_chr(void) {
         c = ringbuf_get(&stdin_ringbuf);
         if (c != -1) {
             return c;
-        } else {
-            MICROPY_EVENT_POLL_HOOK
-            tls_os_time_delay(1);
         }
+        #if MICROPY_PY_OS_DUPTERM
+        int dupterm_c = mp_os_dupterm_rx_chr();
+        if (dupterm_c >= 0) {
+            return dupterm_c;
+        }
+        #endif
+        MICROPY_EVENT_POLL_HOOK
     }
 }
 
 // Send string of given length
 void mp_hal_stdout_tx_strn(const char *str, size_t len) {
-    while (len--) {
+
+    for (size_t i = 0; i < len; i++) {
         // wait for TXE
-        sendchar(*str++);
+        sendchar(str[i]);
     }
+
+    #if MICROPY_PY_OS_DUPTERM
+    mp_os_dupterm_tx_strn(str, len);
+    #endif
 }
 
 void mp_hal_stdout_tx_str(const char *str) {
@@ -98,7 +111,7 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
 
 STATIC s16 uart_rx_callback(u16 len) {
     uint8_t c;
-    while(tls_uart_read(TLS_UART_0, &c, 1) > 0) {
+    while (tls_uart_read(TLS_UART_0, &c, 1) > 0) {
         if (c == mp_interrupt_char) {
             mp_sched_keyboard_interrupt();
         } else {
@@ -111,6 +124,5 @@ STATIC s16 uart_rx_callback(u16 len) {
 
 void uart_init(void) {
     tls_uart_port_init(TLS_UART_0, NULL, 0);
-    tls_uart_rx_callback_register((u16) TLS_UART_0, uart_rx_callback);
+    tls_uart_rx_callback_register((u16)TLS_UART_0, uart_rx_callback);
 }
-

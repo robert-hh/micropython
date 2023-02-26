@@ -1,7 +1,13 @@
 MicroPython port to the W60X
 =============================
 
-W60X is an embedded Wi-Fi SoC chip which is complying with IEEE802.11b/g/n international standard and which supports multi interface, multi protocol. It can be easily applied to smart appliances, smart home, health care, smart toy, wireless audio & video, industrial and other IoT fields. This SoC integrates Cortex-M3 CPU, Flash, RF Transceiver, CMOS PA, BaseBand. It applies multi interfaces such as SPI, UART, GPIO, I2C, PWM, I2S, 7816. It applies multi encryption and decryption protocol such as PRNG/SHA1/MD5/RC4/DES/3DES/AES/CRC/RSA.
+W60X is an embedded Wi-Fi SoC chip which is complying with IEEE802.11b/g/n international
+standard and which supports multi interface, multi protocol.
+It can be easily applied to smart appliances, smart home, health care, smart toy, wireless audio & video,
+industrial and other IoT fields.
+This SoC integrates Cortex-M3 CPU, Flash, RF Transceiver, CMOS PA, BaseBand.
+It applies multi interfaces such as SPI, UART, GPIO, I2C, PWM, I2S, 7816.
+It applies multi encryption and decryption protocols such as PRNG/SHA1/MD5/RC4/DES/3DES/AES/CRC/RSA.
 
 This is an experimental port of MicroPython to the WinnerMicro W60X microcontroller.  
 
@@ -9,16 +15,18 @@ Supported features
 ------------------------------------
 
 - REPL (Python prompt) over UART0.
-- 16k stack for the MicroPython task and 40k Python heap.
-- Many of MicroPython's features are enabled: unicode, arbitrary-precision integers, single-precision floats, complex numbers, frozen bytecode, as well as many of the internal modules.
-- The machine module with GPIO, UART, SPI, I2C, PWM, WDT, ADC, RTC and Timer.
+- 8k stack for the MicroPython task and 100k Python heap.
+- Most of MicroPython's features are enabled: unicode, arbitrary-precision integers,
+  single-precision floats (30bit), frozen bytecode, native emitters (native, viper and arm_thumb),
+  framebuffer, asyncio, as well as many of the internal modules.
+- The machine module with mem8..mem32, GPIO, UART, SPI, I2C, PWM, WDT, ADC, RTC and Timer.
 - The network module with WLAN (WiFi) support (including OneShot).
-- Support SSL using hardware encryption and decryption (2M Flash devices).
-- Internal filesystem using the flash (32KB available).
-- Support built-in FTP server transfer script files.
+- Support of SSL using hardware encryption and decryption.
+- Internal LFS2 filesystem using the flash (>=300 KB available, >= 1.3 MB on 2MB flash devices).
+- Built-in FTP server for transfer of script files.
 
 Setting up the cross toolchain and WM_SDK
-------------------------------------
+-----------------------------------------
 
 Supports direct compilation in Linux system and compilation in Cygwin environment in Windows system.
 
@@ -26,7 +34,8 @@ There are two main things to do here:
 - Download the cross toolchain and add it to the environment variable
 - Download WM_SDK and add to environment variables
 
-The cross toolchain used is arm-none-eabi-gcc where the download address is [GNU Arm Embedded Toolchain](https://launchpad.net/gcc-arm-embedded/4.9/4.9-2014-q4-major)
+The cross toolchain used is arm-none-eabi-gcc version where the download address is
+[GNU Arm Embedded Toolchain](https://launchpad.net/gcc-arm-embedded/4.9/4.9-2014-q4-major)
 
 You will need to update your `PATH` environment variable to include the cross toolchain. For example, you can issue the following commands on (at least) Linux:
 
@@ -61,7 +70,7 @@ The recommended components that can be turned off are:
 Building the firmware
 ---------------------
 
-Build MicroPython for the W60X:
+Build MicroPython for a generic board:
 ```
 bash
 $ cd mpy-cross
@@ -69,13 +78,67 @@ $ make
 
 $ cd ports/w60x
 $ make submodules
-$ make V=s
+$ make V=s BOARD=GENERIC
 ```
-The options that can be modified in the Makefile are:
+This will produce binary firmware images in the `build-GENERIC` subdirectory.
+There are several options that can be modified in the Makefile.
+They are described in the separate file: `Makefile_build_options.txt`.
 
-    MICROPY_USE_2M_FLASH
+Instead of BOARD=GENERIC another board may be selected.
+Currently available secetions are:
+- GENERIC
+- THINGSTURN_TB01
+- W600_EVB_V2
+- WAVGAT_AIR602
+- WEMOS_W600
+- WIS600
 
-This will produce binary firmware images in the `build` subdirectory.
+Makefile build options
+----------------------
+
+Make is called in the form:
+
+make option1=value1 option2=value2 .... V=s target
+
+Options:
+
+BOARD ?= GENERIC
+    
+    Specifies the board for which the binary is built. The only
+    difference will be the Pin.board set of names.
+
+SECBOOT ?= 0
+
+    Controls the use of the secondary bootloader by the firmware and
+    the bootloader. Without the secondary bootloader, 56k more space
+    is available for the flash file system.
+
+CODESIZE ?= 0xc0000
+
+    The amount of flash reserved for the MicroPyhton code. Lowering
+    it increases the size of the flash file system, and the opposite.
+
+MICROPY_USE_FATFS ?= 0
+
+    Whether FAT file system support is built-in. Only needed if SD cards
+    are to be used.
+
+MICROPY_PY_THREAD ?= 0
+
+    Control threading support of the firmware. Threading needs more
+    RAM & Flash.
+
+MICROPY_PY_SSL ?= 1
+
+    Control of SSL support using MBEDTLS.
+
+FROZEN_MANIFEST ?= manifest.py
+
+    Specifies the name of the manifest file.
+
+
+All options can be set in the command line or by changing Makefile.
+
 
 Flashing the Firmware
 -----------------------
@@ -83,10 +146,16 @@ Flashing the Firmware
 To upload the firmware to the target board, please use the command 
 ```
 bash
-make flash V=s
+make V=s flash
 ```
-Some boards like the Wemos W600 require pushing reset to start the upload while the upload tool waits for syncronisation with the target board.
+Some boards like the Wemos W600 require pushing reset at the start of the upload while the
+upload tool waits for syncronisation with the target board.
+Connecting pin PA0 to GND while pushing reset will ensure that the bootloader of the board
+will start and go into synchronization mode to allow the upload.
+Once the new Micropython firmware is on the board this gounding of PA0 is no longer necessary.
+Then you also may execute `machine.bootloader` from within Micropython to start the bootloader.
 
-Reference document
+Reference documents
 -----------------------
 Visit [WinnerMicro](http://www.winnermicro.com/en/html/1/156/158/497.html) for more documentation.
+
