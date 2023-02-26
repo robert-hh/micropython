@@ -31,7 +31,6 @@
 
 #include "wm_include.h"
 
-#include "py/obj.h"
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "py/gc.h"
@@ -42,9 +41,9 @@
 #include "mpthreadport.h"
 
 enum mp_pin_mode {
-  GPIO_MODE_INPUT = WM_GPIO_DIR_INPUT,
-  GPIO_MODE_OUTPUT = WM_GPIO_DIR_OUTPUT,
-  GPIO_MODE_OPEN_DRAIN = 3 // SDK has no matching WM_GPIO_DIR!
+    GPIO_MODE_INPUT = WM_GPIO_DIR_INPUT,
+    GPIO_MODE_OUTPUT = WM_GPIO_DIR_OUTPUT,
+    GPIO_MODE_OPEN_DRAIN = 3 // SDK has no matching WM_GPIO_DIR!
 };
 
 /*
@@ -55,10 +54,10 @@ enum mp_pin_mode {
  * WM_GPIO_IRQ_TRIG_HIGH_LEVEL == GPIO_IRQ_LOW_LEVEL - 1
  */
 enum mp_pin_irq_mode {
-  GPIO_IRQ_RISING = WM_GPIO_IRQ_TRIG_RISING_EDGE + 1,    // 1
-  GPIO_IRQ_FALLING = WM_GPIO_IRQ_TRIG_FALLING_EDGE + 1,  // 2
-  GPIO_IRQ_HIGH_LEVEL = WM_GPIO_IRQ_TRIG_HIGH_LEVEL + 1, // 4
-  GPIO_IRQ_LOW_LEVEL = WM_GPIO_IRQ_TRIG_LOW_LEVEL  + 1,  // 5
+    GPIO_IRQ_RISING = WM_GPIO_IRQ_TRIG_RISING_EDGE + 1,  // 1
+    GPIO_IRQ_FALLING = WM_GPIO_IRQ_TRIG_FALLING_EDGE + 1, // 2
+    GPIO_IRQ_HIGH_LEVEL = WM_GPIO_IRQ_TRIG_HIGH_LEVEL + 1, // 4
+    GPIO_IRQ_LOW_LEVEL = WM_GPIO_IRQ_TRIG_LOW_LEVEL + 1, // 5
 };
 
 typedef struct _machine_pin_obj_t {
@@ -93,7 +92,6 @@ STATIC machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_13},
     {{&machine_pin_type}, WM_IO_PA_14},
     {{&machine_pin_type}, WM_IO_PA_15},
-
 
     {{&machine_pin_type}, WM_IO_PB_00},
     {{&machine_pin_type}, WM_IO_PB_01},
@@ -134,8 +132,85 @@ STATIC machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PB_31},
 };
 
+STATIC const mp_rom_map_elem_t pin_cpu_pins_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_PA0), MP_ROM_PTR(&machine_pin_obj[0]) },
+    { MP_ROM_QSTR(MP_QSTR_PA1), MP_ROM_PTR(&machine_pin_obj[1]) },
+    { MP_ROM_QSTR(MP_QSTR_PA2), MP_ROM_PTR(&machine_pin_obj[2]) },
+    { MP_ROM_QSTR(MP_QSTR_PA3), MP_ROM_PTR(&machine_pin_obj[3]) },
+    { MP_ROM_QSTR(MP_QSTR_PA4), MP_ROM_PTR(&machine_pin_obj[4]) },
+    { MP_ROM_QSTR(MP_QSTR_PA5), MP_ROM_PTR(&machine_pin_obj[5]) },
+    { MP_ROM_QSTR(MP_QSTR_PA6), MP_ROM_PTR(&machine_pin_obj[6]) },
+    { MP_ROM_QSTR(MP_QSTR_PA7), MP_ROM_PTR(&machine_pin_obj[7]) },
+    { MP_ROM_QSTR(MP_QSTR_PA8), MP_ROM_PTR(&machine_pin_obj[8]) },
+    { MP_ROM_QSTR(MP_QSTR_PA9), MP_ROM_PTR(&machine_pin_obj[9]) },
+    { MP_ROM_QSTR(MP_QSTR_PA10), MP_ROM_PTR(&machine_pin_obj[10]) },
+    { MP_ROM_QSTR(MP_QSTR_PA11), MP_ROM_PTR(&machine_pin_obj[11]) },
+    { MP_ROM_QSTR(MP_QSTR_PA12), MP_ROM_PTR(&machine_pin_obj[12]) },
+    { MP_ROM_QSTR(MP_QSTR_PA13), MP_ROM_PTR(&machine_pin_obj[13]) },
+    { MP_ROM_QSTR(MP_QSTR_PA14), MP_ROM_PTR(&machine_pin_obj[14]) },
+    { MP_ROM_QSTR(MP_QSTR_PA15), MP_ROM_PTR(&machine_pin_obj[15]) },
+    { MP_ROM_QSTR(MP_QSTR_PB0), MP_ROM_PTR(&machine_pin_obj[16 + 0]) },
+    { MP_ROM_QSTR(MP_QSTR_PB1), MP_ROM_PTR(&machine_pin_obj[16 + 1]) },
+    { MP_ROM_QSTR(MP_QSTR_PB2), MP_ROM_PTR(&machine_pin_obj[16 + 2]) },
+    { MP_ROM_QSTR(MP_QSTR_PB3), MP_ROM_PTR(&machine_pin_obj[16 + 3]) },
+    { MP_ROM_QSTR(MP_QSTR_PB4), MP_ROM_PTR(&machine_pin_obj[16 + 4]) },
+    { MP_ROM_QSTR(MP_QSTR_PB5), MP_ROM_PTR(&machine_pin_obj[16 + 5]) },
+    { MP_ROM_QSTR(MP_QSTR_PB6), MP_ROM_PTR(&machine_pin_obj[16 + 6]) },
+    { MP_ROM_QSTR(MP_QSTR_PB7), MP_ROM_PTR(&machine_pin_obj[16 + 7]) },
+    { MP_ROM_QSTR(MP_QSTR_PB8), MP_ROM_PTR(&machine_pin_obj[16 + 8]) },
+    { MP_ROM_QSTR(MP_QSTR_PB9), MP_ROM_PTR(&machine_pin_obj[16 + 9]) },
+    { MP_ROM_QSTR(MP_QSTR_PB10), MP_ROM_PTR(&machine_pin_obj[16 + 10]) },
+    { MP_ROM_QSTR(MP_QSTR_PB11), MP_ROM_PTR(&machine_pin_obj[16 + 11]) },
+    { MP_ROM_QSTR(MP_QSTR_PB12), MP_ROM_PTR(&machine_pin_obj[16 + 12]) },
+    { MP_ROM_QSTR(MP_QSTR_PB13), MP_ROM_PTR(&machine_pin_obj[16 + 13]) },
+    { MP_ROM_QSTR(MP_QSTR_PB14), MP_ROM_PTR(&machine_pin_obj[16 + 14]) },
+    { MP_ROM_QSTR(MP_QSTR_PB15), MP_ROM_PTR(&machine_pin_obj[16 + 15]) },
+    { MP_ROM_QSTR(MP_QSTR_PB16), MP_ROM_PTR(&machine_pin_obj[16 + 16]) },
+    { MP_ROM_QSTR(MP_QSTR_PB17), MP_ROM_PTR(&machine_pin_obj[16 + 17]) },
+    { MP_ROM_QSTR(MP_QSTR_PB18), MP_ROM_PTR(&machine_pin_obj[16 + 18]) },
+    { MP_ROM_QSTR(MP_QSTR_PB19), MP_ROM_PTR(&machine_pin_obj[16 + 19]) },
+    { MP_ROM_QSTR(MP_QSTR_PB20), MP_ROM_PTR(&machine_pin_obj[16 + 20]) },
+    { MP_ROM_QSTR(MP_QSTR_PB21), MP_ROM_PTR(&machine_pin_obj[16 + 21]) },
+    { MP_ROM_QSTR(MP_QSTR_PB22), MP_ROM_PTR(&machine_pin_obj[16 + 22]) },
+    { MP_ROM_QSTR(MP_QSTR_PB23), MP_ROM_PTR(&machine_pin_obj[16 + 23]) },
+    { MP_ROM_QSTR(MP_QSTR_PB24), MP_ROM_PTR(&machine_pin_obj[16 + 24]) },
+    { MP_ROM_QSTR(MP_QSTR_PB25), MP_ROM_PTR(&machine_pin_obj[16 + 25]) },
+    { MP_ROM_QSTR(MP_QSTR_PB26), MP_ROM_PTR(&machine_pin_obj[16 + 26]) },
+    { MP_ROM_QSTR(MP_QSTR_PB27), MP_ROM_PTR(&machine_pin_obj[16 + 27]) },
+    { MP_ROM_QSTR(MP_QSTR_PB28), MP_ROM_PTR(&machine_pin_obj[16 + 28]) },
+    { MP_ROM_QSTR(MP_QSTR_PB29), MP_ROM_PTR(&machine_pin_obj[16 + 29]) },
+    { MP_ROM_QSTR(MP_QSTR_PB30), MP_ROM_PTR(&machine_pin_obj[16 + 30]) },
+    { MP_ROM_QSTR(MP_QSTR_PB31), MP_ROM_PTR(&machine_pin_obj[16 + 31]) },
+};
+MP_DEFINE_CONST_DICT(machine_pin_cpu_pins_locals_dict, pin_cpu_pins_locals_dict_table);
+
+// The Pin board dictionary has to be included a CPP macro and not as
+// C file. pin_board_dict.h is created from $(BOARD)/pins.csv and
+// defines PIN_BOARD_DICT.
+#include "pin_board_dict.h"
+
+PIN_BOARD_DICT
+
+// Pin mapping dictionaries
+MP_DEFINE_CONST_OBJ_TYPE(
+    machine_pin_cpu_pins_obj_type,
+    MP_QSTR_cpu,
+    MP_TYPE_FLAG_NONE,
+    locals_dict, &machine_pin_cpu_pins_locals_dict
+    );
+
+// Pin mapping dictionaries
+MP_DEFINE_CONST_OBJ_TYPE(
+    machine_pin_board_pins_obj_type,
+    MP_QSTR_board,
+    MP_TYPE_FLAG_NONE,
+    locals_dict, &machine_pin_board_pins_locals_dict
+    );
+
 // forward declaration
 STATIC const machine_pin_irq_obj_t machine_pin_irq_object[];
+
+STATIC char *pin_mode_str[] = {"OUT", "IN", "", "OPEN_DRAIN"};
 
 void machine_pins_init(void) {
     memset(&MP_STATE_PORT(machine_pin_irq_handler[0]), 0, sizeof(MP_STATE_PORT(machine_pin_irq_handler)));
@@ -185,8 +260,47 @@ STATIC inline machine_pin_obj_t *pin_idx_to_pin_obj(mp_hal_pin_obj_t pin_index) 
     return (machine_pin_obj_t *)&machine_pin_obj[pin_index];
 }
 
+STATIC machine_pin_obj_t *pin_find_named_pin(const mp_obj_dict_t *named_pins, mp_obj_t name) {
+    mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)named_pins);
+    mp_map_elem_t *named_elem = mp_map_lookup(named_map, name, MP_MAP_LOOKUP);
+    if (named_elem != NULL && named_elem->value != NULL) {
+        return named_elem->value;
+    }
+    return NULL;
+}
+
+machine_pin_obj_t *pin_find(mp_obj_t pin_in) {
+    const machine_pin_obj_t *pin;
+
+    // If a pin was provided, then use it
+    if (mp_obj_is_type(pin_in, &machine_pin_type)) {
+        return pin_in;
+    }
+
+    machine_pin_obj_t *self;
+    // See if the pin name matches a board pin
+    self = pin_find_named_pin(&machine_pin_board_pins_locals_dict, pin_in);
+    if (self != NULL) {
+        return self;
+    }
+    // See if the pin name matches a cpu/board pin
+    self = pin_find_named_pin(&machine_pin_cpu_pins_locals_dict, pin_in);
+    if (self != NULL) {
+        return self;
+    }
+    // If pin is SMALL_INT
+    if (mp_obj_is_small_int(pin_in)) {
+        int wanted_pin = -1;
+        wanted_pin = mp_obj_get_int(pin_in);
+        if (0 <= wanted_pin && wanted_pin < MP_ARRAY_SIZE(machine_pin_obj)) {
+            return pin_idx_to_pin_obj(wanted_pin);
+        }
+    }
+    mp_raise_ValueError("invalid pin");
+}
+
 mp_hal_pin_obj_t machine_pin_get_id(mp_obj_t pin_in) {
-    return mp_obj_to_pin_obj(pin_in)->id;
+    return pin_find(pin_in)->id;
 }
 
 /*
@@ -240,7 +354,7 @@ void mp_hal_pin_write(mp_hal_pin_obj_t pin, int value) {
 
 STATIC void machine_pin_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
-    mp_printf(print, "Pin(%u)", self->id);
+    mp_printf(print, "Pin(%u, mode=%s)", self->id, pin_mode_str[self->mode]);
 }
 
 // pin.init(direction, attribute, value)
@@ -262,10 +376,9 @@ STATIC mp_obj_t machine_pin_obj_init_helper(machine_pin_obj_t *self, size_t n_ar
     self->mode = mode;
 
     if (GPIO_MODE_OPEN_DRAIN == mode) {
-       tls_gpio_cfg(self->id, value ? WM_GPIO_DIR_INPUT : WM_GPIO_DIR_OUTPUT, args[ARG_pull].u_int);
-    }
-    else {
-       tls_gpio_cfg(self->id, mode, args[ARG_pull].u_int);
+        tls_gpio_cfg(self->id, value ? WM_GPIO_DIR_INPUT : WM_GPIO_DIR_OUTPUT, args[ARG_pull].u_int);
+    } else {
+        tls_gpio_cfg(self->id, mode, args[ARG_pull].u_int);
     }
     if (has_value_arg) {
         tls_gpio_write(self->id, value);
@@ -279,14 +392,7 @@ mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, 
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
     // get the wanted pin object
-    int wanted_pin = mp_obj_get_int(args[0]);
-    machine_pin_obj_t *self = NULL;
-    if (0 <= wanted_pin && wanted_pin < MP_ARRAY_SIZE(machine_pin_obj)) {
-        self = pin_idx_to_pin_obj(wanted_pin);
-    }
-    if (self == NULL || self->base.type == NULL) {
-        mp_raise_ValueError("invalid pin");
-    }
+    machine_pin_obj_t *self = pin_find(args[0]);
 
     if (n_args > 1 || n_kw > 0) {
         // pin mode given, so configure this GPIO
@@ -324,14 +430,14 @@ STATIC mp_obj_t machine_pin_value(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_value_obj, 1, 2, machine_pin_value);
 
-// pin.off()
+// pin.off() resp. pin.low()
 STATIC mp_obj_t machine_pin_off(mp_obj_t self_in) {
     machine_set_pin(mp_obj_to_pin_obj(self_in), false);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_off_obj, machine_pin_off);
 
-// pin.on()
+// pin.on() resp. pin.high()
 STATIC mp_obj_t machine_pin_on(mp_obj_t self_in) {
     machine_set_pin(mp_obj_to_pin_obj(self_in), true);
     return mp_const_none;
@@ -344,6 +450,13 @@ STATIC void machine_pin_irq_callback(void *p) {
     tls_clr_gpio_irq_status(self->id);
 }
 
+// pin.toggle()
+STATIC mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
+    machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
+    machine_set_pin(self, 1 - tls_gpio_read(self->id));
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
 
 // pin.irq(trigger_mode)
 STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -387,6 +500,9 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&machine_pin_value_obj) },
     { MP_ROM_QSTR(MP_QSTR_off), MP_ROM_PTR(&machine_pin_off_obj) },
     { MP_ROM_QSTR(MP_QSTR_on), MP_ROM_PTR(&machine_pin_on_obj) },
+    { MP_ROM_QSTR(MP_QSTR_low), MP_ROM_PTR(&machine_pin_off_obj) },
+    { MP_ROM_QSTR(MP_QSTR_high), MP_ROM_PTR(&machine_pin_on_obj) },
+    { MP_ROM_QSTR(MP_QSTR_toggle), MP_ROM_PTR(&machine_pin_toggle_obj) },
     { MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&machine_pin_irq_obj) },
 
     // class constants
@@ -421,7 +537,6 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_PA_14), MP_ROM_INT(WM_IO_PA_14) },
 
     { MP_ROM_QSTR(MP_QSTR_PA_15), MP_ROM_INT(WM_IO_PA_15) },
-
 
     { MP_ROM_QSTR(MP_QSTR_PB_00), MP_ROM_INT(WM_IO_PB_00) },
     { MP_ROM_QSTR(MP_QSTR_PB_01), MP_ROM_INT(WM_IO_PB_01) },
@@ -461,25 +576,27 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
 
     { MP_ROM_QSTR(MP_QSTR_PB_30), MP_ROM_INT(WM_IO_PB_30) },
     { MP_ROM_QSTR(MP_QSTR_PB_31), MP_ROM_INT(WM_IO_PB_31) },
+
+    { MP_ROM_QSTR(MP_QSTR_cpu), MP_ROM_PTR(&machine_pin_cpu_pins_obj_type) },
+    { MP_ROM_QSTR(MP_QSTR_board), MP_ROM_PTR(&machine_pin_board_pins_obj_type) },
 };
+STATIC MP_DEFINE_CONST_DICT(machine_pin_locals_dict, machine_pin_locals_dict_table);
 
 STATIC mp_uint_t pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     (void)errcode;
     machine_pin_obj_t *self = self_in;
 
     switch (request) {
-    case MP_PIN_READ: {
-        return tls_gpio_read(self->id);
-    }
-    case MP_PIN_WRITE: {
-        tls_gpio_write(self->id, arg);
-        return 0;
-    }
+        case MP_PIN_READ: {
+            return tls_gpio_read(self->id);
+        }
+        case MP_PIN_WRITE: {
+            tls_gpio_write(self->id, arg);
+            return 0;
+        }
     }
     return -1;
 }
-
-STATIC MP_DEFINE_CONST_DICT(machine_pin_locals_dict, machine_pin_locals_dict_table);
 
 STATIC const mp_pin_p_t pin_pin_p = {
     .ioctl = pin_ioctl,

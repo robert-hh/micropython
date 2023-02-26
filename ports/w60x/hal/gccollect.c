@@ -36,10 +36,6 @@
 
 uintptr_t gc_helper_get_regs_and_sp(uintptr_t *regs);
 
-#if MICROPY_USE_INTERVAL_FLS_FS
-extern void *spi_fls_vfs;  // The type does not matter here
-#endif
-
 
 void gc_collect(void) {
     // start the GC
@@ -49,16 +45,13 @@ void gc_collect(void) {
     uintptr_t regs[10];
     uintptr_t sp = gc_helper_get_regs_and_sp(regs);
 
-#if MICROPY_USE_INTERVAL_FLS_FS
-    gc_collect_root((void **)&spi_fls_vfs, 1);  // maybe not needed
-#endif
     // trace the stack, including the registers (since they live [now] on the stack in this function)
     gc_collect_root((void **)sp, ((uint32_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
 
     // trace root pointers from any threads
-#if MICROPY_PY_THREAD
+    #if MICROPY_PY_THREAD
     mp_thread_gc_others();
-#endif
+    #endif
 
     // end the GC
     gc_collect_end();

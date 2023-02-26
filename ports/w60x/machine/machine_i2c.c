@@ -51,10 +51,10 @@ const mp_obj_type_t machine_hw_i2c_type;
 STATIC void machine_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_hw_i2c_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "I2C(scl=%d, sda=%d, freq=%u)",
-              self->scl, self->sda, self->freq);
+        self->scl, self->sda, self->freq);
 }
 
-mp_obj_t machine_hw_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args)  {
+mp_obj_t machine_hw_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_id, ARG_scl, ARG_sda, ARG_freq, ARG_timeout };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id, MP_ARG_REQUIRED | MP_ARG_OBJ },
@@ -134,7 +134,7 @@ STATIC int machine_hw_i2c_read(uint16_t addr, uint8_t *dest, size_t len, bool na
         *dest++ = tls_i2c_read_byte(1, 0);
         len--;
     }
-    *dest = tls_i2c_read_byte(! nack, 0);
+    *dest = tls_i2c_read_byte(!nack, 0);
     return 0; // success
 }
 
@@ -168,8 +168,8 @@ int machine_hw_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, mp_
     int wait;
     int transfer_ret = 0;
 
-    wait = 1000; // Experimental value, just guessed. 
-    while((tls_reg_read32(HR_I2C_CR_SR) & I2C_SR_BUSY) && wait > 0) { // Wait while the device is busy
+    wait = 1000; // Experimental value, just guessed.
+    while ((tls_reg_read32(HR_I2C_CR_SR) & I2C_SR_BUSY) && wait > 0) { // Wait while the device is busy
         wait--;      // but not forever
     }
 
