@@ -7,6 +7,7 @@ import vfs
 import sys
 import mimxrt
 from machine import Pin
+from micropython import const
 
 FS_UNDEF = const(0)
 FS_LITTLEFS = const(1)
