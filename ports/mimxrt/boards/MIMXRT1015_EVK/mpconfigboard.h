@@ -89,3 +89,12 @@
     }
 
 #define XBARA1  XBARA
+#define MICROPY_HW_WIFI_SPI_ID     (0)
+#define MICROPY_HW_WIFI_SPI_BAUDRATE (8000000)
+
+// NINA_ACK: D7 = GPIO_AD_B0_15
+#define MICROPY_HW_NINA_ACK       (&pin_GPIO_AD_B0_15)
+// NINA_CS: D10 = GPIO_AD_B0_11
+#define MICROPY_HW_NINA_CS        (&pin_GPIO_AD_B0_11)
+// Adafruit shield: NINA_RESET: D5 = GPIO_EMC_27
+#define MICROPY_HW_NINA_RESET     (&pin_GPIO_EMC_27)
