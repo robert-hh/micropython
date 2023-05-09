@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2016 Damien P. George
+ * Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,35 +24,31 @@
  * THE SOFTWARE.
  */
 
+#include <stdio.h>
+#include <stdint.h>
+
+#include "py/mpstate.h"
+#include "py/gc.h"
 #include "py/mpthread.h"
-#include "pybthread.h"
+#include "shared/runtime/gchelper.h"
+#include "shared/runtime/softtimer.h"
+#include "gccollect.h"
 
-typedef pyb_mutex_t mp_thread_mutex_t;
+void gc_collect(void) {
+    // start the GC
+    gc_collect_start();
 
-void mp_thread_init(void);
-void mp_thread_gc_others(void);
+    // trace the stack and registers
+    gc_helper_collect_regs_and_stack();
 
-static inline void mp_thread_set_state(struct _mp_state_thread_t *state) {
-    pyb_thread_set_local(state);
+    // trace root pointers from any threads
+    #if MICROPY_PY_THREAD
+    mp_thread_gc_others();
+    #endif
+
+    // trace soft timer nodes
+    soft_timer_gc_mark_all();
+
+    // end the GC
+    gc_collect_end();
 }
-
-static inline struct _mp_state_thread_t *mp_thread_get_state(void) {
-    return pyb_thread_get_local();
-}
-
-static inline void mp_thread_mutex_init(mp_thread_mutex_t *m) {
-    pyb_mutex_init(m);
-}
-
-static inline int mp_thread_mutex_lock(mp_thread_mutex_t *m, int wait) {
-    return pyb_mutex_lock(m, wait);
-}
-
-static inline void mp_thread_mutex_unlock(mp_thread_mutex_t *m) {
-    pyb_mutex_unlock(m);
-}
-
-// Define the default thread stack size.
-#ifndef MP_THREAD_STACK_SIZE
-#define MP_THREAD_STACK_SIZE   (4096)
-#endif

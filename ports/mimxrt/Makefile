@@ -190,6 +190,7 @@ SRC_C += \
 	eth.c \
 	fatfs_port.c \
 	flash.c \
+	gccollect.c \
 	hal/pwm_backport.c \
 	help.c \
 	led.c \
@@ -207,9 +208,11 @@ SRC_C += \
 	modmimxrt.c \
 	mphalport.c \
 	mpnetworkport.c \
+	mpthreadport.c \
 	network_lan.c \
 	pendsv.c \
 	pin.c \
+	pybthread.c \
 	sdcard.c \
 	sdio.c \
 	systick.c \

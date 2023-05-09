@@ -51,8 +51,3 @@ static inline int mp_thread_mutex_lock(mp_thread_mutex_t *m, int wait) {
 static inline void mp_thread_mutex_unlock(mp_thread_mutex_t *m) {
     pyb_mutex_unlock(m);
 }
-
-// Define the default thread stack size.
-#ifndef MP_THREAD_STACK_SIZE
-#define MP_THREAD_STACK_SIZE   (4096)
-#endif

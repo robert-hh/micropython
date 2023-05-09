@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2016 Damien P. George
+ * Copyright (c) 2013, 2014 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,36 +23,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_STM32_GCCOLLECT_H
+#define MICROPY_INCLUDED_STM32_GCCOLLECT_H
 
-#include "py/mpthread.h"
-#include "pybthread.h"
+// variables defining memory layout
+// (these probably belong somewhere else...)
+extern uint32_t _etext;
+extern uint32_t _sidata;
+extern uint32_t _ram_start;
+extern uint32_t _sdata;
+extern uint32_t _edata;
+extern uint32_t _sbss;
+extern uint32_t _ebss;
+extern uint32_t _heap_start;
+extern uint32_t _heap_end;
+extern uint32_t _sstack;
+extern uint32_t _estack;
+extern uint32_t _ram_end;
 
-typedef pyb_mutex_t mp_thread_mutex_t;
-
-void mp_thread_init(void);
-void mp_thread_gc_others(void);
-
-static inline void mp_thread_set_state(struct _mp_state_thread_t *state) {
-    pyb_thread_set_local(state);
-}
-
-static inline struct _mp_state_thread_t *mp_thread_get_state(void) {
-    return pyb_thread_get_local();
-}
-
-static inline void mp_thread_mutex_init(mp_thread_mutex_t *m) {
-    pyb_mutex_init(m);
-}
-
-static inline int mp_thread_mutex_lock(mp_thread_mutex_t *m, int wait) {
-    return pyb_mutex_lock(m, wait);
-}
-
-static inline void mp_thread_mutex_unlock(mp_thread_mutex_t *m) {
-    pyb_mutex_unlock(m);
-}
-
-// Define the default thread stack size.
-#ifndef MP_THREAD_STACK_SIZE
-#define MP_THREAD_STACK_SIZE   (4096)
-#endif
+#endif // MICROPY_INCLUDED_STM32_GCCOLLECT_H
