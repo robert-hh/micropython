@@ -63,6 +63,9 @@ uint32_t trng_random_u32(void);
 // Control over Python builtins
 #define MICROPY_PY_BUILTINS_HELP_TEXT       mimxrt_help_text
 #define MICROPY_PY_SYS_PLATFORM             "mimxrt"
+#ifndef MICROPY_PY_THREAD
+#define MICROPY_PY_THREAD                   (1)
+#endif
 
 // Extended modules
 #define MICROPY_EPOCH_IS_1970               (1)
@@ -211,12 +214,32 @@ extern const struct _mp_obj_type_t network_lan_type;
 #endif
 
 #ifndef  MICROPY_EVENT_POLL_HOOK
+#if MICROPY_PY_THREAD
+
+#define MICROPY_EVENT_POLL_HOOK \
+    do { \
+        extern void mp_handle_pending(bool); \
+        mp_handle_pending(true); \
+        if (pyb_thread_enabled) { \
+            MP_THREAD_GIL_EXIT(); \
+            pyb_thread_yield(); \
+            MP_THREAD_GIL_ENTER(); \
+        } else { \
+            __WFE(); \
+        } \
+    } while (0);
+
+#define MICROPY_THREAD_YIELD() pyb_thread_yield()
+
+#else
+
 #define MICROPY_EVENT_POLL_HOOK \
     do { \
         extern void mp_handle_pending(bool); \
         mp_handle_pending(true); \
         __WFE(); \
     } while (0);
+#define MICROPY_THREAD_YIELD() pyb_thread_yield()
 #endif
 
 #define MICROPY_MAKE_POINTER_CALLABLE(p) ((void *)((mp_uint_t)(p) | 1))
