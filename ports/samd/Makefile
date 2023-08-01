@@ -125,6 +125,9 @@ SHARED_SRC_C += \
 	shared/runtime/mpirq.c \
 	shared/libc/printf.c \
 	shared/libc/string0.c \
+    shared/netutils/dhcpserver.c \
+    shared/netutils/netutils.c \
+    shared/netutils/trace.c \
 	shared/readline/readline.c \
 	shared/runtime/gchelper_native.c \
 	shared/runtime/interrupt_char.c \
