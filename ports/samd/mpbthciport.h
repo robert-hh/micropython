@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * Copyright (c) 2023 Arduino SA
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,23 +23,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_SAMD_PENDSV_H
-#define MICROPY_INCLUDED_SAMD_PENDSV_H
 
-enum {
-    PENDSV_DISPATCH_SOFT_TIMER,  // For later & for having at least one entry
-    #if MICROPY_PY_NETWORK && MICROPY_PY_LWIP
-    PENDSV_DISPATCH_LWIP,
-    #endif
-    MICROPY_BOARD_PENDSV_ENTRIES
-    PENDSV_DISPATCH_MAX
-};
+#ifndef MICROPY_INCLUDED_MIMXRT_MPBTHCIPORT_H
+#define MICROPY_INCLUDED_MIMXRT_MPBTHCIPORT_H
 
-#define PENDSV_DISPATCH_NUM_SLOTS PENDSV_DISPATCH_MAX
+// Initialise the HCI subsystem (should be called once, early on).
+void mp_bluetooth_hci_init(void);
 
-typedef void (*pendsv_dispatch_t)(void);
+// Poll the HCI now, or after a certain timeout.
+void mp_bluetooth_hci_poll_now(void);
+void mp_bluetooth_hci_poll_in_ms(uint32_t ms);
 
-void pendsv_init(void);
-void pendsv_schedule_dispatch(size_t slot, pendsv_dispatch_t f);
+// Must be provided by the stack bindings (e.g. mpnimbleport.c or mpbtstackport.c).
+// Request new data from the uart and pass to the stack, and run pending events/callouts.
+// This is a low-level function and should not be called directly, use
+// mp_bluetooth_hci_poll_now/mp_bluetooth_hci_poll_in_ms instead.
+void mp_bluetooth_hci_poll(void);
 
-#endif // MICROPY_INCLUDED_SAMD_PENDSV_H
+#endif // MICROPY_INCLUDED_MIMXRT_MPBTHCIPORT_H
