@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * Copyright (c) 2018-2019 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,23 +23,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_SAMD_PENDSV_H
-#define MICROPY_INCLUDED_SAMD_PENDSV_H
+#ifndef MICROPY_INCLUDED_MBEDTLS_CONFIG_H
+#define MICROPY_INCLUDED_MBEDTLS_CONFIG_H
 
-enum {
-    PENDSV_DISPATCH_SOFT_TIMER,  // For later & for having at least one entry
-    #if MICROPY_PY_NETWORK && MICROPY_PY_LWIP
-    PENDSV_DISPATCH_LWIP,
-    #endif
-    MICROPY_BOARD_PENDSV_ENTRIES
-    PENDSV_DISPATCH_MAX
-};
+// Set MicroPython-specific options.
+#define MICROPY_MBEDTLS_CONFIG_BARE_METAL (1)
 
-#define PENDSV_DISPATCH_NUM_SLOTS PENDSV_DISPATCH_MAX
+// Include common mbedtls configuration.
+#include "extmod/mbedtls/mbedtls_config_common.h"
 
-typedef void (*pendsv_dispatch_t)(void);
-
-void pendsv_init(void);
-void pendsv_schedule_dispatch(size_t slot, pendsv_dispatch_t f);
-
-#endif // MICROPY_INCLUDED_SAMD_PENDSV_H
+#endif /* MICROPY_INCLUDED_MBEDTLS_CONFIG_H */
