@@ -37,6 +37,17 @@
 #include "shared/runtime/softtimer.h"
 #include "shared/tinyusb/mp_usbd.h"
 #include "clock_config.h"
+#include "pendsv.h"
+
+#if MICROPY_PY_LWIP
+#include "lwip/init.h"
+#include "lwip/apps/mdns.h"
+#endif
+#if MICROPY_PY_BLUETOOTH
+#include "mpbthciport.h"
+#include "extmod/modbluetooth.h"
+#endif
+#include "extmod/modnetwork.h"
 
 extern uint8_t _sstack, _estack, _sheap, _eheap;
 extern void adc_deinit_all(void);
@@ -48,10 +59,31 @@ void samd_main(void) {
     mp_stack_set_top(&_estack);
     mp_stack_set_limit(&_estack - &_sstack - 1024);
     mp_hal_time_ns_set_from_rtc();
+    pendsv_init();
+
+    #if MICROPY_PY_LWIP
+    // lwIP doesn't allow to reinitialise itself by subsequent calls to this function
+    // because the system timeout list (next_timeout) is only ever reset by BSS clearing.
+    // So for now we only init the lwIP stack once on power-up.
+    lwip_init();
+    #if LWIP_MDNS_RESPONDER
+    mdns_resp_init();
+    #endif
+    #endif
 
     for (;;) {
         gc_init(&_sheap, &_eheap);
         mp_init();
+ 
+        #if MICROPY_PY_BLUETOOTH
+        mp_bluetooth_hci_init();
+        #endif
+        #if MICROPY_PY_NETWORK
+        mod_network_init();
+        #endif
+        #if MICROPY_PY_LWIP
+        mod_network_lwip_init();
+        #endif
 
         // Initialise sub-systems.
         readline_init0();
@@ -92,6 +124,16 @@ void samd_main(void) {
         mp_printf(MP_PYTHON_PRINTER, "MPY: soft reboot\n");
         #if MICROPY_PY_MACHINE_ADC
         adc_deinit_all();
+        #endif
+        #if MICROPY_PY_NETWORK_ESP_HOSTED
+        int esp_hosted_wifi_deinit(void);
+        esp_hosted_wifi_deinit();
+        #endif
+        #if MICROPY_PY_BLUETOOTH
+        mp_bluetooth_deinit();
+        #endif
+        #if MICROPY_PY_NETWORK
+        mod_network_deinit();
         #endif
         pin_irq_deinit_all();
         #if MICROPY_PY_MACHINE_PWM

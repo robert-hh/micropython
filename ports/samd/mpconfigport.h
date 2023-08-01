@@ -53,6 +53,7 @@
 
 #define MICROPY_HW_ENABLE_USBDEV            (1)
 #define MICROPY_HW_USB_CDC_1200BPS_TOUCH    (1)
+#define MICROPY_TRACKED_ALLOC               (MICROPY_SSL_MBEDTLS)
 
 #if MICROPY_HW_ENABLE_USBDEV
 // Enable USB-CDC serial port
@@ -156,6 +157,51 @@
 #ifndef MICROPY_BOARD_PENDSV_ENTRIES
 #define MICROPY_BOARD_PENDSV_ENTRIES
 #endif
+
+#ifndef MICROPY_PY_NETWORK
+#define MICROPY_PY_NETWORK                  (1)
+#endif
+#ifndef MICROPY_PY_SOCKET
+#define MICROPY_PY_SOCKET                   (1)
+#endif
+#define MICROPY_PY_WEBSOCKET                (MICROPY_PY_LWIP)
+#define MICROPY_PY_WEBREPL                  (MICROPY_PY_LWIP)
+#define MICROPY_PY_LWIP_SOCK_RAW            (MICROPY_PY_LWIP)
+#define MICROPY_PY_SSL_FINALISER            (MICROPY_PY_SSL)
+// #define MICROPY_PY_HASHLIB_MD5              (MICROPY_PY_SSL)
+#define MICROPY_PY_HASHLIB_SHA1             (MICROPY_PY_SSL)
+// #define MICROPY_PY_CRYPTOLIB                (MICROPY_PY_SSL)
+
+#ifndef MICROPY_PY_NETWORK_HOSTNAME_DEFAULT
+#define MICROPY_PY_NETWORK_HOSTNAME_DEFAULT "mpy-samd"
+#endif
+
+#if MICROPY_PY_BLUETOOTH
+
+#ifndef MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE
+#define MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE (1)
+#endif
+
+#ifndef MICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS
+#define MICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS (MICROPY_BLUETOOTH_NIMBLE)
+#endif
+
+#endif
+
+#if MICROPY_PY_NETWORK_ESP_HOSTED
+extern const struct _mp_obj_type_t mod_network_esp_hosted_type;
+#define MICROPY_HW_NIC_ESP_HOSTED   { MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&mod_network_esp_hosted_type) },
+#else
+#define MICROPY_HW_NIC_ESP_HOSTED
+#endif
+
+#ifndef MICROPY_BOARD_NETWORK_INTERFACES
+#define MICROPY_BOARD_NETWORK_INTERFACES
+#endif
+
+#define MICROPY_PORT_NETWORK_INTERFACES \
+    MICROPY_HW_NIC_ESP_HOSTED \
+    MICROPY_BOARD_NETWORK_INTERFACES \
 
 // Use internal flash for the file system if no flash file system is selected.
 #if !defined(MICROPY_HW_MCUFLASH) && !defined(MICROPY_HW_QSPIFLASH) && !(defined(MICROPY_HW_SPIFLASH) && defined(MICROPY_HW_SPIFLASH_ID))

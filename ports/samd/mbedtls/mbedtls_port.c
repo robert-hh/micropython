@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * Copyright (c) 2019 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,23 +23,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_SAMD_PENDSV_H
-#define MICROPY_INCLUDED_SAMD_PENDSV_H
 
-enum {
-    PENDSV_DISPATCH_SOFT_TIMER,  // For later & for having at least one entry
-    #if MICROPY_PY_NETWORK && MICROPY_PY_LWIP
-    PENDSV_DISPATCH_LWIP,
-    #endif
-    MICROPY_BOARD_PENDSV_ENTRIES
-    PENDSV_DISPATCH_MAX
-};
+#ifdef MICROPY_SSL_MBEDTLS
 
-#define PENDSV_DISPATCH_NUM_SLOTS PENDSV_DISPATCH_MAX
+#include "mbedtls_config.h"
+#include <stdint.h>
+uint32_t trng_random_u32(void);
 
-typedef void (*pendsv_dispatch_t)(void);
+int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen) {
 
-void pendsv_init(void);
-void pendsv_schedule_dispatch(size_t slot, pendsv_dispatch_t f);
+    // assumes that TRNG_Init was called during startup
+    uint32_t rngval = 0;
+    for (int i = 0; i < len; i++) {
+        if ((i % 4) == 0) {
+            rngval = trng_random_u32();
+        }
+        output[i] = rngval & 0xff;
+        rngval >>= 8;
+    }
 
-#endif // MICROPY_INCLUDED_SAMD_PENDSV_H
+    return 0;
+}
+
+#endif

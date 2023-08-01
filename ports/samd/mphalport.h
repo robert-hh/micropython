@@ -34,6 +34,7 @@
 #include "hal_gpio.h"
 #include "hpl_time_measure.h"
 #include "sam.h"
+#undef ERR_TIMEOUT
 
 #define MICROPY_BEGIN_ATOMIC_SECTION()     disable_irq()
 #define MICROPY_END_ATOMIC_SECTION(state)  enable_irq(state)
