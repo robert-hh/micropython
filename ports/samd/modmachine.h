@@ -33,6 +33,9 @@
 extern const mp_obj_type_t machine_dac_type;
 #endif
 
+NORETURN mp_obj_t machine_bootloader(size_t n_args, const mp_obj_t *args);
+
+void machine_uart_set_baudrate(mp_obj_t uart, uint32_t baudrate);
 void rtc_gettime(timeutils_struct_time_t *tm);
 
 #endif // MICROPY_INCLUDED_SAMD_MODMACHINE_H
