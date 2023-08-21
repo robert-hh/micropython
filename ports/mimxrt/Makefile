@@ -120,8 +120,8 @@ endif
 
 # NXP SDK sources
 SRC_HAL_IMX_C += \
-	$(MCU_DIR)/drivers/fsl_clock.c \
 	$(MCU_DIR)/drivers/fsl_common.c \
+	$(MCU_DIR)/drivers/fsl_dcdc.c \
 	$(MCU_DIR)/drivers/fsl_dmamux.c \
 	$(MCU_DIR)/drivers/fsl_edma.c \
 	$(MCU_DIR)/drivers/fsl_flexram.c \
@@ -165,6 +165,9 @@ endif
 ifeq ($(MCU_SERIES), MIMXRT1176)
 INC += -I$(TOP)/$(MCU_DIR)/drivers/cm7
 
+SRC_C += \
+	hal/fsl_clock_MIMXRT1176.c
+
 SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/cm7/fsl_cache.c \
 	$(MCU_DIR)/drivers/fsl_dcdc.c \
@@ -177,6 +180,7 @@ else
 SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/fsl_adc.c \
 	$(MCU_DIR)/drivers/fsl_cache.c \
+	$(MCU_DIR)/drivers/fsl_clock.c \
 	$(MCU_DIR)/drivers/fsl_trng.c
 endif
 
