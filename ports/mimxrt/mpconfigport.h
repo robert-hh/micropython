@@ -205,7 +205,6 @@ extern const struct _mp_obj_type_t network_lan_type;
 #define MP_STATE_PORT MP_STATE_VM
 
 // Miscellaneous settings
-<<<<<<< HEAD
 #ifndef MICROPY_HW_USB_VID
 #define MICROPY_HW_USB_VID (0xf055)
 #endif
