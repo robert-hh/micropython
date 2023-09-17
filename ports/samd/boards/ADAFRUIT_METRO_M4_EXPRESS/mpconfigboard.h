@@ -4,27 +4,31 @@
 #define MICROPY_HW_XOSC32K                  (1)
 #define MICROPY_HW_QSPIFLASH                GD25Q16C
 
-// defines for WLAN
+// WiFi config.
 #define MICROPY_HW_WIFI_SPI_ID              (2)
 #define MICROPY_HW_WIFI_SPI_BAUDRATE        (8000000)
 
-#define MICROPY_HW_WIFI_SPI_SCK             (13)
 #define MICROPY_HW_WIFI_SPI_MOSI            (12)
+#define MICROPY_HW_WIFI_SPI_SCK             (13)
 #define MICROPY_HW_WIFI_SPI_MISO            (14)
+#define MICROPY_HW_WIFI_SPI_CS              (15)
 
-#define MICROPY_HW_NINA_ACK                 (36)
-#define MICROPY_HW_NINA_GPIO1               (15)
-#define MICROPY_HW_NINA_RESET               (37)
-// #define MICROPY_HW_NINA_GPIO0               (33)
+#define MICROPY_HW_WIFI_DATAREADY           (33)
+#define MICROPY_HW_WIFI_HANDSHAKE           (36)
+#define MICROPY_HW_WIFI_IRQ_PIN             (MICROPY_HW_WIFI_DATAREADY)
 
-// defines for BLE
-#define MICROPY_PY_BLUETOOTH_NINAW10        (1)
-
+// Bluetooth config.
 #define MICROPY_HW_BLE_UART_ID              (0)
-#define MICROPY_HW_BLE_UART_BAUDRATE        (115200)
-
-#define MICROPY_HW_BLE_UART_TX              (4)
 #define MICROPY_HW_BLE_UART_RX              (7)
+#define MICROPY_HW_BLE_UART_TX              (4)
+// MOSI
+#define MICROPY_HW_BLE_UART_RTS             (55)
+#define MICROPY_HW_BLE_UART_BAUDRATE        (460800)
+#define MICROPY_HW_BLE_UART_BAUDRATE_SECONDARY (460800)
 
-#define MICROPY_HW_NINA_RTS                 (12)
-#define MICROPY_HW_NINA_CTS                 (36)
+
+// ESP hosted control pins
+#define MICROPY_HW_ESP_HOSTED_RESET         (37)
+#define MICROPY_HW_ESP_HOSTED_GPIO0         (MICROPY_HW_WIFI_DATAREADY)
+
+#define MICROPY_HW_ESP_HOSTED_SHARED_PINS   (1)
