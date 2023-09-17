@@ -28,6 +28,7 @@
 
 // Set MicroPython-specific options.
 #define MICROPY_MBEDTLS_CONFIG_BARE_METAL (1)
+#define MBEDTLS_ECP_NIST_OPTIM
 
 // Include common mbedtls configuration.
 #include "extmod/mbedtls/mbedtls_config_common.h"
