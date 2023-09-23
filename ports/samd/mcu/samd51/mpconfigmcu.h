@@ -20,6 +20,10 @@ unsigned long trng_random_u32(void);
 #define MICROPY_PY_MACHINE_I2C_TARGET   (1)
 #endif
 
+// Enable MD5 hash.
+#define MICROPY_PY_UHASHLIB_MD5         (MICROPY_SSL_MBEDTLS)
+#define MICROPY_TRACKED_ALLOC           (MICROPY_SSL_MBEDTLS)
+
 // fatfs configuration used in ffconf.h
 #define MICROPY_FATFS_ENABLE_LFN        (1)
 #define MICROPY_FATFS_RPATH             (2)
