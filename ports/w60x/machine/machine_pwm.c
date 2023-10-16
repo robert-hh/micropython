@@ -30,7 +30,7 @@
 
 #include "py/nlr.h"
 #include "py/runtime.h"
-#include "modmachine.h"
+#include "extmod/modmachine.h"
 #include "mphalport.h"
 
 extern const mp_obj_type_t machine_pwm_type;
@@ -40,16 +40,16 @@ typedef struct _machine_pwm_obj_t {
     mp_hal_pin_obj_t pin;
     bool defer_start;
     uint8_t channel;
-    uint8_t duty;
+    uint16_t duty;
     uint8_t pnum;
     bool invert;
     uint32_t freq;
 } machine_pwm_obj_t;
 
-STATIC void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t freq);
-STATIC void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t duty);
-STATIC void mp_machine_pwm_duty_set_u16(machine_pwm_obj_t *self, mp_int_t duty);
-STATIC void mp_machine_pwm_duty_set_ns(machine_pwm_obj_t *self, mp_int_t duty);
+static void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t freq);
+static void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t duty);
+static void mp_machine_pwm_duty_set_u16(machine_pwm_obj_t *self, mp_int_t duty);
+static void mp_machine_pwm_duty_set_ns(machine_pwm_obj_t *self, mp_int_t duty);
 
 // Mapping of Pin number to PWM channels. -1: Pin not supported.
 static char channel_pin_table[] = {
@@ -62,13 +62,13 @@ static char channel_pin_table[] = {
 
 // MicroPython bindings for PWM
 
-STATIC void mp_machine_pwm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void mp_machine_pwm_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_pwm_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "PWM(%d, freq=%d, duty=%d, invert=%d, pnum=%d, pin=%d)", self->channel,
         self->freq, self->duty, self->invert, self->pnum, self->pin);
 }
 
-STATIC int w600_pwm_multiplex_config(machine_pwm_obj_t *self) {
+static int w600_pwm_multiplex_config(machine_pwm_obj_t *self) {
     switch (self->channel) {
         case 0:
             wm_pwm1_config(self->pin);
@@ -88,14 +88,16 @@ STATIC int w600_pwm_multiplex_config(machine_pwm_obj_t *self) {
 void w600_pwm_start(machine_pwm_obj_t *self) {
     if (self->freq != -1 && self->duty != -1 && self->defer_start == false) {
         tls_pwm_stop(self->channel);
-        w600_pwm_multiplex_config(self);
-        tls_pwm_init(self->channel, self->freq, self->duty, self->pnum);
-        tls_pwm_out_inverse_cmd(self->channel, self->invert);
-        tls_pwm_start(self->channel);
+        if (self->duty > 0) {
+            w600_pwm_multiplex_config(self);
+            tls_pwm_init(self->channel, self->freq, self->duty - 1, self->pnum);
+            tls_pwm_out_inverse_cmd(self->channel, self->invert);
+            tls_pwm_start(self->channel);
+        }
     }
 }
 
-STATIC void mp_machine_pwm_init_helper(machine_pwm_obj_t *self,
+static void mp_machine_pwm_init_helper(machine_pwm_obj_t *self,
     size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_channel, ARG_freq, ARG_duty, ARG_duty_u16, ARG_duty_ns, ARG_pnum, ARG_invert };
     static const mp_arg_t allowed_args[] = {
@@ -116,7 +118,7 @@ STATIC void mp_machine_pwm_init_helper(machine_pwm_obj_t *self,
     self->defer_start = true;
     if (args[ARG_pnum].u_int != -1) {
         tval = args[ARG_pnum].u_int;
-        if ((tval < 0) || (tval > 255)) {
+        if ((tval < 0) || (tval > 256)) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError,
                 "Bad period num %d", tval));
         }
@@ -146,13 +148,12 @@ STATIC void mp_machine_pwm_init_helper(machine_pwm_obj_t *self,
     w600_pwm_start(self);
 }
 
-STATIC mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type,
+static mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type,
     size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
     // create PWM object from the given pin
-    machine_pwm_obj_t *self = m_new_obj(machine_pwm_obj_t);
-    self->base.type = &machine_pwm_type;
+    machine_pwm_obj_t *self = mp_obj_malloc(machine_pwm_obj_t, &machine_pwm_type);
     self->pin = mp_hal_get_pin_obj(args[0]);
     self->channel = -1;
     self->freq = -1;
@@ -180,16 +181,15 @@ void machine_pwm_deinit_all(void) {
     }
 }
 
-STATIC mp_obj_t mp_machine_pwm_deinit(machine_pwm_obj_t *self) {
+static void mp_machine_pwm_deinit(machine_pwm_obj_t *self) {
     tls_pwm_stop(self->channel);
-    return mp_const_none;
 }
 
-STATIC mp_obj_t mp_machine_pwm_freq_get(machine_pwm_obj_t *self) {
+static mp_obj_t mp_machine_pwm_freq_get(machine_pwm_obj_t *self) {
     return MP_OBJ_NEW_SMALL_INT(self->freq);
 }
 
-STATIC void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t tval) {
+static void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t tval) {
 
     if ((tval < 1) || (tval > 156250)) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError,
@@ -199,12 +199,12 @@ STATIC void mp_machine_pwm_freq_set(machine_pwm_obj_t *self, mp_int_t tval) {
     w600_pwm_start(self);
 }
 
-STATIC mp_obj_t mp_machine_pwm_duty_get(machine_pwm_obj_t *self) {
+static mp_obj_t mp_machine_pwm_duty_get(machine_pwm_obj_t *self) {
     return MP_OBJ_NEW_SMALL_INT(self->duty);
 }
 
-STATIC void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t duty) {
-    if ((duty < 0) || (duty > 255)) {
+static void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t duty) {
+    if ((duty < 0) || (duty > 256)) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError,
             "Bad duty %d", duty));
     }
@@ -212,15 +212,15 @@ STATIC void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t duty) {
     w600_pwm_start(self);
 }
 
-STATIC mp_obj_t mp_machine_pwm_duty_get_u16(machine_pwm_obj_t *self) {
+static mp_obj_t mp_machine_pwm_duty_get_u16(machine_pwm_obj_t *self) {
     return MP_OBJ_NEW_SMALL_INT(self->duty * 256);
 }
 
-STATIC void mp_machine_pwm_duty_set_u16(machine_pwm_obj_t *self, mp_int_t duty) {
-    mp_machine_pwm_duty_set(self, duty / 256);
+static void mp_machine_pwm_duty_set_u16(machine_pwm_obj_t *self, mp_int_t duty) {
+    mp_machine_pwm_duty_set(self, (duty + 128) / 256);
 }
 
-STATIC mp_obj_t mp_machine_pwm_duty_get_ns(machine_pwm_obj_t *self) {
+static mp_obj_t mp_machine_pwm_duty_get_ns(machine_pwm_obj_t *self) {
     uint32_t duty = 0;
     if (self->freq > 0) {
         // 3906250 == 1E9 / 256
@@ -229,7 +229,7 @@ STATIC mp_obj_t mp_machine_pwm_duty_get_ns(machine_pwm_obj_t *self) {
     return MP_OBJ_NEW_SMALL_INT(duty);
 }
 
-STATIC void mp_machine_pwm_duty_set_ns(machine_pwm_obj_t *self, mp_int_t duty_ns) {
+static void mp_machine_pwm_duty_set_ns(machine_pwm_obj_t *self, mp_int_t duty_ns) {
     if (self->freq > 0) {
         uint32_t duty = duty_ns * self->freq / 3906250;
         mp_machine_pwm_duty_set(self, duty);

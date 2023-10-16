@@ -44,9 +44,9 @@
 
 // there is a singleton Flash object
 extern const mp_obj_type_t w600_flash_type;
-STATIC const mp_obj_base_t w600_flash_obj = {&w600_flash_type};
+static const mp_obj_base_t w600_flash_obj = {&w600_flash_type};
 
-STATIC mp_obj_t w600_flash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t w600_flash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     // check arguments
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
 
@@ -57,7 +57,7 @@ STATIC mp_obj_t w600_flash_make_new(const mp_obj_type_t *type, size_t n_args, si
 // Function for writeblocks
 // The tlf_fls_write() function erase a sector if required. Thus, erase is not
 // required. The function & call is kept for visibility
-STATIC mp_obj_t eraseblock(uint32_t addr_in) {
+static mp_obj_t eraseblock(uint32_t addr_in) {
 
     // Destination address aligned with page start to be erased.
     // uint32_t sector = addr_in / INTERNAL_FLS_FS_SECTOR_SIZE; // Number of page to be erased.
@@ -67,7 +67,7 @@ STATIC mp_obj_t eraseblock(uint32_t addr_in) {
     return mp_const_none;
 }
 
-STATIC mp_obj_t w600_flash_readblocks(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t w600_flash_readblocks(size_t n_args, const mp_obj_t *args) {
     uint32_t offset = (mp_obj_get_int(args[1]) * INTERNAL_FLS_FS_SECTOR_SIZE) + INTERNAL_FLS_BASE;
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
@@ -80,9 +80,9 @@ STATIC mp_obj_t w600_flash_readblocks(size_t n_args, const mp_obj_t *args) {
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_flash_readblocks_obj, 3, 4, w600_flash_readblocks);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_flash_readblocks_obj, 3, 4, w600_flash_readblocks);
 
-STATIC mp_obj_t w600_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t w600_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
     uint32_t offset = (mp_obj_get_int(args[1]) * INTERNAL_FLS_FS_SECTOR_SIZE) + INTERNAL_FLS_BASE;
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
@@ -98,9 +98,9 @@ STATIC mp_obj_t w600_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
     // TODO check return value
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_flash_writeblocks_obj, 3, 4, w600_flash_writeblocks);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_flash_writeblocks_obj, 3, 4, w600_flash_writeblocks);
 
-STATIC mp_obj_t w600_flash_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in) {
+static mp_obj_t w600_flash_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in) {
     mp_int_t cmd = mp_obj_get_int(cmd_in);
 
     switch (cmd) {
@@ -128,15 +128,15 @@ STATIC mp_obj_t w600_flash_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in
             return mp_const_none;
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(w600_flash_ioctl_obj, w600_flash_ioctl);
+static MP_DEFINE_CONST_FUN_OBJ_3(w600_flash_ioctl_obj, w600_flash_ioctl);
 
-STATIC const mp_rom_map_elem_t w600_flash_locals_dict_table[] = {
+static const mp_rom_map_elem_t w600_flash_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_readblocks), MP_ROM_PTR(&w600_flash_readblocks_obj) },
     { MP_ROM_QSTR(MP_QSTR_writeblocks), MP_ROM_PTR(&w600_flash_writeblocks_obj) },
     { MP_ROM_QSTR(MP_QSTR_ioctl), MP_ROM_PTR(&w600_flash_ioctl_obj) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(w600_flash_locals_dict, w600_flash_locals_dict_table);
+static MP_DEFINE_CONST_DICT(w600_flash_locals_dict, w600_flash_locals_dict_table);
 
 MP_DEFINE_CONST_OBJ_TYPE(
     w600_flash_type,

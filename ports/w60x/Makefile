@@ -37,13 +37,15 @@ GIT_SUBMODULES = lib/mbedtls
 
 QSTR_DEFS = qstrdefsport.h
 
+# Firmware configuration options.
+#
 MICROPY_USE_FATFS ?= 0
 MICROPY_USE_LITTLEFS = 1
-
-MICROPY_PY_THREAD ?= 1
+MICROPY_PY_THREAD ?= 0
+MACHINE_HSPI ?= 0
+CODESIZE ?= 0xb0000  # 704 k reserved for code
 
 MICROPY_PY_SSL ?= 1
-
 ifeq ($(MICROPY_PY_SSL),1)
 MICROPY_SSL_MBEDTLS = 1
 else
@@ -51,9 +53,6 @@ MICROPY_SSL_MBEDTLS = 0
 endif
 
 SECBOOT ?= 1
-
-CODESIZE ?= 0xc0000  # 768 k reserved for code
-
 ifeq ($(SECBOOT),1)
 CODEADDRESS = 0x8010100
 else
@@ -176,11 +175,12 @@ MPY_SRC_C += \
 	hal/mpthreadport.c \
 	hal/uart.c \
 	hal/w600_flash.c \
+	hal/w600_wdg_irq.c \
 	hal/wm_fwup.c \
 	hal/wm_hostspi.c \
+	hal/wm_gpio.c \
 	hal/wm_main.c \
 	hal/wm_uart.c \
-	hal/wm_watchdog.c \
 	machine/machine_adc.c \
 	machine/machine_bitstream.c \
 	machine/machine_i2c.c \
@@ -188,50 +188,21 @@ MPY_SRC_C += \
 	machine/machine_rtc.c \
 	machine/machine_spi.c \
 	machine/machine_timer.c \
-	machine/machine_uart.c \
-	machine/machine_wdt.c \
 	main.c \
 	modules/modhashlib.c \
-	modules/modmachine.c \
 	modules/modnetwork.c \
 	modules/modsocket.c \
 	modules/modw600.c \
 	tools/ftpserver.c \
 
-LIB_SRC_C += $(addprefix lib/,\
-	libm/asinfacosf.c \
-	libm/atan2f.c \
-	libm/atanf.c \
-	libm/ef_rem_pio2.c \
-	libm/ef_sqrt.c \
-	libm/fmodf.c \
-	libm/kf_cos.c \
-	libm/kf_rem_pio2.c \
-	libm/kf_sin.c \
-	libm/kf_tan.c \
-	libm/math.c \
-	libm/roundf.c \
-	libm/sf_cos.c \
-	libm/sf_frexp.c \
-	libm/sf_ldexp.c \
-	libm/sf_modf.c \
-	libm/sf_sin.c \
-	libm/sf_tan.c \
-    libm/acoshf.c \
-    libm/asinhf.c \
-    libm/atanhf.c \
-    libm/erf_lgamma.c \
-    libm/log1pf.c \
-    libm/nearbyintf.c \
-    libm/sf_erf.c \
-    libm/wf_lgamma.c \
-    libm/wf_tgamma.c \
-	)
+LIB_SRC_C += $(SRC_LIB_LIBM_C)
+LIB_SRC_C += $(SRC_LIB_LIBM_SQRT_SW_C)
 
 LIB_SRC_C += $(addprefix shared/,\
 	netutils/netutils.c \
 	readline/readline.c \
 	runtime/interrupt_char.c \
+	runtime/mpirq.c \
 	runtime/pyexec.c \
 	runtime/sys_stdio_mphal.c \
 	timeutils/timeutils.c \
@@ -258,7 +229,7 @@ DRIVERS_SRC_C += $(addprefix drivers/,\
 	)
 
 ifeq ($(MICROPY_SSL_MBEDTLS),1)
-CFLAGS_MOD += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
+CFLAGS_MOD += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config_port.h"'
 INC += -I./mbedtls
 INC += -I$(TOP)/lib/mbedtls/include
 MBEDTLS_SRC_C = mbedtls/mbedtls_port.c
@@ -314,8 +285,15 @@ ifdef MICROPY_PY_THREAD
 CFLAGS += -DMICROPY_PY_THREAD=$(MICROPY_PY_THREAD)
 endif
 
-CFLAGS += -D__HEAP_SIZE=0x24000
 CFLAGS += -Wno-unused-variable -Wno-unused-function -g
+CFLAGS += -DMICROPY_MACHINE_HSPI=$(MACHINE_HSPI)
+ifeq ($(MACHINE_HSPI),1)
+	CFLAGS += -D__HEAP_SIZE=0x26C00
+	HEAPLIMIT = 0x20039C00
+else
+	CFLAGS += -D__HEAP_SIZE=0x28C00
+	HEAPLIMIT = 0x2003BC00
+endif
 ifeq ($(DEBUG),1)
 CFLAGS += -Og
 else
@@ -355,6 +333,7 @@ $(GOAL).elf: $(OBJ_FILES) $(LIB_SRC)
 	$(CC) -o $(OUTPUT_PATH)/$(GOAL).elf $(OBJ_FILES) $(LDFLAGS) \
 		-Wl,--gc-sections -Wl,--defsym=_codesize=$(CODESIZE) \
 		-Wl,--defsym=_codeaddress=$(CODEADDRESS) \
+		-Wl,--defsym=HEAPLIMIT=$(HEAPLIMIT) \
 		-Wl,--print-memory-usage \
 		-Wl,--start-group $(LIB_SRC) -Wl,--end-group \
 		-Wl,-Map,$(OUTPUT_PATH)/$(GOAL).map -Wl,--warn-common
@@ -367,7 +346,7 @@ $(GOAL).elf: $(OBJ_FILES) $(LIB_SRC)
 
 MAKE_PIN_DICT = boards/make-pin-dict.py
 BOARD_PINS = $(BOARD_DIR)/pins.csv
-GEN_PIN_DICT = pin_board_dict.h
+GEN_PIN_DICT = pin_board_dict_table.h
 
 machine/machine_pin.c: $(BUILD)/$(GEN_PIN_DICT)
 

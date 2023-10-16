@@ -34,11 +34,11 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "py/gc.h"
+#include "py/smallint.h"
 #include "extmod/virtpin.h"
-
-#include "mphalport.h"
-#include "modmachine.h"
-#include "mpthreadport.h"
+#include "extmod/modmachine.h"
+#include "shared/runtime/mpirq.h"
+#include "machine_pin.h"
 
 enum mp_pin_mode {
     GPIO_MODE_INPUT = WM_GPIO_DIR_INPUT,
@@ -65,15 +65,9 @@ typedef struct _machine_pin_obj_t {
     enum tls_io_name id;
     enum tls_gpio_attr gpio_attr;
     enum mp_pin_mode mode;
-    bool mp_pin_irq_mode;
 } machine_pin_obj_t;
 
-typedef struct _machine_pin_irq_obj_t {
-    mp_obj_base_t base;
-    enum tls_io_name id;
-} machine_pin_irq_obj_t;
-
-STATIC machine_pin_obj_t machine_pin_obj[] = {
+static machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_00},
     {{&machine_pin_type}, WM_IO_PA_01},
     {{&machine_pin_type}, WM_IO_PA_02},
@@ -132,7 +126,7 @@ STATIC machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PB_31},
 };
 
-STATIC const mp_rom_map_elem_t pin_cpu_pins_locals_dict_table[] = {
+static const mp_rom_map_elem_t pin_cpu_pins_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_PA0), MP_ROM_PTR(&machine_pin_obj[0]) },
     { MP_ROM_QSTR(MP_QSTR_PA1), MP_ROM_PTR(&machine_pin_obj[1]) },
     { MP_ROM_QSTR(MP_QSTR_PA2), MP_ROM_PTR(&machine_pin_obj[2]) },
@@ -184,12 +178,8 @@ STATIC const mp_rom_map_elem_t pin_cpu_pins_locals_dict_table[] = {
 };
 MP_DEFINE_CONST_DICT(machine_pin_cpu_pins_locals_dict, pin_cpu_pins_locals_dict_table);
 
-// The Pin board dictionary has to be included a CPP macro and not as
-// C file. pin_board_dict.h is created from $(BOARD)/pins.csv and
-// defines PIN_BOARD_DICT.
-#include "pin_board_dict.h"
-
-PIN_BOARD_DICT
+#include "pin_board_dict_table.h"
+MP_DEFINE_CONST_DICT(machine_pin_board_pins_locals_dict, pin_board_pins_locals_dict_table);
 
 // Pin mapping dictionaries
 MP_DEFINE_CONST_OBJ_TYPE(
@@ -207,60 +197,59 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &machine_pin_board_pins_locals_dict
     );
 
-// forward declaration
-STATIC const machine_pin_irq_obj_t machine_pin_irq_object[];
+static char *pin_mode_str[] = {"OUT", "IN", "", "OPEN_DRAIN"};
 
-STATIC char *pin_mode_str[] = {"OUT", "IN", "", "OPEN_DRAIN"};
-
-void machine_pins_init(void) {
-    memset(&MP_STATE_PORT(machine_pin_irq_handler[0]), 0, sizeof(MP_STATE_PORT(machine_pin_irq_handler)));
-}
-
-STATIC void machine_pin_isr_handler(void *arg) {
-    machine_pin_obj_t *self = arg;
-    mp_obj_t handler = MP_STATE_PORT(machine_pin_irq_handler)[self->id];
-
-    if (self->mp_pin_irq_mode == false) {
-        mp_sched_schedule(handler, MP_OBJ_FROM_PTR(self));
-    } else { // Hard blib
-        mp_sched_lock();
-        // When executing code within a handler we must lock the GC to prevent
-        // any memory allocations.  We must also catch any exceptions.
-        gc_lock();
-        // save stack top and set temporary value to pass the stack check
-        char *saved_stack_top = MP_STATE_THREAD(stack_top);
-        MP_STATE_THREAD(stack_top) = (void *)&saved_stack_top + 1024; // kind of arbitrary
-        nlr_buf_t nlr;
-        if (nlr_push(&nlr) == 0) {
-            mp_call_function_1(handler, MP_OBJ_FROM_PTR(self));
-            nlr_pop();
-        } else {
-            // Uncaught exception; disable the callback so it doesn't run again.
-            MP_STATE_PORT(machine_pin_irq_handler)[self->id] = MP_OBJ_NULL;
-            tls_gpio_isr_register(self->id, 0, 0);
-            tls_gpio_irq_disable(self->id);
-            mp_printf(MICROPY_ERROR_PRINTER, "Uncaught exception in ExtInt interrupt handler GPIO %u\n", (unsigned int)self->id);
-            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+// Do not call mp_irq_handler, since it fails for ishard = True
+// with a stack check fault.
+static void machine_pin_isr_handler(void *arg) {
+    machine_pin_irq_obj_t *self = arg;
+    machine_pin_obj_t *parent = MP_OBJ_TO_PTR(self->base.parent);
+    mp_obj_t handler = self->base.handler;
+    if (handler != mp_const_none) {
+        self->mp_irq_flags = tls_get_gpio_irq_status(parent->id);
+        if (self->base.ishard == false) {
+            mp_sched_schedule(handler, parent);
+        } else { // Hard blib
+            mp_sched_lock();
+            // When executing code within a handler we must lock the GC to prevent
+            // any memory allocations.  We must also catch any exceptions.
+            gc_lock();
+            // save stack top and set temporary value to pass the stack check
+            char *saved_stack_top = MP_STATE_THREAD(stack_top);
+            MP_STATE_THREAD(stack_top) = (void *)&saved_stack_top + 1024; // kind of arbitrary
+            nlr_buf_t nlr;
+            if (nlr_push(&nlr) == 0) {
+                mp_call_function_1(handler, MP_OBJ_FROM_PTR(parent));
+                nlr_pop();
+            } else {
+                // Uncaught exception; disable the callback so it doesn't run again.
+                self->base.handler = mp_const_none;
+                tls_gpio_isr_register(parent->id, 0, 0);
+                tls_gpio_irq_disable(parent->id);
+                mp_printf(MICROPY_ERROR_PRINTER, "Uncaught exception in ExtInt interrupt handler GPIO %u\n", (unsigned int)parent->id);
+                mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+            }
+            // restore the stack top value for stack checks and GC
+            MP_STATE_THREAD(stack_top) = saved_stack_top;
+            gc_unlock();
+            mp_sched_unlock();
         }
-        // restore the stack top value for stack checks and GC
-        MP_STATE_THREAD(stack_top) = saved_stack_top;
-        gc_unlock();
-        mp_sched_unlock();
     }
+    tls_clr_gpio_irq_status(parent->id);
 }
 
-STATIC inline machine_pin_obj_t *mp_obj_to_pin_obj(mp_obj_t pin) {
+static inline machine_pin_obj_t *mp_obj_to_pin_obj(mp_obj_t pin) {
     if (mp_obj_get_type(pin) != &machine_pin_type) {
         mp_raise_ValueError("expecting a pin");
     }
     return MP_OBJ_TO_PTR(pin);
 }
 
-STATIC inline machine_pin_obj_t *pin_idx_to_pin_obj(mp_hal_pin_obj_t pin_index) {
+static inline machine_pin_obj_t *pin_idx_to_pin_obj(mp_hal_pin_obj_t pin_index) {
     return (machine_pin_obj_t *)&machine_pin_obj[pin_index];
 }
 
-STATIC machine_pin_obj_t *pin_find_named_pin(const mp_obj_dict_t *named_pins, mp_obj_t name) {
+static machine_pin_obj_t *pin_find_named_pin(const mp_obj_dict_t *named_pins, mp_obj_t name) {
     mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)named_pins);
     mp_map_elem_t *named_elem = mp_map_lookup(named_map, name, MP_MAP_LOOKUP);
     if (named_elem != NULL && named_elem->value != NULL) {
@@ -352,13 +341,13 @@ void mp_hal_pin_write(mp_hal_pin_obj_t pin, int value) {
     machine_set_pin(pin_idx_to_pin_obj(pin), value);
 }
 
-STATIC void machine_pin_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void machine_pin_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
     mp_printf(print, "Pin(%u, mode=%s)", self->id, pin_mode_str[self->mode]);
 }
 
 // pin.init(direction, attribute, value)
-STATIC mp_obj_t machine_pin_obj_init_helper(machine_pin_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t machine_pin_obj_init_helper(machine_pin_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_mode, ARG_pull, ARG_value };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode, MP_ARG_INT, {.u_int = WM_GPIO_DIR_INPUT} },
@@ -405,7 +394,7 @@ mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, 
 }
 
 // fast method for getting/setting pin value
-STATIC mp_obj_t machine_pin_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t machine_pin_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
     machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
     if (n_args == 0) {
@@ -419,47 +408,77 @@ STATIC mp_obj_t machine_pin_call(mp_obj_t self_in, size_t n_args, size_t n_kw, c
 }
 
 // pin.init(mode, pull)
-STATIC mp_obj_t machine_pin_obj_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+static mp_obj_t machine_pin_obj_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     return machine_pin_obj_init_helper(args[0], n_args - 1, args + 1, kw_args);
 }
 MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_init_obj, 1, machine_pin_obj_init);
 
 // pin.value([value])
-STATIC mp_obj_t machine_pin_value(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t machine_pin_value(size_t n_args, const mp_obj_t *args) {
     return machine_pin_call(args[0], n_args - 1, 0, args + 1);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_value_obj, 1, 2, machine_pin_value);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_value_obj, 1, 2, machine_pin_value);
 
 // pin.off() resp. pin.low()
-STATIC mp_obj_t machine_pin_off(mp_obj_t self_in) {
+static mp_obj_t machine_pin_off(mp_obj_t self_in) {
     machine_set_pin(mp_obj_to_pin_obj(self_in), false);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_off_obj, machine_pin_off);
+static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_off_obj, machine_pin_off);
 
 // pin.on() resp. pin.high()
-STATIC mp_obj_t machine_pin_on(mp_obj_t self_in) {
+static mp_obj_t machine_pin_on(mp_obj_t self_in) {
     machine_set_pin(mp_obj_to_pin_obj(self_in), true);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
-
-STATIC void machine_pin_irq_callback(void *p) {
-    machine_pin_obj_t *self = p;
-    machine_pin_isr_handler(self);
-    tls_clr_gpio_irq_status(self->id);
-}
+static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
 
 // pin.toggle()
-STATIC mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
+static mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
     machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
     machine_set_pin(self, 1 - tls_gpio_read(self->id));
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
+static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
+
+#if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+static mp_uint_t pin_irq_timestamp(mp_obj_t self_in) {
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
+    return irq->mp_irq_timestamp & (MICROPY_PY_TIME_TICKS_PERIOD - 1);
+}
+#endif
+
+static mp_uint_t pin_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
+    irq->mp_irq_trigger = new_trigger;
+    tls_gpio_irq_disable(self->id);
+    tls_gpio_irq_enable(self->id, new_trigger - 1);
+    return 0;
+}
+
+static mp_uint_t pin_irq_info(mp_obj_t self_in, mp_uint_t info_type) {
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
+    if (info_type == MP_IRQ_INFO_FLAGS) {
+        return irq->mp_irq_flags;
+    } else if (info_type == MP_IRQ_INFO_TRIGGERS) {
+        return irq->mp_irq_trigger;
+    }
+    return 0;
+}
+
+const mp_irq_methods_t pin_irq_methods = {
+    .trigger = pin_irq_trigger,
+    .info = pin_irq_info,
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    .timestamp = pin_irq_timestamp,
+    #endif
+};
 
 // pin.irq(trigger_mode)
-STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_handler, ARG_trigger, ARG_hard };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_handler, MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -470,31 +489,61 @@ STATIC mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
+    if (irq == NULL) {
+        irq = m_new_obj(machine_pin_irq_obj_t);
+        irq->base.base.type = &mp_irq_type;
+        irq->base.methods = (mp_irq_methods_t *)&pin_irq_methods;
+        irq->base.parent = MP_OBJ_FROM_PTR(self);
+        irq->base.handler = mp_const_none;
+        irq->base.ishard = false;
+        irq->mp_irq_trigger = 0;
+        MP_STATE_PORT(machine_pin_irq_object[self->id]) = irq;
+    }
+
     if (n_args > 1 || kw_args->used != 0) {
         // configure irq
         mp_obj_t handler = args[ARG_handler].u_obj;
-        uint32_t trigger = args[ARG_trigger].u_int;
-        if (handler == mp_const_none) {
-            handler = MP_OBJ_NULL;
+        if (handler != mp_const_none && !mp_obj_is_callable(handler)) {
+            mp_raise_ValueError(MP_ERROR_TEXT("handler must be None or callable"));
         }
-        self->mp_pin_irq_mode = args[ARG_hard].u_bool;
 
-        MP_STATE_PORT(machine_pin_irq_handler)[self->id] = handler;
-        if (handler != MP_OBJ_NULL) {
-            tls_gpio_isr_register(self->id, machine_pin_irq_callback, self);
+        uint32_t trigger = args[ARG_trigger].u_int;
+        irq->base.ishard = args[ARG_hard].u_bool;
+        irq->base.handler = handler;
+        irq->mp_irq_trigger = trigger;
+
+        if (handler != mp_const_none) {
+            tls_gpio_isr_register(self->id, machine_pin_isr_handler, irq);
+            tls_clr_gpio_irq_status(self->id);
             tls_gpio_irq_enable(self->id, trigger - 1);
         } else {
             tls_gpio_irq_disable(self->id);
+            tls_clr_gpio_irq_status(self->id);
             tls_gpio_isr_register(self->id, 0, 0);
         }
     }
 
     // return the irq object
-    return MP_OBJ_FROM_PTR(&machine_pin_irq_object[self->id]);
+    return MP_OBJ_FROM_PTR(irq);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_irq_obj, 1, machine_pin_irq);
+static MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_irq_obj, 1, machine_pin_irq);
 
-STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
+void machine_pin_irq_init(void) {
+    memset(&MP_STATE_PORT(machine_pin_irq_object[0]), 0, sizeof(MP_STATE_PORT(machine_pin_irq_object)));
+}
+
+// Disable interrupts, clean irq vector table
+void machine_pin_irq_deinit_all(void) {
+    for (int i = 0; i < MP_ARRAY_SIZE(MP_STATE_PORT(machine_pin_irq_object)); i++) {
+        if (MP_STATE_PORT(machine_pin_irq_object[i]) != NULL) {
+            tls_gpio_irq_disable(i);
+            MP_STATE_PORT(machine_pin_irq_object[i]) = NULL;
+        }
+    }
+}
+
+static const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // instance methods
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&machine_pin_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&machine_pin_value_obj) },
@@ -580,9 +629,9 @@ STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_cpu), MP_ROM_PTR(&machine_pin_cpu_pins_obj_type) },
     { MP_ROM_QSTR(MP_QSTR_board), MP_ROM_PTR(&machine_pin_board_pins_obj_type) },
 };
-STATIC MP_DEFINE_CONST_DICT(machine_pin_locals_dict, machine_pin_locals_dict_table);
+static MP_DEFINE_CONST_DICT(machine_pin_locals_dict, machine_pin_locals_dict_table);
 
-STATIC mp_uint_t pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+static mp_uint_t pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     (void)errcode;
     machine_pin_obj_t *self = self_in;
 
@@ -598,7 +647,7 @@ STATIC mp_uint_t pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, i
     return -1;
 }
 
-STATIC const mp_pin_p_t pin_pin_p = {
+static const mp_pin_p_t pin_pin_p = {
     .ioctl = pin_ioctl,
 };
 
@@ -613,101 +662,4 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &machine_pin_locals_dict
     );
 
-/******************************************************************************/
-// Pin IRQ object
-
-const mp_obj_type_t machine_pin_irq_type;
-
-STATIC const machine_pin_irq_obj_t machine_pin_irq_object[] = {
-    {{&machine_pin_irq_type}, WM_IO_PA_00},
-    {{&machine_pin_irq_type}, WM_IO_PA_01},
-    {{&machine_pin_irq_type}, WM_IO_PA_02},
-    {{&machine_pin_irq_type}, WM_IO_PA_03},
-    {{&machine_pin_irq_type}, WM_IO_PA_04},
-    {{&machine_pin_irq_type}, WM_IO_PA_05},
-
-    {{&machine_pin_irq_type}, WM_IO_PA_06},
-    {{&machine_pin_irq_type}, WM_IO_PA_07},
-    {{&machine_pin_irq_type}, WM_IO_PA_08},
-    {{&machine_pin_irq_type}, WM_IO_PA_09},
-    {{&machine_pin_irq_type}, WM_IO_PA_10},
-    {{&machine_pin_irq_type}, WM_IO_PA_11},
-
-    {{&machine_pin_irq_type}, WM_IO_PA_12},
-    {{&machine_pin_irq_type}, WM_IO_PA_13},
-    {{&machine_pin_irq_type}, WM_IO_PA_14},
-    {{&machine_pin_irq_type}, WM_IO_PA_15},
-
-
-    {{&machine_pin_irq_type}, WM_IO_PB_00},
-    {{&machine_pin_irq_type}, WM_IO_PB_01},
-    {{&machine_pin_irq_type}, WM_IO_PB_02},
-    {{&machine_pin_irq_type}, WM_IO_PB_03},
-    {{&machine_pin_irq_type}, WM_IO_PB_04},
-    {{&machine_pin_irq_type}, WM_IO_PB_05},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_06},
-    {{&machine_pin_irq_type}, WM_IO_PB_07},
-    {{&machine_pin_irq_type}, WM_IO_PB_08},
-    {{&machine_pin_irq_type}, WM_IO_PB_09},
-    {{&machine_pin_irq_type}, WM_IO_PB_10},
-    {{&machine_pin_irq_type}, WM_IO_PB_11},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_12},
-    {{&machine_pin_irq_type}, WM_IO_PB_13},
-    {{&machine_pin_irq_type}, WM_IO_PB_14},
-    {{&machine_pin_irq_type}, WM_IO_PB_15},
-    {{&machine_pin_irq_type}, WM_IO_PB_16},
-    {{&machine_pin_irq_type}, WM_IO_PB_17},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_18},
-    {{&machine_pin_irq_type}, WM_IO_PB_19},
-    {{&machine_pin_irq_type}, WM_IO_PB_20},
-    {{&machine_pin_irq_type}, WM_IO_PB_21},
-    {{&machine_pin_irq_type}, WM_IO_PB_22},
-    {{&machine_pin_irq_type}, WM_IO_PB_23},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_24},
-    {{&machine_pin_irq_type}, WM_IO_PB_25},
-    {{&machine_pin_irq_type}, WM_IO_PB_26},
-    {{&machine_pin_irq_type}, WM_IO_PB_27},
-    {{&machine_pin_irq_type}, WM_IO_PB_28},
-    {{&machine_pin_irq_type}, WM_IO_PB_29},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_30},
-    {{&machine_pin_irq_type}, WM_IO_PB_31},
-};
-
-STATIC mp_obj_t machine_pin_irq_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    machine_pin_irq_obj_t *self = self_in;
-    mp_arg_check_num(n_args, n_kw, 0, 0, false);
-    machine_pin_isr_handler(self);
-    return mp_const_none;
-}
-
-STATIC mp_obj_t machine_pin_irq_trigger(size_t n_args, const mp_obj_t *args) {
-    machine_pin_irq_obj_t *self = args[0];
-
-    if (n_args == 2) {
-        // set trigger
-        tls_gpio_irq_enable(self->id, mp_obj_get_int(args[1]) - 1);
-    }
-    // return irq status
-    return MP_OBJ_NEW_SMALL_INT(tls_get_gpio_irq_status(self->id));
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_irq_trigger_obj, 1, 2, machine_pin_irq_trigger);
-
-STATIC const mp_rom_map_elem_t machine_pin_irq_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_trigger), MP_ROM_PTR(&machine_pin_irq_trigger_obj) },
-};
-STATIC MP_DEFINE_CONST_DICT(machine_pin_irq_locals_dict, machine_pin_irq_locals_dict_table);
-
-MP_DEFINE_CONST_OBJ_TYPE(
-    machine_pin_irq_type,
-    MP_QSTR_GPIO_IRQ,
-    MP_TYPE_FLAG_NONE,
-    call, machine_pin_irq_call,
-    locals_dict, &machine_pin_irq_locals_dict
-    );
-
-MP_REGISTER_ROOT_POINTER(mp_obj_t machine_pin_irq_handler[48]);
+MP_REGISTER_ROOT_POINTER(void *machine_pin_irq_object[48]);

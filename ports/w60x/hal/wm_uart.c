@@ -425,6 +425,19 @@ static void uart_tx_finish_callback(void *arg) {
     }
 }
 
+static struct tls_uart_port *tls_get_uart_port(u16 uart_no) {
+    struct tls_uart_port *port = NULL;
+
+    if (TLS_UART_0 == uart_no) {
+        port = &uart_port[0];
+    } else if (TLS_UART_1 == uart_no) {
+        port = &uart_port[1];
+    } else if (TLS_UART_2 == uart_no) {
+        port = &uart_port[2];
+    }
+    return port;
+}
+
 int tls_uart_tx_remain_len(struct tls_uart_port *port) {
     tls_uart_tx_msg_t *tx_msg = NULL;
     u16 buf_len = 0;
@@ -437,6 +450,23 @@ int tls_uart_tx_remain_len(struct tls_uart_port *port) {
     }
     tls_os_release_critical(cpu_sr);
     return TLS_UART_TX_BUF_SIZE - buf_len;
+}
+
+int tls_uart_tx_due_len(u16 uart_no) {
+    tls_uart_tx_msg_t *tx_msg = NULL;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
+
+    u16 buf_len = 0;
+    if (port) {
+        u32 cpu_sr;
+        cpu_sr = tls_os_set_critical();
+        dl_list_for_each(tx_msg, &port->tx_msg_pending_list, tls_uart_tx_msg_t,
+            list) {
+            buf_len += tx_msg->buflen;
+        }
+        tls_os_release_critical(cpu_sr);
+    }
+    return buf_len;
 }
 
 /**
@@ -734,7 +764,6 @@ void UART1_IRQHandler(void) {
     u32 fifos;
     u8 ch = 0;
     u8 escapefifocnt = 0;
-    u32 rxlen = 0;
 
 /* check interrupt status */
     intr_src = port->regs->UR_INTS;
@@ -752,15 +781,20 @@ void UART1_IRQHandler(void) {
         #if DEBUG_RX_LEN
         tls_rx_len += rx_fifocnt;
         #endif
-        escapefifocnt = rx_fifocnt;
         port->plus_char_cnt = 0;
-        rxlen = rx_fifocnt;
 
         if (CIRC_SPACE(recv->head, recv->tail, TLS_UART_RX_BUF_SIZE) <= RX_CACHE_LIMIT) {
             recv->tail = (recv->tail + RX_CACHE_LIMIT) & (TLS_UART_RX_BUF_SIZE - 1);
         }
 
-        while (rx_fifocnt-- > 0) {
+        // If it was a RX_FIFO IRQ, do not remove all byte from the FIFO to
+        // get a reliable UIS_RX_FIFO_TIMEOUT IRQ
+        u32 remain = 0;
+        if (!(intr_src & UIS_RX_FIFO_TIMEOUT)) {
+            remain = 1;
+        }
+        escapefifocnt = rx_fifocnt;
+        while (rx_fifocnt-- > remain) {
             ch = (u8)port->regs->UR_RXW;
             if (intr_src & UART_RX_ERR_INT_FLAG) {
                 port->regs->UR_INTS |= UART_RX_ERR_INT_FLAG;
@@ -792,7 +826,7 @@ void UART1_IRQHandler(void) {
             }
         }
         if (port->rx_callback != NULL) {
-            port->rx_callback((u16)rxlen);
+            port->rx_callback((u16)intr_src);
         }
     }
     if (intr_src & UART_TX_INT_FLAG) {
@@ -830,7 +864,13 @@ void UART2_IRQHandler(void) {
         #if DEBUG_RX_LEN
         tls_rx_len += rx_fifocnt;
         #endif
-        while (rx_fifocnt-- > 0) {
+        // If it was a RX_FIFO IRQ, do not remove all byte from the FIFO to
+        // get a reliable UIS_RX_FIFO_TIMEOUT IRQ
+        u32 remain = 0;
+        if (!(intr_src & UIS_RX_FIFO_TIMEOUT)) {
+            remain = 1;
+        }
+        while (rx_fifocnt-- > remain) {
             ch = (u8)port->regs->UR_RXW;
             /* break, stop bit error parity error, not include overrun err */
             if (intr_src & UART_RX_ERR_INT_FLAG) {
@@ -855,8 +895,8 @@ void UART2_IRQHandler(void) {
             recv->head = (recv->head + 1) & (TLS_UART_RX_BUF_SIZE - 1);
             rxlen++;
         }
-        if (port->rx_callback != NULL && rxlen) {
-            port->rx_callback((u16)rxlen);
+        if (port->rx_callback != NULL) {
+            port->rx_callback((u16)intr_src);
         }
 
     }
@@ -1057,20 +1097,15 @@ int tls_uart_read(u16 uart_no, u8 *buf, u16 readsize) {
  * @note	   None
  */
 int tls_uart_read_avail(u16 uart_no) {
-    int data_cnt;
-    struct tls_uart_port *port = NULL;
+    int data_cnt = 0;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
     struct tls_uart_circ_buf *recv;
 
-    if (TLS_UART_0 == uart_no) {
-        port = &uart_port[0];
-    } else if (TLS_UART_1 == uart_no) {
-        port = &uart_port[1];
-    } else if (TLS_UART_2 == uart_no) {
-        port = &uart_port[2];
+    if (port) {
+        recv = &port->recv;
+        data_cnt = CIRC_CNT(recv->head, recv->tail, TLS_UART_RX_BUF_SIZE);
+        data_cnt += (port->regs->UR_FIFOS >> 6) & 0x3F;
     }
-
-    recv = &port->recv;
-    data_cnt = CIRC_CNT(recv->head, recv->tail, TLS_UART_RX_BUF_SIZE);
 
     return data_cnt;
 }
@@ -1292,20 +1327,12 @@ int tls_uart_dma_write(char *buf, u16 writesize, void (*cmpl_callback)(void *p),
  * @note	   The function only start transmission, fill buffer in the callback function.
  */
 int tls_uart_write_async(u16 uart_no, char *buf, u16 writesize) {
-    struct tls_uart_port *port = NULL;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
     int ret;
 
-    if (NULL == buf || writesize < 1) {
+    if (NULL == buf || writesize < 1 || port == NULL) {
         TLS_DBGPRT_ERR("param err\n");
         return WM_FAILED;
-    }
-
-    if (TLS_UART_1 == uart_no) {
-        port = &uart_port[1];
-    } else if (TLS_UART_0 == uart_no) {
-        port = &uart_port[0];
-    } else if (TLS_UART_2 == uart_no) {
-        port = &uart_port[2];
     }
 
     ret = tls_uart_fill_buf(port, buf, writesize);
@@ -1326,9 +1353,9 @@ int tls_uart_write_async(u16 uart_no, char *buf, u16 writesize) {
  *
  */
 int tls_uart_tx_length(u16 uart_no) {
-    struct tls_uart_port *port = &uart_port[uart_no];
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
 
-    return port->icount.tx;
+    return port ? port->icount.tx : 0;
 }
 
 /**
@@ -1344,16 +1371,13 @@ int tls_uart_tx_length(u16 uart_no) {
  * @note	   The function only start transmission, fill buffer in the callback function.
  */
 int tls_uart_write(u16 uart_no, char *buf, u16 writesize) {
-    struct tls_uart_port *port = NULL;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
     u8 err;
     int ret = 0;
 
-    if (TLS_UART_1 == uart_no) {
-        port = &uart_port[1];
-    } else if (TLS_UART_0 == uart_no) {
-        port = &uart_port[0];
-    } else if (TLS_UART_2 == uart_no) {
-        port = &uart_port[2];
+    if (port == NULL) {
+        TLS_DBGPRT_ERR("param err\n");
+        return WM_FAILED;
     }
 
     err = tls_os_sem_create(&port->tx_sem, 0);
