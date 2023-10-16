@@ -50,7 +50,8 @@ struct ftp_session {
 static struct ftp_session *session_list = NULL;
 
 #define MPY_FTPS_SIZE   1024
-static OS_STK mpy_ftps_stk[MPY_FTPS_SIZE];
+static unsigned char *mpy_ftps_stk;
+
 
 static int is_run = 0;
 static int ftpsport = 21;
@@ -282,6 +283,7 @@ void w600_ftps_start(int port, const char *user, const char *pass) {
     if (vfsp) {
         spi_fls_vfs = (*vfsp)->obj;
     }
+    MP_STATE_PORT(mpy_ftps_stk) = m_malloc(MPY_FTPS_SIZE * sizeof(OS_STK));
 
     tls_os_task_create(NULL, "w60xftps", w600_ftps_task, NULL,
         (void *)mpy_ftps_stk, MPY_FTPS_SIZE * sizeof(OS_STK),
@@ -833,3 +835,5 @@ int ftp_process_request(struct ftp_session *session, char *buf) {
     tls_mem_free(sbuf);
     return 0;
 }
+
+MP_REGISTER_ROOT_POINTER(unsigned char *mpy_ftps_stk);

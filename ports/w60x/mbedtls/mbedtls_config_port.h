@@ -1,11 +1,9 @@
-﻿/*
+/*
  * This file is part of the MicroPython project, http://micropython.org/
- *
- * Development of the code in this file was sponsored by Microbric Pty Ltd
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014, 2016 Damien P. George
+ * Copyright (c) 2018-2019 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,19 +23,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "wm_rtc.h"
-#include "modmachine.h"
-#include "lib/oofatfs/ff.h"
-#include "shared/timeutils/timeutils.h"
+#ifndef MICROPY_INCLUDED_MBEDTLS_CONFIG_H
+#define MICROPY_INCLUDED_MBEDTLS_CONFIG_H
 
-DWORD get_fattime(void) {
-    struct tm tblock;
-    tls_get_rtc(&tblock);
-    mp_uint_t seconds = timeutils_mktime(tblock.tm_year + W600_YEAR_BASE,
-        tblock.tm_mon, tblock.tm_mday, tblock.tm_hour, tblock.tm_min, tblock.tm_sec);
-    timeutils_struct_time_t tm;
-    timeutils_seconds_since_2000_to_struct_time(seconds, &tm);
+// Time hook.
+#include <time.h>
+extern time_t w60x_rtctime_seconds(time_t *timer);
+#define MBEDTLS_PLATFORM_TIME_MACRO w60x_rtctime_seconds
+#define MBEDTLS_PLATFORM_MS_TIME_ALT mbedtls_ms_time
 
-    return ((DWORD)(tm.tm_year - 1980) << 25) | ((DWORD)tm.tm_mon << 21) | ((DWORD)tm.tm_mday << 16) |
-           ((DWORD)tm.tm_hour << 11) | ((DWORD)tm.tm_min << 5) | ((DWORD)tm.tm_sec >> 1);
-}
+// Set MicroPython-specific options.
+#define MICROPY_MBEDTLS_CONFIG_BARE_METAL (1)
+
+// Include common mbedtls configuration.
+#include "extmod/mbedtls/mbedtls_config_common.h"
+
+#endif /* MICROPY_INCLUDED_MBEDTLS_CONFIG_H */

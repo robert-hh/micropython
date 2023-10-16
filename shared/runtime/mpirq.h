@@ -45,6 +45,7 @@ enum {
 
 typedef mp_uint_t (*mp_irq_trigger_fun_t)(mp_obj_t self, mp_uint_t trigger);
 typedef mp_uint_t (*mp_irq_info_fun_t)(mp_obj_t self, mp_uint_t info_type);
+typedef mp_uint_t (*mp_irq_timestamp_fun_t)(mp_obj_t self);
 
 enum {
     MP_IRQ_INFO_FLAGS,
@@ -54,6 +55,9 @@ enum {
 typedef struct _mp_irq_methods_t {
     mp_irq_trigger_fun_t trigger;
     mp_irq_info_fun_t info;
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    mp_irq_timestamp_fun_t timestamp;
+    #endif
 } mp_irq_methods_t;
 
 typedef struct _mp_irq_obj_t {

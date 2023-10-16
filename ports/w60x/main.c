@@ -8,8 +8,8 @@
 * All rights reserved.
 *
 *****************************************************************************/
+#include "py/runtime.h"
 #include <string.h>
-#include "wm_include.h"
 #include "wm_mem.h"
 #include "wm_crypto_hard.h"
 #include "wm_rtc.h"
@@ -18,7 +18,6 @@
 #include "py/stackctrl.h"
 #include "py/nlr.h"
 #include "py/compile.h"
-#include "py/runtime.h"
 #include "py/repl.h"
 #include "py/gc.h"
 #include "py/mphal.h"
@@ -27,14 +26,18 @@
 
 #include "mpthreadport.h"
 
+#define HEAP_RESERVED_SPACE (20 * 1024)
+
 OS_STK mpy_task_stk[MPY_STACK_LEN];
 
 void uart_init(void);
-void machine_pins_init(void);
 void timer_init0(void);
+void machine_pin_irq_init(void);
+void machine_pin_irq_deinit_all(void);
 void tls_sys_reset(void);
 void machine_pwm_deinit_all(void);
 void check_esc_on_boot(void);
+void machine_uart_deinit_all(void);
 
 static inline void *get_sp(void) {
     void *sp;
@@ -49,16 +52,18 @@ static void mpy_task(void *param) {
     // Register the MPY main task with it's stack in the thread list
     mp_thread_init(mpy_task_stk, MPY_STACK_SIZE);
     #endif
-
+    // start ticks_xx timer
+    timer_init0();
     uart_init();
+    machine_pin_irq_init();
 
     // mp_printf(MP_PYTHON_PRINTER, "Stack base = %p, SP = %p\n", mpy_task_stk, sp);
     // mp_printf(MP_PYTHON_PRINTER, "avail_heap_size = %u\n", tls_mem_get_avail_heapsize());
     // Allocate the uPy heap using malloc and get the largest available region
     #if MICROPY_SSL_MBEDTLS
-    u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 8) / 10; // 80%
+    u32 mp_task_heap_size = tls_mem_get_avail_heapsize() - HEAP_RESERVED_SPACE;
     #else
-    u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 8) / 10; // 80%
+    u32 mp_task_heap_size = tls_mem_get_avail_heapsize() - HEAP_RESERVED_SPACE;
     #endif
     void *mp_task_heap = tls_mem_alloc(mp_task_heap_size);
 
@@ -74,15 +79,12 @@ soft_reset:
     mp_init();
     readline_init0();
 
-    machine_pins_init();
     // start rtc initial
     struct tm tblock;
     memset(&tblock, 0, sizeof(tblock));
     tblock.tm_mon = 1;
     tblock.tm_mday = 1;
     tls_set_rtc(&tblock);
-    // start ticks_xx timer
-    timer_init0();
 
     #if MICROPY_USE_FROZEN_SCRIPT
     // run boot-up scripts
@@ -124,6 +126,8 @@ soft_reset_exit:
 
     // Deinit devices
     machine_pwm_deinit_all();
+    machine_uart_deinit_all();
+    machine_pin_irq_deinit_all();
 
     gc_sweep_all();
 
