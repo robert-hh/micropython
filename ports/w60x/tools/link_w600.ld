@@ -49,7 +49,7 @@ SECTIONS
 	.text :
 	{
 		KEEP(*(.isr_vector))
-        *(EXCLUDE_FILE(*machine_bitstream.o) .text*)
+        *(EXCLUDE_FILE(*machine_bitstream.o *w600_wdg_irq.o *machine_pulse.o *mphalport.o) .text*)
 
 		KEEP(*(.init))
 		KEEP(*(.fini))
@@ -153,7 +153,7 @@ SECTIONS
 	PROVIDE(__stack = __StackTop);
 
 	ASSERT(__StackTop <= 0x20028000, "stack address error")
-	ASSERT(__HeapLimit <= 0x20038000, "heap size error")
+	ASSERT(__HeapLimit <= HEAPLIMIT, "heap size error")
 }
 
 _ram_end = ORIGIN(RAM) + LENGTH(RAM);
