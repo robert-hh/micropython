@@ -14,6 +14,9 @@
 #include <string.h>
 #include "wm_irq.h"
 #include "tls_sys.h"
+#include "FreeRTOS.h"
+#include "rtostimers.h"
+#include "task.h"
 
 #include "wm_regs.h"
 #include "wm_type_def.h"
@@ -45,6 +48,8 @@
 #include "wm_gpio_afsel.h"
 #include "wm_pmu.h"
 #include "bootloader_helper.h"
+#include "mpthreadport.h"
+
 
 extern void tls_spifls_cs_switch(enum tls_io_name flashcs, int openflag);
 extern void tls_spifls_di_switch(enum tls_io_name flashdi, int openflag);
@@ -119,7 +124,6 @@ extern void UserMain(void);
 extern void tls_fls_layout_init(void);
 extern void Debug_UartInit(void);
 
-
 void task_start(void *data);
 
 void tls_os_timer_init(void) {
@@ -134,9 +138,6 @@ void tls_os_timer_init(void) {
 /****************/
 
 void vApplicationIdleHook(void) {
-    /* clear watch dog interrupt */
-    tls_watchdog_clr();
-
     #if !defined(__CC_ARM)
     __asm volatile ("wfi");
     #else
@@ -193,7 +194,6 @@ int main(void) {
     /* before use malloc() function, must create mutex used by c_lib */
     tls_os_sem_create(&libc_sem, 1);
 
-
     {
         tls_os_task_create(NULL, NULL,
             task_start,
@@ -204,10 +204,8 @@ int main(void) {
             0);
     }
 
-
     /* initial os ticker */
     tls_os_timer_init();
-
 
     tls_os_start_scheduler();
 
@@ -317,6 +315,9 @@ void task_start(void *data) {
         enable = TRUE;
         tls_param_set(TLS_PARAM_ID_PSM, &enable, TRUE);
     }
+
+    // Set the timer priority
+    vTaskPrioritySet(xTimerGetTimerDaemonTaskHandle(), MPY_TIMER_PRIO);
 
     UserMain();
     tls_sys_auto_mode_run();

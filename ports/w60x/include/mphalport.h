@@ -37,6 +37,13 @@
 #include "py/obj.h"
 #include "wm_io.h"
 #include "wm_gpio.h"
+
+// Note: these "critical nested" macros do not ensure cross-CPU exclusion,
+// the only disable interrupts on the current CPU.  To full manage exclusion
+// one should use portENTER_CRITICAL/portEXIT_CRITICAL instead.
+#define MICROPY_BEGIN_ATOMIC_SECTION() tls_os_set_critical()
+#define MICROPY_END_ATOMIC_SECTION(state) tls_os_release_critical(state)
+
 #define MP_HAL_PIN_FMT "%u"
 #define mp_hal_pin_obj_t enum tls_io_name
 
@@ -56,14 +63,6 @@ static inline uint32_t mp_hal_ticks_cpu(void) {
     return CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE);
 }
 
-static inline void mp_hal_pin_high(uint32_t reg, uint32_t mask) {
-    *(TLS_REG *)reg |= mask;                    /* write high */
-}
-
-static inline void mp_hal_pin_low(uint32_t reg, uint32_t mask) {
-    *(TLS_REG *)reg &= mask;                    /* write low */
-}
-
 static inline uint32_t mp_hal_ticks_bitstream(void) {
     return tls_reg_read32(HR_WDG_CUR_VALUE);
 }
@@ -73,14 +72,13 @@ static inline uint32_t mp_hal_ticks_bitstream(void) {
 #define mp_hal_quiet_timing_enter() MICROPY_BEGIN_ATOMIC_SECTION()
 #define mp_hal_quiet_timing_exit(irq_state) MICROPY_END_ATOMIC_SECTION(irq_state)
 
-
 // C-level pin HAL
 mp_hal_pin_obj_t machine_pin_get_id(mp_obj_t pin_in);
 #define mp_hal_get_pin_obj(o) machine_pin_get_id(o)
 // #define mp_obj_get_pin(o) machine_pin_get_id(o)
 #define mp_hal_pin_name(p) (p)
-// #define mp_hal_pin_low(p) tls_gpio_write(p, 0);
-// #define mp_hal_pin_high(p) tls_gpio_write(p, 1);
+#define mp_hal_pin_low(p) tls_gpio_write(p, 0);
+#define mp_hal_pin_high(p) tls_gpio_write(p, 1);
 void mp_hal_pin_input(mp_hal_pin_obj_t pin);
 void mp_hal_pin_output(mp_hal_pin_obj_t pin);
 void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin);

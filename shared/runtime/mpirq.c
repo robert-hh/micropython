@@ -137,6 +137,18 @@ static mp_obj_t mp_irq_trigger(size_t n_args, const mp_obj_t *args) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mp_irq_trigger_obj, 1, 2, mp_irq_trigger);
 
+#if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+static mp_obj_t mp_irq_timestamp(mp_obj_t self_in) {
+    mp_irq_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (self->methods->timestamp) {
+        return mp_obj_new_int(self->methods->timestamp(self->parent));
+    } else {
+        return mp_const_none;
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(mp_irq_timestamp_obj, mp_irq_timestamp);
+#endif
+
 static mp_obj_t mp_irq_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
     mp_irq_handler(MP_OBJ_TO_PTR(self_in));
@@ -146,6 +158,9 @@ static mp_obj_t mp_irq_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const 
 static const mp_rom_map_elem_t mp_irq_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_flags),               MP_ROM_PTR(&mp_irq_flags_obj) },
     { MP_ROM_QSTR(MP_QSTR_trigger),             MP_ROM_PTR(&mp_irq_trigger_obj) },
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    { MP_ROM_QSTR(MP_QSTR_timestamp_us),        MP_ROM_PTR(&mp_irq_timestamp_obj) },
+    #endif
 };
 static MP_DEFINE_CONST_DICT(mp_irq_locals_dict, mp_irq_locals_dict_table);
 
