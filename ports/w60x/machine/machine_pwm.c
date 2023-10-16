@@ -180,9 +180,8 @@ void machine_pwm_deinit_all(void) {
     }
 }
 
-STATIC mp_obj_t mp_machine_pwm_deinit(machine_pwm_obj_t *self) {
+STATIC void mp_machine_pwm_deinit(machine_pwm_obj_t *self) {
     tls_pwm_stop(self->channel);
-    return mp_const_none;
 }
 
 STATIC mp_obj_t mp_machine_pwm_freq_get(machine_pwm_obj_t *self) {
