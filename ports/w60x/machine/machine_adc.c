@@ -24,6 +24,8 @@
  * THE SOFTWARE.
  */
 
+#if MICROPY_PY_MACHINE_ADC
+
 #include <stdio.h>
 #include <string.h>
 
@@ -111,3 +113,5 @@ MP_DEFINE_CONST_OBJ_TYPE(
     print, machine_adc_print,
     locals_dict, &machine_adc_locals_dict
     );
+
+#endif // MICROPY_PY_MACHINE_ADC
