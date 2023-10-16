@@ -2,6 +2,7 @@
 // overriding defaults in py/mpconfig.h.
 // Board specific definitions
 #include "mpconfigboard.h"
+#include <stdint.h>
 
 #define MICROPY_W600_VERSION    "B1.6"
 
@@ -43,7 +44,7 @@
 #define MICROPY_PY_BUILTINS_HELP_TEXT       w600_help_text
 #define MICROPY_PY_IO_BUFFEREDWRITER        (1)
 #define MICROPY_PY_TIME_GMTIME_LOCALTIME_MKTIME (1)
-#define MICROPY_PY_TIME_TIME_TIME_NS (1)
+#define MICROPY_PY_TIME_TIME_TIME_NS        (1)
 #define MICROPY_PY_TIME_INCLUDEFILE "ports/w60x/modules/modtime.c"
 #define MP_NEED_LOG2                        (1)
 
@@ -58,7 +59,13 @@
 #define MICROPY_PY_OS_URANDOM               (1)
 #define MICROPY_PY_URANDOM_SEED_INIT_FUNC   (w600_adc_get_allch_4bit_rst())
 #define MICROPY_PY_MACHINE                  (1)
+#define MICROPY_PY_MACHINE_INCLUDEFILE      "ports/w60x/modules/modmachine.c"
+#define MICROPY_PY_MACHINE_BARE_METAL_FUNCS (1)
+#define MICROPY_PY_MACHINE_BOOTLOADER       (1)
+#define MICROPY_PY_MACHINE_RESET            (1)
+#define MICROPY_PY_MACHINE_DISABLE_IRQ_ENABLE_IRQ (1)
 #define MICROPY_PY_MACHINE_PIN_MAKE_NEW     mp_pin_make_new
+#define MICROPY_PY_MACHINE_IRQ_TIMESTAMP    (1)
 #define MICROPY_PY_MACHINE_PULSE            (1)
 #define MICROPY_PY_MACHINE_PWM              (1)
 #define MICROPY_PY_MACHINE_PWM_INIT         (1)
@@ -75,6 +82,19 @@
 #define MICROPY_PY_MACHINE_SPI_MAKE_NEW     machine_hard_spi_make_new
 #define MICROPY_HW_SOFTSPI_MIN_DELAY        (0)
 #define MICROPY_HW_SOFTSPI_MAX_BAUDRATE     (mp_hal_get_cpu_freq() / 200) // roughly
+#ifndef MICROPY_PY_MACHINE_ADC
+#define MICROPY_PY_MACHINE_ADC              (0)
+#endif
+#define MICROPY_PY_MACHINE_ADC_READ         (1)
+#define MICROPY_PY_MACHINE_ADC_INCLUDEFILE  "ports/w60x/machine/machine_adc.c"
+#ifndef MICROPY_PY_MACHINE_UART
+#define MICROPY_PY_MACHINE_UART             (1)
+#endif
+#define MICROPY_PY_MACHINE_UART_INCLUDEFILE "ports/w60x/machine/machine_uart.c"
+#define MICROPY_PY_MACHINE_UART_IRQ         (1)
+#define MICROPY_PY_MACHINE_WDT              (1)
+#define MICROPY_PY_MACHINE_WDT_INCLUDEFILE  "ports/w60x/machine/machine_wdt.c"
+#define MICROPY_PY_MACHINE_WDT_TIMEOUT_MS   (1)
 #define MICROPY_PY_CRYPTOLIB                (MICROPY_PY_SSL)
 #define MICROPY_PY_WEBREPL                  (1)
 #define MICROPY_PY_WEBSOCKET                (1)
@@ -102,13 +122,7 @@
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
 #define MP_SSIZE_MAX (0x7fffffff)
 
-// Note: these "critical nested" macros do not ensure cross-CPU exclusion,
-// the only disable interrupts on the current CPU.  To full manage exclusion
-// one should use portENTER_CRITICAL/portEXIT_CRITICAL instead.
 #include "wm_osal.h"
-#define MICROPY_BEGIN_ATOMIC_SECTION() tls_os_set_critical()
-#define MICROPY_END_ATOMIC_SECTION(state) tls_os_release_critical(state)
-
 #if MICROPY_PY_SOCKET_EVENTS
 #define MICROPY_PY_SOCKET_EVENTS_HANDLER extern void socket_events_handler(void); socket_events_handler();
 #else
@@ -122,16 +136,14 @@
         mp_handle_pending(true); \
         MICROPY_PY_SOCKET_EVENTS_HANDLER \
         MP_THREAD_GIL_EXIT(); \
-        tls_os_time_delay(1); \
         MP_THREAD_GIL_ENTER(); \
     } while (0);
 #else
 #define MICROPY_EVENT_POLL_HOOK \
     do { \
         extern void mp_handle_pending(bool raise_exc); \
-        MICROPY_PY_SOCKET_EVENTS_HANDLER \
         mp_handle_pending(true); \
-        tls_os_time_delay(1); \
+        MICROPY_PY_SOCKET_EVENTS_HANDLER \
     } while (0);
 #endif
 
