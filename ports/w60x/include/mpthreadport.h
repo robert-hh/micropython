@@ -30,6 +30,7 @@
 
 #include "wm_osal.h"
 
+#define MPY_TIMER_PRIO              32
 #define MPY_FTPS_PRIO               32
 #define MPY_TASK_PRIO               33
 #define MPY_STACK_SIZE              (8 * 1024)

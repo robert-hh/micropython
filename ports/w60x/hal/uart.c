@@ -40,7 +40,7 @@
 
 extern int sendchar(int ch);
 
-STATIC uint8_t stdin_ringbuf_array[256];
+static uint8_t stdin_ringbuf_array[256];
 ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array)};
 
 uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
@@ -73,16 +73,23 @@ int mp_hal_stdin_rx_chr(void) {
 }
 
 // Send string of given length
-void mp_hal_stdout_tx_strn(const char *str, size_t len) {
-
+mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
+    mp_uint_t ret = len;
+    bool did_write = true;
     for (size_t i = 0; i < len; i++) {
         // wait for TXE
         sendchar(str[i]);
     }
 
     #if MICROPY_PY_OS_DUPTERM
-    mp_os_dupterm_tx_strn(str, len);
+    int dupterm_res = mp_os_dupterm_tx_strn(str, len);
+    if (dupterm_res >= 0) {
+        ret = MIN((mp_uint_t)dupterm_res, ret);
+    } else {
+        did_write = false;
+    }
     #endif
+    return did_write ? ret : 0;
 }
 
 void mp_hal_stdout_tx_str(const char *str) {
@@ -109,7 +116,7 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     }
 }
 
-STATIC s16 uart_rx_callback(u16 len) {
+static s16 uart_rx_callback(u16 len) {
     uint8_t c;
     while (tls_uart_read(TLS_UART_0, &c, 1) > 0) {
         if (c == mp_interrupt_char) {

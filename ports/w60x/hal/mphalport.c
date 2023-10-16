@@ -6,6 +6,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2014 Damien P. George
+ * Copyright (c) 2023 Robert Hammelrath
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,51 +48,91 @@
 #include "mphalport.h"
 
 #define CNT_START_VALUE (0xffffffff)
-static uint32_t ticks_hi_word = 0;
+volatile uint64_t wdg_ticks_total;
+uint32_t wdg_ticks_reload_value = CNT_START_VALUE;
 static uint32_t ticks_per_us = 40;
-uint32_t ticks_us_max_value;
 
-void WDG_IRQHandler(void *data) {
-    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
-    ticks_hi_word++;
-}
+extern uint64_t get_wdg_counter_value(void);
 
 void timer_init0() {
 
     tls_sys_clk sysclk;
     tls_sys_clk_get(&sysclk);
     ticks_per_us = sysclk.apbclk;
+    wdg_ticks_total = 0;
 
-    tls_reg_write32(HR_WDG_LOAD_VALUE, CNT_START_VALUE);
+    tls_reg_write32(HR_WDG_LOAD_VALUE, wdg_ticks_reload_value);
     tls_reg_write32(HR_WDG_CTRL, 0x1);              /* enable irq */
+    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
 
-    // tls_watchdog_start_cal_elapsed_time() is called just
-    // for the side effect of setting wdg_jumpclear_flag != 0
-    // Then, the timer is not reset by the idle task
-    tls_watchdog_start_cal_elapsed_time();
-
-    // Registerung ticks_IRQHandler() does not work at the moment.
-    // But if, the following line would enable it
-    // tls_irq_register_handler(WATCHDOG_INT, ticks_IRQHandler, NULL);
     tls_irq_enable(WATCHDOG_INT);
-
-    ticks_us_max_value = CNT_START_VALUE / ticks_per_us;
 }
 
+void tls_sys_reset(void) {
+    tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551);
+    tls_reg_write32(HR_WDG_LOAD_VALUE, 0x100);
+    tls_reg_write32(HR_WDG_CTRL, 0x3);
+    tls_reg_write32(HR_WDG_LOCK, 1);
+}
+
+void mp_hal_wdg_enable(uint32_t usec) {
+    // Adjust the wdg_ticks_total counter
+    wdg_ticks_total += wdg_ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
+    // Load the new value
+    wdg_ticks_reload_value = ticks_per_us * usec;
+    // Enable the Watchdog
+    tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551); // For changing the timeout
+    tls_reg_write32(HR_WDG_LOAD_VALUE, wdg_ticks_reload_value);
+    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
+    tls_reg_write32(HR_WDG_CTRL, 0x3);      /* enable irq & reset */
+    tls_reg_write32(HR_WDG_LOCK, 1);
+}
+
+void mp_hal_wdg_feed(void) {
+    // Adjust the wdg_ticks_total counter
+    wdg_ticks_total += wdg_ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
+    // Reset the watchdog
+    tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551);
+    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
+    tls_reg_write32(HR_WDG_LOCK, 1);
+}
+
+// simplified division by the constant 40. Adapted by @rkompass,
+// according to Henry S. Warren JR.: "Hackers Delight" 2nd Ed., ISBN-13: 978-0-321-84268-8
+// Even if it does not look simple, the algorithm takes a constant time of ~300 ns
+// The 64 bit straight division a/40 in contrast takes 2-11 µs.
+
+uint64_t mp_hal_ticks_us64(void) {
+    uint64_t t = get_wdg_counter_value();
+    uint64_t t0 = get_wdg_counter_value();
+    // If the t > t0, a counter roll-over may have happened
+    // during reading of t, which is the too large by wdg_ticks_reload_value.
+    if (t > t0) {
+        t -= wdg_ticks_reload_value;
+    }
+    t >>= 3;  // divide by 8
+    uint64_t x = t & 0xffffffffull;    // lower 32 bits
+    uint64_t y = t >> 32;   // upper 32 bits
+    uint64_t xc = x * 0xccccccccull;
+    uint64_t yc = y * 0x33333333ull;
+    uint64_t r = (xc + x) >> 32;
+    r += xc + y;
+    r >>= 2;
+    r += yc;
+    r >>= 32;
+    r += yc;
+    return r;
+}
 
 uint32_t mp_hal_ticks_ms(void) {
-    return tls_os_get_time() * (1000 / HZ);
+    return mp_hal_ticks_us64() / 1000;
 }
 
 uint32_t mp_hal_ticks_us(void) {
-    // return (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / ticks_per_us;
-
-    // Once ticks_IRQHandler() is used, use the expression below
-    return ticks_hi_word * ticks_us_max_value +
-           (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE)) / ticks_per_us;
+    return mp_hal_ticks_us64();
 }
 
-STATIC inline void delay(uint32_t us) {
+static inline void delay(uint32_t us) {
     if (us < 20) {
         volatile int32_t loops = ((int32_t)us - 2) * 6 + us / 10 * 6;
         while (loops > 0) {
@@ -106,7 +147,7 @@ STATIC inline void delay(uint32_t us) {
     }
 }
 
-STATIC void __mp_hal_delay_ms(uint32_t ms) {
+static void __mp_hal_delay_ms(uint32_t ms) {
     if (ms / (1000 / HZ) > 0) {
         tls_os_time_delay(ms / (1000 / HZ));
     } else {

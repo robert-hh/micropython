@@ -99,9 +99,9 @@ typedef struct _mp_thread_t {
 } mp_thread_t;
 
 // the mutex controls access to the linked list
-STATIC mp_thread_mutex_t thread_mutex;
-STATIC mp_thread_t thread_entry0;
-STATIC mp_thread_t *thread; // root pointer, handled bp mp_thread_gc_others
+static mp_thread_mutex_t thread_mutex;
+static mp_thread_t thread_entry0;
+static mp_thread_t *thread; // root pointer, handled bp mp_thread_gc_others
 
 void mp_thread_init(void *stack, uint32_t stack_size) {
     mp_thread_mutex_init(&thread_mutex);
@@ -163,9 +163,9 @@ mp_uint_t mp_thread_get_id(void) {
 void mp_thread_start(void) {
 }
 
-STATIC void *(*ext_thread_entry)(void *) = NULL;
+static void *(*ext_thread_entry)(void *) = NULL;
 
-STATIC void freertos_entry(void *arg) {
+static void freertos_entry(void *arg) {
     if (ext_thread_entry) {
         ext_thread_entry(arg);
     }
@@ -223,10 +223,15 @@ mp_uint_t mp_thread_create(void *(*entry)(void *), void *arg, size_t *stack_size
 
 void mp_thread_finish(void) {
     mp_thread_mutex_lock(&thread_mutex, 1);
-    for (mp_thread_t *th = thread; th != NULL; th = th->next) {
+    for (mp_thread_t *th = thread, *prev = NULL; th != NULL; prev = th, th = th->next) {
         if (th->id == xTaskGetCurrentTaskHandle()) {
-            m_free(th->stack);
-            th->stack = NULL;
+            // Remove the thread entry from the thread list
+            // allowing it to get it's memory freed.
+            if (prev == NULL) {  // At the head of the list?
+                thread = th->next;
+            } else {
+                prev->next = th->next;
+            }
             break;
         }
     }
