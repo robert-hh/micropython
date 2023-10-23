@@ -75,6 +75,11 @@
 #define MICROPY_PY_MACHINE_SPI_MAKE_NEW     machine_hard_spi_make_new
 #define MICROPY_HW_SOFTSPI_MIN_DELAY        (0)
 #define MICROPY_HW_SOFTSPI_MAX_BAUDRATE     (mp_hal_get_cpu_freq() / 200) // roughly
+#ifndef MICROPY_PY_MACHINE_ADC
+#define MICROPY_PY_MACHINE_ADC              (0)
+#endif
+#define MICROPY_PY_MACHINE_ADC_READ         (1)
+#define MICROPY_PY_MACHINE_ADC_INCLUDEFILE  "ports/w60x/machine/machine_adc.c"
 #define MICROPY_PY_CRYPTOLIB                (MICROPY_PY_SSL)
 #define MICROPY_PY_WEBREPL                  (1)
 #define MICROPY_PY_WEBSOCKET                (1)
@@ -84,9 +89,6 @@
 #define FFCONF_H                            "lib/oofatfs/ffconf.h"
 #define MICROPY_PY_SYS_PLATFORM             "w600"
 #define MICROPY_PLATFORM_VERSION            "SDK G3.04.00"
-#ifndef MICROPY_PY_MACHINE_ADC
-#define MICROPY_PY_MACHINE_ADC              (0)
-#endif
 
 // fatfs configuration
 #define MICROPY_FATFS_ENABLE_LFN            (1)
