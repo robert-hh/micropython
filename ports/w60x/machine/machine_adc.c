@@ -24,13 +24,12 @@
  * THE SOFTWARE.
  */
 
-#if MICROPY_PY_MACHINE_ADC
-
 #include <stdio.h>
 #include <string.h>
 
 #include "py/runtime.h"
 #include "py/mphal.h"
+#include "extmod/modmachine.h"
 
 #include "wm_include.h"
 #include "wm_gpio_afsel.h"
@@ -41,17 +40,15 @@ typedef struct _machine_adc_obj_t {
     u8 adc_channel;
 } machine_adc_obj_t;
 
-extern const mp_obj_type_t machine_adc_type;
+// The ADC class doesn't have any constants for this port.
+#define MICROPY_PY_MACHINE_ADC_CLASS_CONSTANTS
 
-STATIC uint16_t adc_read(machine_adc_obj_t *self) {
-    return adc_get_inputVolt(self->adc_channel);
-}
-void machine_adc_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+STATIC void mp_machine_adc_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "ADC Channel (%hhu)", self->adc_channel);
 }
 
-mp_obj_t machine_adc_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t mp_machine_adc_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
 
     mp_int_t chn = mp_obj_get_int(args[0]);
@@ -85,33 +82,12 @@ mp_obj_t machine_adc_make_new(const mp_obj_type_t *type_in, size_t n_args, size_
 }
 
 // read_u16()
-STATIC mp_obj_t machine_adc_read_u16(mp_obj_t self_in) {
-    machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    uint32_t value = adc_read(self);
-    return MP_OBJ_NEW_SMALL_INT(value * 65535 / 1024);
+STATIC mp_int_t mp_machine_adc_read_u16(machine_adc_obj_t *self) {
+    uint32_t value = adc_get_inputVolt(self->adc_channel);
+    return value * 65535 / 1024;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_adc_read_u16_obj, machine_adc_read_u16);
 
 // Legacy method
-STATIC mp_obj_t machine_adc_read(mp_obj_t self_in) {
-    machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    return mp_obj_new_int(adc_read(self));
+STATIC mp_int_t mp_machine_adc_read(machine_adc_obj_t *self) {
+    return adc_get_inputVolt(self->adc_channel);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_adc_read_obj, machine_adc_read);
-
-STATIC const mp_rom_map_elem_t machine_adc_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_read_u16), MP_ROM_PTR(&machine_adc_read_u16_obj) },
-    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&machine_adc_read_obj) }
-};
-STATIC MP_DEFINE_CONST_DICT(machine_adc_locals_dict, machine_adc_locals_dict_table);
-
-MP_DEFINE_CONST_OBJ_TYPE(
-    machine_adc_type,
-    MP_QSTR_ADC,
-    MP_TYPE_FLAG_NONE,
-    make_new, machine_adc_make_new,
-    print, machine_adc_print,
-    locals_dict, &machine_adc_locals_dict
-    );
-
-#endif // MICROPY_PY_MACHINE_ADC
