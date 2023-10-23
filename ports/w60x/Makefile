@@ -189,7 +189,6 @@ MPY_SRC_C += \
 	machine/machine_spi.c \
 	machine/machine_timer.c \
 	machine/machine_uart.c \
-	machine/machine_wdt.c \
 	main.c \
 	modules/modhashlib.c \
 	modules/modmachine.c \
