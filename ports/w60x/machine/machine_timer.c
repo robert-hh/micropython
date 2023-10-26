@@ -37,9 +37,6 @@
 #include "wm_include.h"
 #include "wm_timer.h"
 
-// #include "modmachine.h"
-// #include "mphalport.h"
-
 typedef struct _machine_timer_obj_t {
     mp_obj_base_t base;
     tls_os_timer_t *stimer;
