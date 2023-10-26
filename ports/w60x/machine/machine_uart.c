@@ -24,16 +24,7 @@
  * THE SOFTWARE.
  */
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-
 #include "wm_include.h"
-
-#include "py/runtime.h"
-#include "py/stream.h"
-#include "py/mperrno.h"
-#include "modmachine.h"
 
 typedef struct _machine_uart_obj_t {
     mp_obj_base_t base;
@@ -41,10 +32,16 @@ typedef struct _machine_uart_obj_t {
     tls_uart_options_t uartcfg;
 } machine_uart_obj_t;
 
+struct tls_uart_port *tls_get_uart_port(u16 port_no);
+int tls_uart_tx_remain_len(struct tls_uart_port *port);
+
+// This port does not provide MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS
+#define MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS
+
 /******************************************************************************/
 // MicroPython bindings for UART
 
-STATIC void machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+STATIC void mp_machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     mp_printf(print, "UART(%u, baudrate=%u, bits=%u, parity=%s, stop=%u)",
@@ -53,7 +50,7 @@ STATIC void machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_pri
         self->uartcfg.stopbits + 1);
 }
 
-STATIC void machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_baudrate, ARG_bits, ARG_parity, ARG_stop };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = 0} },
@@ -122,7 +119,7 @@ STATIC void machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, co
     tls_uart_port_init(self->uart_num, &self->uartcfg, 0);
 }
 
-STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t mp_machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
     // get uart id
@@ -148,37 +145,25 @@ STATIC mp_obj_t machine_uart_make_new(const mp_obj_type_t *type, size_t n_args, 
 
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
-    machine_uart_init_helper(self, n_args - 1, args + 1, &kw_args);
+    mp_machine_uart_init_helper(self, n_args - 1, args + 1, &kw_args);
     return MP_OBJ_FROM_PTR(self);
 }
 
-STATIC mp_obj_t machine_uart_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
-    machine_uart_init_helper(args[0], n_args - 1, args + 1, kw_args);
-    return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_KW(machine_uart_init_obj, 1, machine_uart_init);
-
-STATIC mp_obj_t machine_uart_any(mp_obj_t self_in) {
-    machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
+STATIC mp_int_t mp_machine_uart_any(machine_uart_obj_t *self) {
     size_t rxbufsize;
-    rxbufsize = tls_uart_read_avail(self->uart_num);
-    return MP_OBJ_NEW_SMALL_INT(rxbufsize);
+    return tls_uart_read_avail(self->uart_num);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_uart_any_obj, machine_uart_any);
 
-STATIC const mp_rom_map_elem_t machine_uart_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&machine_uart_init_obj) },
-    { MP_ROM_QSTR(MP_QSTR_any), MP_ROM_PTR(&machine_uart_any_obj) },
+STATIC bool mp_machine_uart_txdone(machine_uart_obj_t *self) {
+    return tls_uart_tx_remain_len(tls_get_uart_port(self->uart_num)) == 0;
+}
 
-    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
-    { MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj) },
-    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
-    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj) },
-};
+// Deinit is not available in the tls_uart lib.
+STATIC void mp_machine_uart_deinit(machine_uart_obj_t *self) {
+    (void)self;
+}
 
-STATIC MP_DEFINE_CONST_DICT(machine_uart_locals_dict, machine_uart_locals_dict_table);
-
-STATIC mp_uint_t machine_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t size, int *errcode) {
+STATIC mp_uint_t mp_machine_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t size, int *errcode) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     // make sure we want at least 1 char
@@ -196,7 +181,7 @@ STATIC mp_uint_t machine_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t siz
     return bytes_read;
 }
 
-STATIC mp_uint_t machine_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_t size, int *errcode) {
+STATIC mp_uint_t mp_machine_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_t size, int *errcode) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     int bytes_written = tls_uart_write(self->uart_num, (char *)buf_in, size);
@@ -210,7 +195,7 @@ STATIC mp_uint_t machine_uart_write(mp_obj_t self_in, const void *buf_in, mp_uin
     return size;
 }
 
-STATIC mp_uint_t machine_uart_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+STATIC mp_uint_t mp_machine_uart_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
     machine_uart_obj_t *self = self_in;
     mp_uint_t ret;
     if (request == MP_STREAM_POLL) {
@@ -230,20 +215,3 @@ STATIC mp_uint_t machine_uart_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr
     }
     return ret;
 }
-
-STATIC const mp_stream_p_t uart_stream_p = {
-    .read = machine_uart_read,
-    .write = machine_uart_write,
-    .ioctl = machine_uart_ioctl,
-    .is_text = false,
-};
-
-MP_DEFINE_CONST_OBJ_TYPE(
-    machine_uart_type,
-    MP_QSTR_UART,
-    MP_TYPE_FLAG_ITER_IS_STREAM,
-    make_new, machine_uart_make_new,
-    print, machine_uart_print,
-    protocol, &uart_stream_p,
-    locals_dict, &machine_uart_locals_dict
-    );
