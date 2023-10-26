@@ -425,6 +425,19 @@ static void uart_tx_finish_callback(void *arg) {
     }
 }
 
+struct tls_uart_port *tls_get_uart_port(u16 uart_no) {
+    struct tls_uart_port *port = NULL;
+
+    if (TLS_UART_0 == uart_no) {
+        port = &uart_port[0];
+    } else if (TLS_UART_1 == uart_no) {
+        port = &uart_port[1];
+    } else if (TLS_UART_2 == uart_no) {
+        port = &uart_port[2];
+    }
+    return port;
+}
+
 int tls_uart_tx_remain_len(struct tls_uart_port *port) {
     tls_uart_tx_msg_t *tx_msg = NULL;
     u16 buf_len = 0;
