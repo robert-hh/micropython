@@ -5,18 +5,9 @@
 
 #define W600_YEAR_BASE 2000
 
-extern const mp_obj_type_t machine_timer_type;
-extern const mp_obj_type_t machine_wdt_type;
 extern const mp_obj_type_t machine_pin_type;
-extern const mp_obj_type_t machine_pwm_type;
 extern const mp_obj_type_t machine_hw_spi_type;
-extern const mp_obj_type_t machine_spi_type;
 extern const mp_obj_type_t machine_hw_i2c_type;
-extern const mp_obj_type_t machine_spi_type;
-extern const mp_obj_type_t machine_uart_type;
 extern const mp_obj_type_t machine_rtc_type;
-#if MICROPY_PY_MACHINE_ADC
-extern const mp_obj_type_t machine_adc_type;
-#endif
 
 #endif // MICROPY_INCLUDED_W600_MODMACHINE_H
