@@ -37,7 +37,7 @@
 #include "extmod/virtpin.h"
 
 #include "mphalport.h"
-#include "modmachine.h"
+#include "extmod/modmachine.h"
 #include "mpthreadport.h"
 
 enum mp_pin_mode {
