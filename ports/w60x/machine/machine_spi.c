@@ -36,6 +36,7 @@
 #include "py/stream.h"
 #include "py/mphal.h"
 #include "extmod/machine_spi.h"
+#include "extmod/modmachine.h"
 #include "modmachine.h"
 #include "wm_hostspi.h"
 #include "wm_dma.h"

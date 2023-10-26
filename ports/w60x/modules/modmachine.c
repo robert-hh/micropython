@@ -44,7 +44,7 @@
 #include "extmod/machine_pulse.h"
 #include "extmod/machine_i2c.h"
 #include "extmod/machine_spi.h"
-
+#include "extmod/modmachine.h"
 #include "modmachine.h"
 
 extern uint8_t *wpa_supplicant_get_mac(void);
