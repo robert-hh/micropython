@@ -80,6 +80,10 @@
 #endif
 #define MICROPY_PY_MACHINE_ADC_READ         (1)
 #define MICROPY_PY_MACHINE_ADC_INCLUDEFILE  "ports/w60x/machine/machine_adc.c"
+#ifndef MICROPY_PY_MACHINE_UART
+#define MICROPY_PY_MACHINE_UART             (1)
+#endif
+#define MICROPY_PY_MACHINE_UART_INCLUDEFILE "ports/w60x/machine/machine_uart.c"
 #define MICROPY_PY_CRYPTOLIB                (MICROPY_PY_SSL)
 #define MICROPY_PY_WEBREPL                  (1)
 #define MICROPY_PY_WEBSOCKET                (1)
