@@ -37,7 +37,7 @@
 #include "py/mperrno.h"
 #include "py/mphal.h"
 #include "extmod/machine_i2c.h"
-#include "modmachine.h"
+#include "extmod/modmachine.h"
 
 typedef struct _machine_i2c_obj_t {
     mp_obj_base_t base;
