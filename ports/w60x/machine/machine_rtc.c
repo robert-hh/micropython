@@ -32,6 +32,7 @@
 #include "py/runtime.h"
 #include "timeutils.h"
 
+#include "extmod/modmachine.h"
 #include "modmachine.h"
 
 typedef struct _machine_rtc_obj_t {
