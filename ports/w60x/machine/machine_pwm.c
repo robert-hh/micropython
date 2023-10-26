@@ -30,7 +30,7 @@
 
 #include "py/nlr.h"
 #include "py/runtime.h"
-#include "modmachine.h"
+#include "extmod/modmachine.h"
 #include "mphalport.h"
 
 extern const mp_obj_type_t machine_pwm_type;
