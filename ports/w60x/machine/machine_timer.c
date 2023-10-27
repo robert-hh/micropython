@@ -59,6 +59,78 @@ STATIC void machine_timer_print(const mp_print_t *print, mp_obj_t self_in, mp_pr
     mp_printf(print, "auto_reload=%d)", self->is_repeat);
 }
 
+STATIC void machine_timer_callback(void *arg) {
+    machine_timer_obj_t *self = (machine_timer_obj_t *)arg;
+
+    if (self->callback) {
+        mp_sched_schedule(self->callback, self);
+    }
+}
+
+STATIC void machine_soft_timer_callback(void *ptmr, void *parg) {
+    machine_timer_obj_t *self = (machine_timer_obj_t *)parg;
+
+    if (self->callback) {
+        mp_sched_schedule(self->callback, self);
+    }
+}
+
+STATIC void mp_machine_timer_init_helper(machine_timer_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {    
+    struct tls_timer_cfg timercfg;
+    enum { ARG_mode, ARG_period, ARG_callback };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_mode,         MP_ARG_INT, {.u_int = true} },
+        { MP_QSTR_period,       MP_ARG_INT, {.u_int = 100} },
+        { MP_QSTR_callback,     MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    };
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    if (n_args > 0) {
+        self->is_repeat = args[ARG_mode].u_int;
+        self->timeout = args[ARG_period].u_int;
+
+        if (mp_obj_is_callable(args[ARG_callback].u_obj)) {
+            self->callback = args[ARG_callback].u_obj;
+        } else if (args[ARG_callback].u_obj == mp_const_none) {
+            self->callback = NULL;
+        } else {
+            mp_raise_ValueError("callback must be a function");
+        }
+
+        if (NULL != self->stimer) {
+            tls_os_timer_delete(self->stimer);
+        } else if (WM_TIMER_ID_INVALID != self->timerid) {
+            tls_timer_destroy(self->timerid);
+        }
+
+        if (self->is_hwtimer) {
+            memset(&timercfg, 0, sizeof(timercfg));
+            timercfg.unit = TLS_TIMER_UNIT_MS;
+            timercfg.is_repeat = self->is_repeat;
+            timercfg.timeout = self->timeout;
+            timercfg.callback = machine_timer_callback;
+            timercfg.arg = self;
+
+            self->timerid = tls_timer_create(&timercfg);
+            if (WM_TIMER_ID_INVALID != self->timerid) {
+                tls_timer_start(self->timerid);
+            }
+        } else {
+            tls_os_timer_create(&self->stimer,
+                machine_soft_timer_callback,
+                self, self->timeout / (1000 / HZ), self->is_repeat, NULL);
+            tls_os_timer_start(self->stimer);
+        }
+    }
+}
+
+STATIC mp_obj_t machine_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+    mp_machine_timer_init_helper(MP_OBJ_TO_PTR(args[0]), n_args - 1, args + 1, kw_args);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_timer_init_obj, 1, machine_timer_init);
+
 STATIC mp_obj_t machine_timer_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     machine_timer_obj_t *self = m_new_obj(machine_timer_obj_t);
     self->base.type = &machine_timer_type;
@@ -72,6 +144,11 @@ STATIC mp_obj_t machine_timer_make_new(const mp_obj_type_t *type, size_t n_args,
         self->is_hwtimer = TRUE;
         self->timeout = 1000;
     }
+
+    mp_map_t kw_args;
+    mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
+    mp_machine_timer_init_helper(self, n_args - 1, args + 1, &kw_args);
+
     return self;
 }
 
@@ -97,80 +174,6 @@ STATIC mp_obj_t machine_timer_deinit(mp_obj_t self_in) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_timer_deinit_obj, machine_timer_deinit);
-
-STATIC void machine_timer_callback(void *arg) {
-    machine_timer_obj_t *self = (machine_timer_obj_t *)arg;
-
-    if (self->callback) {
-        mp_sched_schedule(self->callback, self);
-    }
-}
-
-STATIC void machine_soft_timer_callback(void *ptmr, void *parg) {
-    machine_timer_obj_t *self = (machine_timer_obj_t *)parg;
-
-    if (self->callback) {
-        mp_sched_schedule(self->callback, self);
-    }
-}
-
-STATIC mp_obj_t machine_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
-    machine_timer_obj_t *self = (machine_timer_obj_t *)args[0];
-    struct tls_timer_cfg timercfg;
-
-    enum {
-        ARG_mode,
-        ARG_period,
-        ARG_callback,
-    };
-    static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_mode,         MP_ARG_INT, {.u_int = true} },
-        { MP_QSTR_period,       MP_ARG_INT, {.u_int = 100} },
-        { MP_QSTR_callback,     MP_ARG_OBJ, {.u_obj = mp_const_none} },
-    };
-
-    mp_arg_val_t dargs[MP_ARRAY_SIZE(allowed_args)];
-    mp_arg_parse_all(n_args - 1, args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, dargs);
-
-    self->is_repeat = dargs[ARG_mode].u_int;
-    self->timeout = dargs[ARG_period].u_int;
-
-    if (mp_obj_is_callable(dargs[ARG_callback].u_obj)) {
-        self->callback = dargs[ARG_callback].u_obj;
-    } else if (dargs[ARG_callback].u_obj == mp_const_none) {
-        self->callback = NULL;
-    } else {
-        mp_raise_ValueError("callback must be a function");
-    }
-
-    if (NULL != self->stimer) {
-        tls_os_timer_delete(self->stimer);
-    } else if (WM_TIMER_ID_INVALID != self->timerid) {
-        tls_timer_destroy(self->timerid);
-    }
-
-    if (self->is_hwtimer) {
-        memset(&timercfg, 0, sizeof(timercfg));
-        timercfg.unit = TLS_TIMER_UNIT_MS;
-        timercfg.is_repeat = self->is_repeat;
-        timercfg.timeout = self->timeout;
-        timercfg.callback = machine_timer_callback;
-        timercfg.arg = self;
-
-        self->timerid = tls_timer_create(&timercfg);
-        if (WM_TIMER_ID_INVALID != self->timerid) {
-            tls_timer_start(self->timerid);
-        }
-    } else {
-        tls_os_timer_create(&self->stimer,
-            machine_soft_timer_callback,
-            self, self->timeout / (1000 / HZ), self->is_repeat, NULL);
-        tls_os_timer_start(self->stimer);
-    }
-
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_timer_init_obj, 1, machine_timer_init);
 
 STATIC const mp_rom_map_elem_t machine_timer_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&machine_timer_del_obj) },
