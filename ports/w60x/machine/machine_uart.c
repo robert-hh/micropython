@@ -32,8 +32,8 @@ typedef struct _machine_uart_obj_t {
     tls_uart_options_t uartcfg;
 } machine_uart_obj_t;
 
-struct tls_uart_port *tls_get_uart_port(u16 port_no);
-int tls_uart_tx_remain_len(struct tls_uart_port *port);
+int tls_uart_tx_due_len(u16 port_no);
+int tls_uart_write_async(u16 uart_no, char *buf, u16 writesize);
 
 // This port does not provide MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS
 #define MICROPY_PY_MACHINE_UART_CLASS_CONSTANTS
@@ -155,7 +155,7 @@ STATIC mp_int_t mp_machine_uart_any(machine_uart_obj_t *self) {
 }
 
 STATIC bool mp_machine_uart_txdone(machine_uart_obj_t *self) {
-    return tls_uart_tx_remain_len(tls_get_uart_port(self->uart_num)) == 0;
+    return tls_uart_tx_due_len(self->uart_num) == 0;
 }
 
 // Deinit is not available in the tls_uart lib.
@@ -184,7 +184,7 @@ STATIC mp_uint_t mp_machine_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t 
 STATIC mp_uint_t mp_machine_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_t size, int *errcode) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
-    int bytes_written = tls_uart_write(self->uart_num, (char *)buf_in, size);
+    int bytes_written = tls_uart_write_async(self->uart_num, (char *)buf_in, size);
 
     if (bytes_written < 0) {
         *errcode = MP_EAGAIN;
