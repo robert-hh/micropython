@@ -49,6 +49,8 @@ static void mpy_task(void *param) {
     // Register the MPY main task with it's stack in the thread list
     mp_thread_init(mpy_task_stk, MPY_STACK_SIZE);
     #endif
+    // start ticks_xx timer
+    timer_init0();
 
     uart_init();
 
@@ -81,8 +83,6 @@ soft_reset:
     tblock.tm_mon = 1;
     tblock.tm_mday = 1;
     tls_set_rtc(&tblock);
-    // start ticks_xx timer
-    timer_init0();
 
     #if MICROPY_USE_FROZEN_SCRIPT
     // run boot-up scripts
