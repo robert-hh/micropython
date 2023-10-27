@@ -425,7 +425,7 @@ static void uart_tx_finish_callback(void *arg) {
     }
 }
 
-struct tls_uart_port *tls_get_uart_port(u16 uart_no) {
+static struct tls_uart_port *tls_get_uart_port(u16 uart_no) {
     struct tls_uart_port *port = NULL;
 
     if (TLS_UART_0 == uart_no) {
@@ -444,12 +444,29 @@ int tls_uart_tx_remain_len(struct tls_uart_port *port) {
     u32 cpu_sr;
     cpu_sr = tls_os_set_critical();
     dl_list_for_each(tx_msg, &port->tx_msg_pending_list, tls_uart_tx_msg_t,
-        list)
+        list) 
     {
         buf_len += tx_msg->buflen;
     }
     tls_os_release_critical(cpu_sr);
     return TLS_UART_TX_BUF_SIZE - buf_len;
+}
+
+int tls_uart_tx_due_len(u16 uart_no) {
+    tls_uart_tx_msg_t *tx_msg = NULL;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
+
+    u16 buf_len = 0;
+    if (port) {
+        u32 cpu_sr;
+        cpu_sr = tls_os_set_critical();
+        dl_list_for_each(tx_msg, &port->tx_msg_pending_list, tls_uart_tx_msg_t,
+            list) {
+            buf_len += tx_msg->buflen;
+        }
+        tls_os_release_critical(cpu_sr);
+    }
+    return buf_len;
 }
 
 /**
@@ -1070,20 +1087,14 @@ int tls_uart_read(u16 uart_no, u8 *buf, u16 readsize) {
  * @note	   None
  */
 int tls_uart_read_avail(u16 uart_no) {
-    int data_cnt;
-    struct tls_uart_port *port = NULL;
+    int data_cnt = 0;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
     struct tls_uart_circ_buf *recv;
 
-    if (TLS_UART_0 == uart_no) {
-        port = &uart_port[0];
-    } else if (TLS_UART_1 == uart_no) {
-        port = &uart_port[1];
-    } else if (TLS_UART_2 == uart_no) {
-        port = &uart_port[2];
+    if (port) {
+        recv = &port->recv;
+        data_cnt = CIRC_CNT(recv->head, recv->tail, TLS_UART_RX_BUF_SIZE);
     }
-
-    recv = &port->recv;
-    data_cnt = CIRC_CNT(recv->head, recv->tail, TLS_UART_RX_BUF_SIZE);
 
     return data_cnt;
 }
@@ -1305,20 +1316,12 @@ int tls_uart_dma_write(char *buf, u16 writesize, void (*cmpl_callback)(void *p),
  * @note	   The function only start transmission, fill buffer in the callback function.
  */
 int tls_uart_write_async(u16 uart_no, char *buf, u16 writesize) {
-    struct tls_uart_port *port = NULL;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
     int ret;
 
-    if (NULL == buf || writesize < 1) {
+    if (NULL == buf || writesize < 1 || port == NULL) {
         TLS_DBGPRT_ERR("param err\n");
         return WM_FAILED;
-    }
-
-    if (TLS_UART_1 == uart_no) {
-        port = &uart_port[1];
-    } else if (TLS_UART_0 == uart_no) {
-        port = &uart_port[0];
-    } else if (TLS_UART_2 == uart_no) {
-        port = &uart_port[2];
     }
 
     ret = tls_uart_fill_buf(port, buf, writesize);
@@ -1339,9 +1342,9 @@ int tls_uart_write_async(u16 uart_no, char *buf, u16 writesize) {
  *
  */
 int tls_uart_tx_length(u16 uart_no) {
-    struct tls_uart_port *port = &uart_port[uart_no];
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
 
-    return port->icount.tx;
+    return port ? port->icount.tx : 0;
 }
 
 /**
@@ -1357,16 +1360,13 @@ int tls_uart_tx_length(u16 uart_no) {
  * @note	   The function only start transmission, fill buffer in the callback function.
  */
 int tls_uart_write(u16 uart_no, char *buf, u16 writesize) {
-    struct tls_uart_port *port = NULL;
+    struct tls_uart_port *port = tls_get_uart_port(uart_no);
     u8 err;
     int ret = 0;
 
-    if (TLS_UART_1 == uart_no) {
-        port = &uart_port[1];
-    } else if (TLS_UART_0 == uart_no) {
-        port = &uart_port[0];
-    } else if (TLS_UART_2 == uart_no) {
-        port = &uart_port[2];
+    if (port == NULL) {
+        TLS_DBGPRT_ERR("param err\n");
+        return WM_FAILED;
     }
 
     err = tls_os_sem_create(&port->tx_sem, 0);
