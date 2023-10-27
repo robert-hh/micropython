@@ -43,6 +43,7 @@
 
 extern uint8_t *wpa_supplicant_get_mac(void);
 extern void bootloader_helper(void);
+extern void timer_init0(void);
 
 #if MICROPY_PY_MACHINE
 
@@ -81,6 +82,7 @@ STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
             tls_sys_clk_set(CPU_CLK_80M);
         }
         tls_os_timer_init();
+        timer_init0(); // Reset the counters for ticks.
         return mp_const_none;
     }
 }
