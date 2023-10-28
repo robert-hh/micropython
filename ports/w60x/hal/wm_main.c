@@ -134,9 +134,6 @@ void tls_os_timer_init(void) {
 /****************/
 
 void vApplicationIdleHook(void) {
-    /* clear watch dog interrupt */
-    tls_watchdog_clr();
-
     #if !defined(__CC_ARM)
     __asm volatile ("wfi");
     #else

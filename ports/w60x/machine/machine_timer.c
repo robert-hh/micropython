@@ -75,7 +75,7 @@ STATIC void machine_soft_timer_callback(void *ptmr, void *parg) {
     }
 }
 
-STATIC void mp_machine_timer_init_helper(machine_timer_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {    
+STATIC void mp_machine_timer_init_helper(machine_timer_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     struct tls_timer_cfg timercfg;
     enum { ARG_mode, ARG_period, ARG_callback };
     static const mp_arg_t allowed_args[] = {
