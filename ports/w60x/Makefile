@@ -180,7 +180,6 @@ MPY_SRC_C += \
 	hal/wm_hostspi.c \
 	hal/wm_main.c \
 	hal/wm_uart.c \
-	hal/wm_watchdog.c \
 	machine/machine_adc.c \
 	machine/machine_bitstream.c \
 	machine/machine_i2c.c \
