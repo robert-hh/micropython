@@ -16,7 +16,7 @@ Supported features
 
 - REPL (Python prompt) over UART0.
 - 8k stack for the MicroPython task and 100k Python heap.
-- Most of MicroPython's features are enabled: unicode, arbitrary-precision integers,
+- Most of MicroPython's features are enabled: Unicode, arbitrary-precision integers,
   single-precision floats (30bit), frozen bytecode, native emitters (native, viper and arm_thumb),
   framebuffer, asyncio, as well as many of the internal modules.
 - The machine module with mem8..mem32, GPIO, UART, SPI, I2C, PWM, WDT, ADC, RTC and Timer.
@@ -41,9 +41,9 @@ You will need to update your `PATH` environment variable to include the cross to
 
     $ export PATH=$PATH:/opt/tools/arm-none-eabi-gcc/bin
 
-You can put this command in your `.profile` or `.bash_login` (or `.bashrc` if using Github Codespaces).
+You can put this command in your `.profile` or `.bash_login` (or `.bashrc` if using Github code-spaces).
 
-WM_SDK initially required the 4.x version of the GCC crosscompiler for compiling. Note also that version 4.x of the crosscompiler is 32bit and you may need `sudo apt install lib32z1` if running on a 64bit Linux host (test by running `arm-none-eabi-gcc --version` -- if it runs, you're fine; if you get a bash "No such file or directory", first doublecheck your $PATH and, if $PATH is correct, then it's the 32bit issue).
+WM_SDK initially required the 4.x version of the GCC cross-compiler for compiling. Note also that version 4.x of the cross-compiler is 32bit and you may need `sudo apt install lib32z1` if running on a 64bit Linux host (test by running `arm-none-eabi-gcc --version` -- if it runs, you're fine; if you get a bash "No such file or directory", first double check your $PATH and, if $PATH is correct, then it's the 32bit issue).
 Newer 64 bit versions of the GCC cross compiler like 8.3, 10.3 and 11.2 have been verified to work as well. 
 
 WM_SDK download address is [W60X_SDK](http://www.winnermicro.com/en/html/1/156/158/497.html), under the Software Data tab. WM_SDK must be G3.01 and newer versions (G3.04 is latest as of end of 2022). You can also consider using the Github repo https://github.com/robert-hh/WM_SDK_W60X.
@@ -52,7 +52,7 @@ You will need to update your `PATH` environment variable to include the path of 
 
     $ export WMSDK_PATH=/home/username/WM_SDK
 
-You can put this command in your `.profile` or `.bash_login` (or `.bashrc` if using Github Codespaces).
+You can put this command in your `.profile` or `.bash_login` (or `.bashrc` if using Github code-spaces).
 
 You also need to modify the build configuration file in WM_SDK, located at: `WM_SDK/Include/wm_config.h`
 
@@ -85,7 +85,8 @@ There are several options that can be modified in the Makefile.
 They are described in the separate file: `Makefile_build_options.txt`.
 
 Instead of BOARD=GENERIC another board may be selected.
-Currently available secetions are:
+Currently available selections are:
+
 - GENERIC
 - THINGSTURN_TB01
 - W600_EVB_V2
@@ -149,10 +150,10 @@ bash
 make V=s flash
 ```
 Some boards like the Wemos W600 require pushing reset at the start of the upload while the
-upload tool waits for syncronisation with the target board.
+upload tool waits for synchronisation with the target board.
 Connecting pin PA0 to GND while pushing reset will ensure that the bootloader of the board
 will start and go into synchronization mode to allow the upload.
-Once the new Micropython firmware is on the board this gounding of PA0 is no longer necessary.
+Once the new Micropython firmware is on the board this grounding of PA0 is no longer necessary.
 Then you also may execute `machine.bootloader` from within Micropython to start the bootloader.
 
 Reference documents
