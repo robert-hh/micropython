@@ -444,7 +444,7 @@ int tls_uart_tx_remain_len(struct tls_uart_port *port) {
     u32 cpu_sr;
     cpu_sr = tls_os_set_critical();
     dl_list_for_each(tx_msg, &port->tx_msg_pending_list, tls_uart_tx_msg_t,
-        list) 
+        list)
     {
         buf_len += tx_msg->buflen;
     }
