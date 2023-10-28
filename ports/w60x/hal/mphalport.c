@@ -6,6 +6,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2014 Damien P. George
+ * Copyright (c) 2023 Robert Hammelrath
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,12 +48,13 @@
 #include "mphalport.h"
 
 #define CNT_START_VALUE (0xffffffff)
-static uint32_t ticks_hi_word = 0;
+static uint64_t ticks_total = 0;
 static uint32_t ticks_per_us = 40;
+static uint32_t ticks_reload_value = CNT_START_VALUE;
 
 void WDG_IRQHandler(void *data) {
     tls_reg_write32(HR_WDG_INT_CLR, 0x01);
-    ticks_hi_word++;
+    ticks_total += ticks_reload_value;
 }
 
 void timer_init0() {
@@ -60,25 +62,46 @@ void timer_init0() {
     tls_sys_clk sysclk;
     tls_sys_clk_get(&sysclk);
     ticks_per_us = sysclk.apbclk;
-    ticks_hi_word = 0;
+    ticks_total = 0;
 
     tls_reg_write32(HR_WDG_LOAD_VALUE, CNT_START_VALUE);
     tls_reg_write32(HR_WDG_CTRL, 0x1);              /* enable irq */
+    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
 
-    // tls_watchdog_start_cal_elapsed_time() is called just
-    // for the side effect of setting wdg_jumpclear_flag != 0
-    // Then, the timer is not reset by the idle task
-    tls_watchdog_start_cal_elapsed_time();
-
-    // Registerung ticks_IRQHandler() does not work at the moment.
-    // But if, the following line would enable it
-    // tls_irq_register_handler(WATCHDOG_INT, ticks_IRQHandler, NULL);
     tls_irq_enable(WATCHDOG_INT);
 }
 
+void tls_sys_reset(void) {
+    tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551);
+    tls_reg_write32(HR_WDG_LOAD_VALUE, 0x100);
+    tls_reg_write32(HR_WDG_CTRL, 0x3);
+    tls_reg_write32(HR_WDG_LOCK, 1);
+}
+
+void mp_hal_wdg_enable(uint32_t usec) {
+    // Adjust the ticks_total counter
+    ticks_total += ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
+    // Load the new value
+    ticks_reload_value = ticks_per_us * usec;
+    // Enable the Watchdog
+    tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551); // For changing the timeout
+    tls_reg_write32(HR_WDG_LOAD_VALUE, ticks_reload_value);
+    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
+    tls_reg_write32(HR_WDG_CTRL, 0x3);      /* enable irq & reset */
+    tls_reg_write32(HR_WDG_LOCK, 1);
+}
+
+void mp_hal_wdg_feed(void) {
+    // Adjust the ticks_total counter
+    ticks_total += ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
+    // Reset the watchdog
+    tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551);
+    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
+    tls_reg_write32(HR_WDG_LOCK, 1);
+}
+
 uint64_t mp_hal_ticks_us64(void) {
-    return (((uint64_t)ticks_hi_word << 32) +
-           (CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE))) / ticks_per_us;
+    return (ticks_total + (ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE))) / ticks_per_us;
 }
 
 uint32_t mp_hal_ticks_ms(void) {
