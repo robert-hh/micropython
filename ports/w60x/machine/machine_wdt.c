@@ -5,6 +5,7 @@
  *
  * Copyright (c) 2016 Paul Sokolovsky
  * Copyright (c) 2017 Eric Poulsen
+ * Copyright (c) 2023 Robert Hammelrath
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,13 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include <string.h>
+// #include <string.h>
 
-#include "py/nlr.h"
+// #include "py/nlr.h"
 #include "py/obj.h"
 #include "py/runtime.h"
-
-#include "wm_watchdog.h"
 
 const mp_obj_type_t machine_wdt_type;
 
@@ -41,42 +40,20 @@ typedef struct _machine_wdt_obj_t {
 
 STATIC machine_wdt_obj_t wdt_default = {{&machine_wdt_type}};
 
-STATIC mp_obj_t machine_wdt_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    mp_arg_check_num(n_args, n_kw, 0, 3, false);
+void mp_hal_wdg_enable(uint32_t usec);
+void mp_hal_wdg_feed(void);
 
-    mp_int_t id = 0;
-    mp_int_t usec = 5 * 1000 * 1000;
-    if (n_args > 1) {
-        id = mp_obj_get_int(args[0]);
-        usec = mp_obj_get_int(args[1]);
-    } else if (n_args > 0) {
-        id = mp_obj_get_int(args[0]);
-    }
-
-    switch (id) {
-        case 0:
-            tls_watchdog_init(usec);
-            return &wdt_default;
-        default:
-            mp_raise_ValueError(NULL);
-    }
+STATIC machine_wdt_obj_t *mp_machine_wdt_make_new_instance(mp_int_t id, mp_int_t timeout_ms) {
+    mp_hal_wdg_enable(timeout_ms * 1000);
+    return &wdt_default;
 }
 
-STATIC mp_obj_t machine_wdt_feed(mp_obj_t self_in) {
-    /* idle task feed */
-    return mp_const_none;
+STATIC void mp_machine_wdt_feed(machine_wdt_obj_t *self) {
+    (void)self;
+    mp_hal_wdg_feed();
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_wdt_feed_obj, machine_wdt_feed);
 
-STATIC const mp_rom_map_elem_t machine_wdt_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_feed), MP_ROM_PTR(&machine_wdt_feed_obj) },
-};
-STATIC MP_DEFINE_CONST_DICT(machine_wdt_locals_dict, machine_wdt_locals_dict_table);
-
-MP_DEFINE_CONST_OBJ_TYPE(
-    machine_wdt_type,
-    MP_QSTR_WDT,
-    MP_TYPE_FLAG_NONE,
-    make_new, machine_wdt_make_new,
-    locals_dict, &machine_wdt_locals_dict
-    );
+STATIC void mp_machine_wdt_timeout_ms_set(machine_wdt_obj_t *self, mp_int_t timeout_ms) {
+    (void)self;
+    mp_hal_wdg_enable(timeout_ms * 1000);
+}
