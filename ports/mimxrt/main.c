@@ -90,10 +90,6 @@ int main(void) {
     #endif
     #endif
 
-    #if MICROPY_PY_BLUETOOTH
-    mp_bluetooth_hci_init();
-    #endif
-
     #if MICROPY_PY_NETWORK_CYW43
     {
         cyw43_init(&cyw43_state);
