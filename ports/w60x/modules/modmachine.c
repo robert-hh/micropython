@@ -58,11 +58,11 @@ typedef enum {
 } sleep_type_t;
 
 typedef enum {
-    MP_OP_PS_WAKEUP = 0,
+    MP_OP_PS_WAKEUP = 1,
     MP_OP_GPIO_WAKEUP = 0,
-    MP_OP_PS_SLEEP = 1,
+    MP_OP_PS_SLEEP = 0,
     MP_OP_TIMER_WAKEUP = 1,
-} sleep_operate_t;
+} sleep_mode_t;
 
 STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
     if (n_args == 0) {
@@ -88,49 +88,42 @@ STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_freq_obj, 0, 1, machine_freq);
 
-STATIC mp_obj_t machine_sleep_helper(sleep_type_t sleep_type, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    if (n_args == 0) {
-        mp_raise_ValueError("invalid param format");
+STATIC mp_obj_t machine_sleep(size_t n_args, const mp_obj_t *args) {
+    mp_int_t mode;
+    mode = MP_OP_PS_SLEEP;
+    if (n_args > 0) {
+        mode = mp_obj_get_int(args[0]);
     }
-
-    enum {ARG_operate, ARG_sleep_s};
-    const mp_arg_t allowed_args[] = {
-        { MP_QSTR_operate, MP_ARG_INT, { .u_int = 0 } },
-        { MP_QSTR_sleep_s, MP_ARG_INT, { .u_int = 0 } },
-    };
-
-    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
-
-    mp_int_t operate = args[ARG_operate].u_int;
-
-    switch (sleep_type) {
-        case MP_PS_SLEEP:
-            if (n_args != 1) {
-                mp_raise_ValueError("invalid param format");
-            }
-            tls_wl_if_ps(operate);// MP_OP_PS_WAKEUP,MP_OP_PS_SLEEP
-            break;
-        case MP_DEEP_SLEEP:
-            if (n_args != 2) {
-                mp_raise_ValueError("invalid param format");
-            }
-            mp_int_t sleeptime = args[ARG_sleep_s].u_int;
-            tls_wl_if_standby(operate, 0, sleeptime);// MP_OP_GPIO_WAKEUP,MP_OP_TIMER_WAKEUP
-            break;
-    }
+    tls_wl_if_ps(mode);// MP_OP_PS_WAKEUP,MP_OP_PS_SLEEP
     return mp_const_none;
 }
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj, 0, 1, machine_sleep);
 
-STATIC mp_obj_t machine_sleep(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    return machine_sleep_helper(MP_PS_SLEEP, n_args, pos_args, kw_args);
+// Just a dummy function.
+STATIC mp_obj_t machine_lightsleep(size_t n_args, const mp_obj_t *args) {
+    if (n_args > 0) {
+        mp_int_t period = mp_obj_get_int(args[0]);
+        if (period > 0) {
+            mp_hal_delay_ms(period);
+        }
+    }
+    return mp_const_none;
 };
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_sleep_obj, 0,  machine_sleep);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_lightsleep_obj, 0, 1, machine_lightsleep);
 
-STATIC mp_obj_t machine_deepsleep(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    return machine_sleep_helper(MP_DEEP_SLEEP, n_args, pos_args, kw_args);
+STATIC mp_obj_t machine_deepsleep(size_t n_args, const mp_obj_t *args) {
+    mp_int_t period = 0x7f000000;  // Just a very long period
+    if (n_args > 0) {
+        period = mp_obj_get_int(args[0]);
+        if (period > 0) {
+            tls_wl_if_standby(MP_OP_TIMER_WAKEUP, 0, period);// MP_OP_GPIO_WAKEUP,MP_OP_TIMER_WAKEUP
+        }
+    } else {
+        tls_wl_if_standby(MP_OP_GPIO_WAKEUP, 0, period);// MP_OP_GPIO_WAKEUP,MP_OP_TIMER_WAKEUP
+    }
+    return mp_const_none;
 };
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_deepsleep_obj, 0,  machine_deepsleep);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
 
 STATIC mp_obj_t machine_reset_cause(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     if (tls_reg_read32(HR_PMU_INTERRUPT_SRC) & (1 << 8)) {
@@ -193,6 +186,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_bootloader), MP_ROM_PTR(&machine_bootloader_obj) },
     { MP_ROM_QSTR(MP_QSTR_unique_id), MP_ROM_PTR(&machine_unique_id_obj) },
     { MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&machine_sleep_obj) },
+    { MP_ROM_QSTR(MP_QSTR_lightsleep), MP_ROM_PTR(&machine_lightsleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_deepsleep), MP_ROM_PTR(&machine_deepsleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_idle), MP_ROM_PTR(&machine_idle_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem8), MP_ROM_PTR(&machine_mem8_obj) },
@@ -232,8 +226,6 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     // wake abilities
     { MP_ROM_QSTR(MP_QSTR_PSWAKEUP), MP_ROM_INT(MP_OP_PS_WAKEUP) },
     { MP_ROM_QSTR(MP_QSTR_PSLEEP), MP_ROM_INT(MP_OP_PS_SLEEP) },
-    { MP_ROM_QSTR(MP_QSTR_GPIO_WAKUP), MP_ROM_INT(MP_OP_GPIO_WAKEUP) },
-    { MP_ROM_QSTR(MP_QSTR_TIMER_WAKUP), MP_ROM_INT(MP_OP_TIMER_WAKEUP) },
 
     // Reset reasons
     { MP_ROM_QSTR(MP_QSTR_reset_cause), MP_ROM_PTR(&machine_reset_cause_obj) },
