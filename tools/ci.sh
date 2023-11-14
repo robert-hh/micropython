@@ -441,6 +441,7 @@ function ci_rp2_build {
 
 function ci_samd_setup {
     ci_gcc_arm_setup
+    sudo apt-get install protobuf-c-compiler
 }
 
 function ci_samd_build {
