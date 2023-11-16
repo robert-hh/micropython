@@ -158,9 +158,8 @@
 #define MICROPY_BOARD_PENDSV_ENTRIES
 #endif
 
-#ifndef MICROPY_PY_NETWORK
-#define MICROPY_PY_NETWORK                  (1)
-#endif
+#if MICROPY_PY_NETWORK_ESP_HOSTED
+
 #ifndef MICROPY_PY_SOCKET
 #define MICROPY_PY_SOCKET                   (1)
 #endif
@@ -188,12 +187,8 @@
 
 #endif
 
-#if MICROPY_PY_NETWORK_ESP_HOSTED
 extern const struct _mp_obj_type_t mod_network_esp_hosted_type;
 #define MICROPY_HW_NIC_ESP_HOSTED   { MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&mod_network_esp_hosted_type) },
-#else
-#define MICROPY_HW_NIC_ESP_HOSTED
-#endif
 
 #ifndef MICROPY_BOARD_NETWORK_INTERFACES
 #define MICROPY_BOARD_NETWORK_INTERFACES
@@ -202,6 +197,8 @@ extern const struct _mp_obj_type_t mod_network_esp_hosted_type;
 #define MICROPY_PORT_NETWORK_INTERFACES \
     MICROPY_HW_NIC_ESP_HOSTED \
     MICROPY_BOARD_NETWORK_INTERFACES \
+
+#endif // MICROPY_PY_NETWORK_ESP_HOSTED
 
 // Use internal flash for the file system if no flash file system is selected.
 #if !defined(MICROPY_HW_MCUFLASH) && !defined(MICROPY_HW_QSPIFLASH) && !(defined(MICROPY_HW_SPIFLASH) && defined(MICROPY_HW_SPIFLASH_ID))

@@ -74,7 +74,7 @@ void samd_main(void) {
     for (;;) {
         gc_init(&_sheap, &_eheap);
         mp_init();
- 
+
         #if MICROPY_PY_BLUETOOTH
         mp_bluetooth_hci_init();
         #endif
