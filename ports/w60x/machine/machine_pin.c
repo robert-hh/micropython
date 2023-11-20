@@ -184,12 +184,8 @@ STATIC const mp_rom_map_elem_t pin_cpu_pins_locals_dict_table[] = {
 };
 MP_DEFINE_CONST_DICT(machine_pin_cpu_pins_locals_dict, pin_cpu_pins_locals_dict_table);
 
-// The Pin board dictionary has to be included a CPP macro and not as
-// C file. pin_board_dict.h is created from $(BOARD)/pins.csv and
-// defines PIN_BOARD_DICT.
-#include "pin_board_dict.h"
-
-PIN_BOARD_DICT
+#include "pin_board_dict_table.h"
+MP_DEFINE_CONST_DICT(machine_pin_board_pins_locals_dict, pin_board_pins_locals_dict_table);
 
 // Pin mapping dictionaries
 MP_DEFINE_CONST_OBJ_TYPE(
