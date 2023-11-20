@@ -29,9 +29,8 @@ class Pins:
             # Create the board pins dictionary table
 
             dict_file.write("// The board pins dictionary\n")
-            dict_file.write("#define PIN_BOARD_DICT \\\n")
             dict_file.write(
-                "STATIC const mp_rom_map_elem_t pin_board_pins_locals_dict_table[] = { \\\n"
+                "STATIC const mp_rom_map_elem_t pin_board_pins_locals_dict_table[] = { \n"
             )
             for row in self.board_pins:
                 pin = row[1].upper()
@@ -39,21 +38,17 @@ class Pins:
                 try:
                     index = int(pin[2:])
                     dict_file.write(
-                        "    { MP_ROM_QSTR(MP_QSTR_%s), MP_ROM_PTR(&machine_pin_obj[%d]) }, \\\n"
+                        "    { MP_ROM_QSTR(MP_QSTR_%s), MP_ROM_PTR(&machine_pin_obj[%d]) }, \n"
                         % (row[0].upper(), index + offset)
                     )
                 except:
                     pass
-            dict_file.write("}; \\\n")
-            dict_file.write(
-                "MP_DEFINE_CONST_DICT(machine_pin_board_pins_locals_dict, pin_board_pins_locals_dict_table);\n"
-            )
-
+            dict_file.write("}; \n")
 
 def main():
     parser = argparse.ArgumentParser(
         prog="make-pin-dict.py",
-        usage="%(prog)s [options] [command]",
+        usage="%(prog)s [options]",
         description="Generate the MCU-specific board pin dictionary",
     )
     parser.add_argument(
