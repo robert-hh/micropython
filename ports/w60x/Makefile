@@ -364,7 +364,7 @@ $(GOAL).elf: $(OBJ_FILES) $(LIB_SRC)
 
 MAKE_PIN_DICT = boards/make-pin-dict.py
 BOARD_PINS = $(BOARD_DIR)/pins.csv
-GEN_PIN_DICT = pin_board_dict.h
+GEN_PIN_DICT = pin_board_dict_table.h
 
 machine/machine_pin.c: $(BUILD)/$(GEN_PIN_DICT)
 
