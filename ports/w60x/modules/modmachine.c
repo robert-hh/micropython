@@ -64,29 +64,41 @@ typedef enum {
     MP_OP_TIMER_WAKEUP = 1,
 } sleep_mode_t;
 
-STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
-    if (n_args == 0) {
+
+#define MICROPY_PY_MACHINE_EXTRA_GLOBALS \
+    { MP_ROM_QSTR(MP_QSTR_Pin),                 MP_ROM_PTR(&machine_pin_type) }, \
+    { MP_ROM_QSTR(MP_QSTR_Timer),               MP_ROM_PTR(&machine_timer_type) }, \
+    { MP_ROM_QSTR(MP_QSTR_sleep),               MP_ROM_PTR(&machine_sleep_obj) }, \
+    \
+    /* Class constants. */ \
+    /* Use numerical constants instead of the symbolic names, */ \
+    /* since the names differ between SAMD21 and SAMD51. */ \
+    { MP_ROM_QSTR(MP_QSTR_PSWAKEUP),            MP_ROM_INT(MP_OP_PS_WAKEUP) }, \
+    { MP_ROM_QSTR(MP_QSTR_PSLEEP),              MP_ROM_INT(MP_OP_PS_SLEEP) }, \
+    { MP_ROM_QSTR(MP_QSTR_PWRON_RESET),         MP_ROM_INT(MP_PWRON_RESET) }, \
+    { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET),     MP_ROM_INT(MP_DEEPSLEEP_RESET) }, \
+
+
+STATIC mp_obj_t mp_machine_get_freq(void) {
         // get
         tls_sys_clk sysclk;
         tls_sys_clk_get(&sysclk);
         return mp_obj_new_int(sysclk.cpuclk * 1000000);
-    } else {
-        // set
-        mp_int_t freq = mp_obj_get_int(args[0]) / 1000000;
-        if (freq != 40 && freq != 80) {
-            mp_raise_ValueError("frequency can only be either 40MHz or 80MHz");
-        }
-        if (40 == freq) {
-            tls_sys_clk_set(CPU_CLK_40M);
-        } else {
-            tls_sys_clk_set(CPU_CLK_80M);
-        }
-        tls_os_timer_init();
-        timer_init0(); // Reset the counters for ticks.
-        return mp_const_none;
-    }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_freq_obj, 0, 1, machine_freq);
+
+STATIC void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) {
+    mp_int_t freq = mp_obj_get_int(args[0]) / 1000000;
+    if (freq != 40 && freq != 80) {
+        mp_raise_ValueError("frequency can only be either 40MHz or 80MHz");
+    }
+    if (40 == freq) {
+        tls_sys_clk_set(CPU_CLK_40M);
+    } else {
+        tls_sys_clk_set(CPU_CLK_80M);
+    }
+    tls_os_timer_init();
+    timer_init0(); // Reset the counters for ticks.
+}
 
 STATIC mp_obj_t machine_sleep(size_t n_args, const mp_obj_t *args) {
     mp_int_t mode;
@@ -100,18 +112,16 @@ STATIC mp_obj_t machine_sleep(size_t n_args, const mp_obj_t *args) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj, 0, 1, machine_sleep);
 
 // Just a dummy function.
-STATIC mp_obj_t machine_lightsleep(size_t n_args, const mp_obj_t *args) {
+STATIC void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) {
     if (n_args > 0) {
         mp_int_t period = mp_obj_get_int(args[0]);
         if (period > 0) {
             mp_hal_delay_ms(period);
         }
     }
-    return mp_const_none;
 };
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_lightsleep_obj, 0, 1, machine_lightsleep);
 
-STATIC mp_obj_t machine_deepsleep(size_t n_args, const mp_obj_t *args) {
+NORETURN STATIC void mp_machine_deepsleep(size_t n_args, const mp_obj_t *args) {
     mp_int_t period = 0x7f000000;  // Just a very long period
     if (n_args > 0) {
         period = mp_obj_get_int(args[0]);
@@ -121,128 +131,41 @@ STATIC mp_obj_t machine_deepsleep(size_t n_args, const mp_obj_t *args) {
     } else {
         tls_wl_if_standby(MP_OP_GPIO_WAKEUP, 0, period);// MP_OP_GPIO_WAKEUP,MP_OP_TIMER_WAKEUP
     }
-    return mp_const_none;
-};
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
-
-STATIC mp_obj_t machine_reset_cause(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    if (tls_reg_read32(HR_PMU_INTERRUPT_SRC) & (1 << 8)) {
-        return MP_OBJ_NEW_SMALL_INT(MP_DEEPSLEEP_RESET);
-    } else {
-        return MP_OBJ_NEW_SMALL_INT(MP_PWRON_RESET);
+    while (true) {  // Just a dummy loop to silence a compiler warning
+        ;
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_reset_cause_obj, 0,  machine_reset_cause);
 
-STATIC mp_obj_t machine_wake_reason(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "get wake reason not available for this version"));
-    return mp_const_none;
+STATIC mp_int_t mp_machine_reset_cause(void) {
+    if (tls_reg_read32(HR_PMU_INTERRUPT_SRC) & (1 << 8)) {
+        return MP_DEEPSLEEP_RESET;
+    } else {
+        return MP_PWRON_RESET;
+    }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_wake_reason_obj, 0,  machine_wake_reason);
 
-STATIC mp_obj_t machine_reset(void) {
+NORETURN STATIC void mp_machine_reset(void) {
     tls_sys_reset();
-    return mp_const_none;
+    while (true) {  // Just a dummy loop to silence a compiler warning
+        ;
+    }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_reset_obj, machine_reset);
 
-STATIC mp_obj_t machine_bootloader(void) {
+NORETURN void mp_machine_bootloader(size_t n_args, const mp_obj_t *args) {
     bootloader_helper();
-    return mp_const_none;
+    while (true) {  // Just a dummy loop to silence a compiler warning
+        ;
+    }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_bootloader_obj, machine_bootloader);
 
-STATIC mp_obj_t machine_unique_id(void) {
+STATIC mp_obj_t mp_machine_unique_id(void) {
     uint8_t *chipid;
     chipid = wpa_supplicant_get_mac();
     return mp_obj_new_bytes(chipid, 6);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_unique_id_obj, machine_unique_id);
 
-STATIC mp_obj_t machine_idle(void) {
+STATIC void mp_machine_idle(void) {
     MICROPY_EVENT_POLL_HOOK
-    return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
-
-STATIC mp_obj_t machine_disable_irq(void) {
-    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
-    return mp_obj_new_int(state);
-}
-MP_DEFINE_CONST_FUN_OBJ_0(machine_disable_irq_obj, machine_disable_irq);
-
-STATIC mp_obj_t machine_enable_irq(mp_obj_t state_in) {
-    uint32_t state = mp_obj_get_int(state_in);
-    MICROPY_END_ATOMIC_SECTION(state);
-    return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_1(machine_enable_irq_obj, machine_enable_irq);
-
-STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_machine) },
-
-    { MP_ROM_QSTR(MP_QSTR_freq), MP_ROM_PTR(&machine_freq_obj) },
-    { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&machine_reset_obj) },
-    { MP_ROM_QSTR(MP_QSTR_bootloader), MP_ROM_PTR(&machine_bootloader_obj) },
-    { MP_ROM_QSTR(MP_QSTR_unique_id), MP_ROM_PTR(&machine_unique_id_obj) },
-    { MP_ROM_QSTR(MP_QSTR_sleep), MP_ROM_PTR(&machine_sleep_obj) },
-    { MP_ROM_QSTR(MP_QSTR_lightsleep), MP_ROM_PTR(&machine_lightsleep_obj) },
-    { MP_ROM_QSTR(MP_QSTR_deepsleep), MP_ROM_PTR(&machine_deepsleep_obj) },
-    { MP_ROM_QSTR(MP_QSTR_idle), MP_ROM_PTR(&machine_idle_obj) },
-    { MP_ROM_QSTR(MP_QSTR_mem8), MP_ROM_PTR(&machine_mem8_obj) },
-    { MP_ROM_QSTR(MP_QSTR_mem16), MP_ROM_PTR(&machine_mem16_obj) },
-    { MP_ROM_QSTR(MP_QSTR_mem32), MP_ROM_PTR(&machine_mem32_obj) },
-
-    { MP_ROM_QSTR(MP_QSTR_disable_irq), MP_ROM_PTR(&machine_disable_irq_obj) },
-    { MP_ROM_QSTR(MP_QSTR_enable_irq), MP_ROM_PTR(&machine_enable_irq_obj) },
-
-    { MP_ROM_QSTR(MP_QSTR_time_pulse_us), MP_ROM_PTR(&machine_time_pulse_us_obj) },
-
-    { MP_ROM_QSTR(MP_QSTR_Signal), MP_ROM_PTR(&machine_signal_type) },
-
-    { MP_ROM_QSTR(MP_QSTR_Timer), MP_ROM_PTR(&machine_timer_type) },
-    #if MICROPY_PY_MACHINE_WDT
-    { MP_ROM_QSTR(MP_QSTR_WDT), MP_ROM_PTR(&machine_wdt_type) },
-    #endif
-    { MP_ROM_QSTR(MP_QSTR_Pin), MP_ROM_PTR(&machine_pin_type) },
-    { MP_ROM_QSTR(MP_QSTR_RTC), MP_ROM_PTR(&machine_rtc_type) },
-    #if MICROPY_PY_MACHINE_UART
-    { MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&machine_uart_type) },
-    #endif
-    { MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&machine_pwm_type) },
-    { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&machine_i2c_type) },
-    { MP_ROM_QSTR(MP_QSTR_SoftI2C), MP_ROM_PTR(&mp_machine_soft_i2c_type) },
-    { MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&machine_spi_type) },
-    { MP_ROM_QSTR(MP_QSTR_SoftSPI), MP_ROM_PTR(&mp_machine_soft_spi_type) },
-    #if MICROPY_PY_MACHINE_ADC
-    { MP_ROM_QSTR(MP_QSTR_ADC), MP_ROM_PTR(&machine_adc_type) },
-    #endif
-    #if MICROPY_PY_MACHINE_BITSTREAM
-    { MP_ROM_QSTR(MP_QSTR_bitstream),           MP_ROM_PTR(&machine_bitstream_obj) },
-    #endif
-
-    // 7816 i2s lcd dma..
-
-    // wake abilities
-    { MP_ROM_QSTR(MP_QSTR_PSWAKEUP), MP_ROM_INT(MP_OP_PS_WAKEUP) },
-    { MP_ROM_QSTR(MP_QSTR_PSLEEP), MP_ROM_INT(MP_OP_PS_SLEEP) },
-
-    // Reset reasons
-    { MP_ROM_QSTR(MP_QSTR_reset_cause), MP_ROM_PTR(&machine_reset_cause_obj) },
-    { MP_ROM_QSTR(MP_QSTR_PWRON_RESET), MP_ROM_INT(MP_PWRON_RESET) },
-    { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET), MP_ROM_INT(MP_DEEPSLEEP_RESET) },
-
-    // Wake reasons
-    { MP_ROM_QSTR(MP_QSTR_wake_reason), MP_ROM_PTR(&machine_wake_reason_obj) },
-};
-
-STATIC MP_DEFINE_CONST_DICT(machine_module_globals, machine_module_globals_table);
-
-const mp_obj_module_t mp_module_machine = {
-    .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t *)&machine_module_globals,
-};
-
-MP_REGISTER_EXTENSIBLE_MODULE(MP_QSTR_machine, mp_module_machine);
 
 #endif // MICROPY_PY_MACHINE
