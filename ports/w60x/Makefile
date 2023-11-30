@@ -189,7 +189,6 @@ MPY_SRC_C += \
 	machine/machine_timer.c \
 	main.c \
 	modules/modhashlib.c \
-	modules/modmachine.c \
 	modules/modnetwork.c \
 	modules/modsocket.c \
 	modules/modw600.c \
