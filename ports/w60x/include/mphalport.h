@@ -37,6 +37,13 @@
 #include "py/obj.h"
 #include "wm_io.h"
 #include "wm_gpio.h"
+
+// Note: these "critical nested" macros do not ensure cross-CPU exclusion,
+// the only disable interrupts on the current CPU.  To full manage exclusion
+// one should use portENTER_CRITICAL/portEXIT_CRITICAL instead.
+#define MICROPY_BEGIN_ATOMIC_SECTION() tls_os_set_critical()
+#define MICROPY_END_ATOMIC_SECTION(state) tls_os_release_critical(state)
+
 #define MP_HAL_PIN_FMT "%u"
 #define mp_hal_pin_obj_t enum tls_io_name
 
@@ -72,7 +79,6 @@ static inline uint32_t mp_hal_ticks_bitstream(void) {
 
 #define mp_hal_quiet_timing_enter() MICROPY_BEGIN_ATOMIC_SECTION()
 #define mp_hal_quiet_timing_exit(irq_state) MICROPY_END_ATOMIC_SECTION(irq_state)
-
 
 // C-level pin HAL
 mp_hal_pin_obj_t machine_pin_get_id(mp_obj_t pin_in);
