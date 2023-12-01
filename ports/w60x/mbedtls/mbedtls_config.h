@@ -26,6 +26,11 @@
 #ifndef MICROPY_INCLUDED_MBEDTLS_CONFIG_H
 #define MICROPY_INCLUDED_MBEDTLS_CONFIG_H
 
+// Time hook.
+#include <time.h>
+extern time_t w60x_rtctime_seconds(time_t *timer);
+#define MBEDTLS_PLATFORM_TIME_MACRO w60x_rtctime_seconds
+
 // Set MicroPython-specific options.
 #define MICROPY_MBEDTLS_CONFIG_BARE_METAL (1)
 
