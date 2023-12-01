@@ -118,13 +118,7 @@
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
 #define MP_SSIZE_MAX (0x7fffffff)
 
-// Note: these "critical nested" macros do not ensure cross-CPU exclusion,
-// the only disable interrupts on the current CPU.  To full manage exclusion
-// one should use portENTER_CRITICAL/portEXIT_CRITICAL instead.
 #include "wm_osal.h"
-#define MICROPY_BEGIN_ATOMIC_SECTION() tls_os_set_critical()
-#define MICROPY_END_ATOMIC_SECTION(state) tls_os_release_critical(state)
-
 #if MICROPY_PY_SOCKET_EVENTS
 #define MICROPY_PY_SOCKET_EVENTS_HANDLER extern void socket_events_handler(void); socket_events_handler();
 #else
