@@ -194,35 +194,8 @@ MPY_SRC_C += \
 	modules/modw600.c \
 	tools/ftpserver.c \
 
-LIB_SRC_C += $(addprefix lib/,\
-	libm/asinfacosf.c \
-	libm/atan2f.c \
-	libm/atanf.c \
-	libm/ef_rem_pio2.c \
-	libm/ef_sqrt.c \
-	libm/fmodf.c \
-	libm/kf_cos.c \
-	libm/kf_rem_pio2.c \
-	libm/kf_sin.c \
-	libm/kf_tan.c \
-	libm/math.c \
-	libm/roundf.c \
-	libm/sf_cos.c \
-	libm/sf_frexp.c \
-	libm/sf_ldexp.c \
-	libm/sf_modf.c \
-	libm/sf_sin.c \
-	libm/sf_tan.c \
-    libm/acoshf.c \
-    libm/asinhf.c \
-    libm/atanhf.c \
-    libm/erf_lgamma.c \
-    libm/log1pf.c \
-    libm/nearbyintf.c \
-    libm/sf_erf.c \
-    libm/wf_lgamma.c \
-    libm/wf_tgamma.c \
-	)
+LIB_SRC_C += $(SRC_LIB_LIBM_C)
+LIB_SRC_C += $(SRC_LIB_LIBM_SQRT_SW_C)
 
 LIB_SRC_C += $(addprefix shared/,\
 	netutils/netutils.c \
