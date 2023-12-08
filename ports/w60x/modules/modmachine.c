@@ -80,10 +80,10 @@ typedef enum {
 
 
 STATIC mp_obj_t mp_machine_get_freq(void) {
-        // get
-        tls_sys_clk sysclk;
-        tls_sys_clk_get(&sysclk);
-        return mp_obj_new_int(sysclk.cpuclk * 1000000);
+    // get
+    tls_sys_clk sysclk;
+    tls_sys_clk_get(&sysclk);
+    return mp_obj_new_int(sysclk.cpuclk * 1000000);
 }
 
 STATIC void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) {
