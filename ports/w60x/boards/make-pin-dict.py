@@ -45,6 +45,7 @@ class Pins:
                     pass
             dict_file.write("}; \n")
 
+
 def main():
     parser = argparse.ArgumentParser(
         prog="make-pin-dict.py",
