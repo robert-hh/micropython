@@ -26,12 +26,13 @@
 
 #ifdef MICROPY_SSL_MBEDTLS
 
-#include "mbedtls_config.h"
+#include "mbedtls_config_port.h"
 #include "wm_crypto_hard.h"
 #if defined(MBEDTLS_HAVE_TIME) || defined(MBEDTLS_HAVE_TIME_DATE)
 #include "wm_rtc.h"
 #include "py/runtime.h"
 #include "shared/timeutils/timeutils.h"
+#include "mbedtls/platform_time.h"
 #include "modmachine.h"
 #endif
 
@@ -50,6 +51,14 @@ time_t w60x_rtctime_seconds(time_t *timer) {
     return timeutils_seconds_since_epoch(tblock.tm_year + W600_YEAR_BASE,
         tblock.tm_mon, tblock.tm_mday, tblock.tm_hour, tblock.tm_min, tblock.tm_sec);
 }
+
+mbedtls_ms_time_t mbedtls_ms_time(void) {
+    time_t *tv = NULL;
+    mbedtls_ms_time_t current_ms;
+    current_ms = w60x_rtctime_seconds(tv) * 1000;
+    return current_ms;
+}
+
 #endif
 
 #if defined(MBEDTLS_HAVE_TIME_DATE)
