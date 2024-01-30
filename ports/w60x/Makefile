@@ -227,7 +227,7 @@ DRIVERS_SRC_C += $(addprefix drivers/,\
 	)
 
 ifeq ($(MICROPY_SSL_MBEDTLS),1)
-CFLAGS_MOD += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config.h"'
+CFLAGS_MOD += -DMBEDTLS_CONFIG_FILE='"mbedtls/mbedtls_config_port.h"'
 INC += -I./mbedtls
 INC += -I$(TOP)/lib/mbedtls/include
 MBEDTLS_SRC_C = mbedtls/mbedtls_port.c
