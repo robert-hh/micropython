@@ -201,6 +201,7 @@ LIB_SRC_C += $(addprefix shared/,\
 	netutils/netutils.c \
 	readline/readline.c \
 	runtime/interrupt_char.c \
+	runtime/mpirq.c \
 	runtime/pyexec.c \
 	runtime/sys_stdio_mphal.c \
 	timeutils/timeutils.c \
