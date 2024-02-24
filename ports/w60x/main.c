@@ -35,6 +35,7 @@ void timer_init0(void);
 void tls_sys_reset(void);
 void machine_pwm_deinit_all(void);
 void check_esc_on_boot(void);
+void machine_uart_deinit_all(void);
 
 static inline void *get_sp(void) {
     void *sp;
@@ -124,6 +125,7 @@ soft_reset_exit:
 
     // Deinit devices
     machine_pwm_deinit_all();
+    machine_uart_deinit_all();
 
     gc_sweep_all();
 
