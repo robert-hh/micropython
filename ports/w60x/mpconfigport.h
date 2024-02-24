@@ -88,6 +88,7 @@
 #define MICROPY_PY_MACHINE_UART             (1)
 #endif
 #define MICROPY_PY_MACHINE_UART_INCLUDEFILE "ports/w60x/machine/machine_uart.c"
+#define MICROPY_PY_MACHINE_UART_IRQ         (1)
 #define MICROPY_PY_MACHINE_WDT              (1)
 #define MICROPY_PY_MACHINE_WDT_INCLUDEFILE  "ports/w60x/machine/machine_wdt.c"
 #define MICROPY_PY_MACHINE_WDT_TIMEOUT_MS   (1)
