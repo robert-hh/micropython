@@ -764,7 +764,6 @@ void UART1_IRQHandler(void) {
     u32 fifos;
     u8 ch = 0;
     u8 escapefifocnt = 0;
-    u32 rxlen = 0;
 
 /* check interrupt status */
     intr_src = port->regs->UR_INTS;
@@ -782,15 +781,20 @@ void UART1_IRQHandler(void) {
         #if DEBUG_RX_LEN
         tls_rx_len += rx_fifocnt;
         #endif
-        escapefifocnt = rx_fifocnt;
         port->plus_char_cnt = 0;
-        rxlen = rx_fifocnt;
 
         if (CIRC_SPACE(recv->head, recv->tail, TLS_UART_RX_BUF_SIZE) <= RX_CACHE_LIMIT) {
             recv->tail = (recv->tail + RX_CACHE_LIMIT) & (TLS_UART_RX_BUF_SIZE - 1);
         }
 
-        while (rx_fifocnt-- > 0) {
+        // If it was a RX_FIFO IRQ, do not remove all byte from the FIFO to
+        // get a reliable UIS_RX_FIFO_TIMEOUT IRQ
+        u32 remain = 0;
+        if (!(intr_src & UIS_RX_FIFO_TIMEOUT)) {
+            remain = 1;
+        }
+        escapefifocnt = rx_fifocnt;
+        while (rx_fifocnt-- > remain) {
             ch = (u8)port->regs->UR_RXW;
             if (intr_src & UART_RX_ERR_INT_FLAG) {
                 port->regs->UR_INTS |= UART_RX_ERR_INT_FLAG;
@@ -822,7 +826,7 @@ void UART1_IRQHandler(void) {
             }
         }
         if (port->rx_callback != NULL) {
-            port->rx_callback((u16)rxlen);
+            port->rx_callback((u16)intr_src);
         }
     }
     if (intr_src & UART_TX_INT_FLAG) {
@@ -860,7 +864,13 @@ void UART2_IRQHandler(void) {
         #if DEBUG_RX_LEN
         tls_rx_len += rx_fifocnt;
         #endif
-        while (rx_fifocnt-- > 0) {
+        // If it was a RX_FIFO IRQ, do not remove all byte from the FIFO to
+        // get a reliable UIS_RX_FIFO_TIMEOUT IRQ
+        u32 remain = 0;
+        if (!(intr_src & UIS_RX_FIFO_TIMEOUT)) {
+            remain = 1;
+        }
+        while (rx_fifocnt-- > remain) {
             ch = (u8)port->regs->UR_RXW;
             /* break, stop bit error parity error, not include overrun err */
             if (intr_src & UART_RX_ERR_INT_FLAG) {
@@ -885,8 +895,8 @@ void UART2_IRQHandler(void) {
             recv->head = (recv->head + 1) & (TLS_UART_RX_BUF_SIZE - 1);
             rxlen++;
         }
-        if (port->rx_callback != NULL && rxlen) {
-            port->rx_callback((u16)rxlen);
+        if (port->rx_callback != NULL) {
+            port->rx_callback((u16)intr_src);
         }
 
     }
@@ -1094,6 +1104,7 @@ int tls_uart_read_avail(u16 uart_no) {
     if (port) {
         recv = &port->recv;
         data_cnt = CIRC_CNT(recv->head, recv->tail, TLS_UART_RX_BUF_SIZE);
+        data_cnt += (port->regs->UR_FIFOS >> 6) & 0x3F;
     }
 
     return data_cnt;
