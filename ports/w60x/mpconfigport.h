@@ -43,7 +43,7 @@
 #define MICROPY_PY_BUILTINS_HELP_TEXT       w600_help_text
 #define MICROPY_PY_IO_BUFFEREDWRITER        (1)
 #define MICROPY_PY_TIME_GMTIME_LOCALTIME_MKTIME (1)
-#define MICROPY_PY_TIME_TIME_TIME_NS (1)
+#define MICROPY_PY_TIME_TIME_TIME_NS        (1)
 #define MICROPY_PY_TIME_INCLUDEFILE "ports/w60x/modules/modtime.c"
 #define MP_NEED_LOG2                        (1)
 
