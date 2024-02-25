@@ -151,8 +151,7 @@ static mp_obj_t mp_machine_pwm_make_new(const mp_obj_type_t *type,
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
     // create PWM object from the given pin
-    machine_pwm_obj_t *self = m_new_obj(machine_pwm_obj_t);
-    self->base.type = &machine_pwm_type;
+    machine_pwm_obj_t *self = mp_obj_malloc(machine_pwm_obj_t, &machine_pwm_type);
     self->pin = mp_hal_get_pin_obj(args[0]);
     self->channel = -1;
     self->freq = -1;
