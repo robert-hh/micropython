@@ -45,8 +45,7 @@ static mp_obj_t sha1_update(mp_obj_t self_in, mp_obj_t arg);
 static mp_obj_t sha256_make_new(const mp_obj_type_t *type,
     size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
-    mp_obj_hash_t *o = m_new_obj_var(mp_obj_hash_t, state, sizeof(union sha_ctxs), 1);
-    o->base.type = type;
+    mp_obj_hash_t *o = mp_obj_malloc_var(mp_obj_hash_t, state, sizeof(union sha_ctxs), 1, type);
     psSha256Init(&o->state.sha256);
     if (n_args == 1) {
         sha256_update(MP_OBJ_FROM_PTR(o), args[0]);
@@ -57,8 +56,7 @@ static mp_obj_t sha256_make_new(const mp_obj_type_t *type,
 static mp_obj_t sha1_make_new(const mp_obj_type_t *type,
     size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
-    mp_obj_hash_t *o = m_new_obj_var(mp_obj_hash_t, state, sizeof(union sha_ctxs), 1);
-    o->base.type = type;
+    mp_obj_hash_t *o = mp_obj_malloc_var(mp_obj_hash_t, state, sizeof(union sha_ctxs), 1, type);
     tls_crypto_sha1_init(&o->state.sha1);
     if (n_args == 1) {
         sha1_update(MP_OBJ_FROM_PTR(o), args[0]);
