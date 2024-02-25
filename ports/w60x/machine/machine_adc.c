@@ -72,8 +72,7 @@ static mp_obj_t mp_machine_adc_make_new(const mp_obj_type_t *type_in, size_t n_a
     }
 
     // create ADC object from the given channel id
-    machine_adc_obj_t *self = m_new_obj(machine_adc_obj_t);
-    self->base.type = &machine_adc_type;
+    machine_adc_obj_t *self = mp_obj_malloc(machine_adc_obj_t, &machine_adc_type);
     self->adc_channel = chn;
 
     wm_adc_config(chn);
