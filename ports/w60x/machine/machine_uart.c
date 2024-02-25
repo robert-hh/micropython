@@ -57,10 +57,10 @@ static machine_uart_obj_t *uart_list[3];
 static void mp_machine_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
-    mp_printf(print, "UART(%u, baudrate=%u, bits=%u, parity=%s, stop=%u), irq=%d",
+    mp_printf(print, "UART(%u, baudrate=%u, bits=%u, parity=%s, stop=%u)",
         self->uart_num, self->uartcfg.baudrate, self->uartcfg.charlength + 5,
         self->uartcfg.paritytype ? ((self->uartcfg.paritytype == 1) ? "1" : "0") : "None",
-        self->uartcfg.stopbits + 1, self->mp_irq_trigger);
+        self->uartcfg.stopbits + 1);
 }
 
 static void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -148,8 +148,7 @@ static mp_obj_t mp_machine_uart_make_new(const mp_obj_type_t *type, size_t n_arg
     }
 
     // Defaults
-    machine_uart_obj_t *self = m_new_obj(machine_uart_obj_t);
-    self->base.type = &machine_uart_type;
+    machine_uart_obj_t *self = mp_obj_malloc(machine_uart_obj_t, &machine_uart_type);
     self->uart_num = uart_num;
     self->uartcfg.charlength = TLS_UART_CHSIZE_8BIT;
     self->uartcfg.paritytype = TLS_UART_PMODE_DISABLED;
