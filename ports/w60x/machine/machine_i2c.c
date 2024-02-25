@@ -64,7 +64,7 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    machine_i2c_obj_t *self = m_new_obj(machine_i2c_obj_t);
+    machine_i2c_obj_t *self = mp_obj_malloc(machine_i2c_obj_t, &machine_i2c_type);
 
     if (args[ARG_scl].u_obj == MP_OBJ_NULL || args[ARG_scl].u_obj == mp_const_none) {
         self->scl = WM_IO_PB_13;
@@ -78,7 +78,6 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         self->sda = mp_hal_get_pin_obj(args[ARG_sda].u_obj);
     }
 
-    self->base.type = &machine_i2c_type;
     self->freq = args[ARG_freq].u_int;
 
     wm_i2c_scl_config(self->scl);

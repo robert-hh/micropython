@@ -236,8 +236,7 @@ static mp_obj_t socket_accept(const mp_obj_t arg0) {
     }
 
     // create new socket object
-    socket_obj_t *sock = m_new_obj_with_finaliser(socket_obj_t);
-    sock->base.type = self->base.type;
+    socket_obj_t *sock = mp_obj_malloc_with_finaliser(socket_obj_t, self->base.type);
     sock->fd = new_fd;
     sock->domain = self->domain;
     sock->type = self->type;
@@ -469,9 +468,9 @@ int _socket_send(socket_obj_t *sock, const char *data, size_t datalen) {
 
 static mp_obj_t socket_send(const mp_obj_t arg0, const mp_obj_t arg1) {
     socket_obj_t *sock = MP_OBJ_TO_PTR(arg0);
-    size_t datalen;
-    const char *data = mp_obj_str_get_data(arg1, &datalen);
-    int r = _socket_send(sock, data, datalen);
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(arg1, &bufinfo, MP_BUFFER_READ);
+    int r = _socket_send(sock, bufinfo.buf, bufinfo.len);
     return mp_obj_new_int(r);
 }
 static MP_DEFINE_CONST_FUN_OBJ_2(socket_send_obj, socket_send);
@@ -655,8 +654,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     );
 
 static mp_obj_t get_socket(size_t n_args, const mp_obj_t *args) {
-    socket_obj_t *sock = m_new_obj_with_finaliser(socket_obj_t);
-    sock->base.type = &socket_type;
+    socket_obj_t *sock = mp_obj_malloc_with_finaliser(socket_obj_t, &socket_type);
     sock->domain = AF_INET;
     sock->type = SOCK_STREAM;
     sock->proto = 0;
