@@ -38,22 +38,22 @@ typedef struct _machine_wdt_obj_t {
     mp_obj_base_t base;
 } machine_wdt_obj_t;
 
-STATIC machine_wdt_obj_t wdt_default = {{&machine_wdt_type}};
+static machine_wdt_obj_t wdt_default = {{&machine_wdt_type}};
 
 void mp_hal_wdg_enable(uint32_t usec);
 void mp_hal_wdg_feed(void);
 
-STATIC machine_wdt_obj_t *mp_machine_wdt_make_new_instance(mp_int_t id, mp_int_t timeout_ms) {
+static machine_wdt_obj_t *mp_machine_wdt_make_new_instance(mp_int_t id, mp_int_t timeout_ms) {
     mp_hal_wdg_enable(timeout_ms * 1000);
     return &wdt_default;
 }
 
-STATIC void mp_machine_wdt_feed(machine_wdt_obj_t *self) {
+static void mp_machine_wdt_feed(machine_wdt_obj_t *self) {
     (void)self;
     mp_hal_wdg_feed();
 }
 
-STATIC void mp_machine_wdt_timeout_ms_set(machine_wdt_obj_t *self, mp_int_t timeout_ms) {
+static void mp_machine_wdt_timeout_ms_set(machine_wdt_obj_t *self, mp_int_t timeout_ms) {
     (void)self;
     mp_hal_wdg_enable(timeout_ms * 1000);
 }

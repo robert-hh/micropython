@@ -30,7 +30,7 @@ class Pins:
 
             dict_file.write("// The board pins dictionary\n")
             dict_file.write(
-                "STATIC const mp_rom_map_elem_t pin_board_pins_locals_dict_table[] = { \n"
+                "static const mp_rom_map_elem_t pin_board_pins_locals_dict_table[] = { \n"
             )
             for row in self.board_pins:
                 pin = row[1].upper()
