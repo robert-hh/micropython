@@ -40,7 +40,7 @@
 
 extern int sendchar(int ch);
 
-STATIC uint8_t stdin_ringbuf_array[256];
+static uint8_t stdin_ringbuf_array[256];
 ringbuf_t stdin_ringbuf = {stdin_ringbuf_array, sizeof(stdin_ringbuf_array)};
 
 uintptr_t mp_hal_stdio_poll(uintptr_t poll_flags) {
@@ -116,7 +116,7 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     }
 }
 
-STATIC s16 uart_rx_callback(u16 len) {
+static s16 uart_rx_callback(u16 len) {
     uint8_t c;
     while (tls_uart_read(TLS_UART_0, &c, 1) > 0) {
         if (c == mp_interrupt_char) {

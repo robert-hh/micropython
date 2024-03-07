@@ -47,7 +47,7 @@ typedef struct _machine_i2c_obj_t {
 
 const mp_obj_type_t machine_i2c_type;
 
-STATIC void machine_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void machine_i2c_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_i2c_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_printf(print, "I2C(scl=%d, sda=%d, freq=%u)",
         self->scl, self->sda, self->freq);
@@ -92,7 +92,7 @@ mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
 // return value:
 //    WM_SUCCESS - success
 //    WM_FAILED - Error: No ack received
-STATIC int w600_i2c_send_address(uint16_t addr, bool bit10, bool read) {
+static int w600_i2c_send_address(uint16_t addr, bool bit10, bool read) {
     u8 flags = 0;
     u8 addr_msb;
     u8 addr_lsb;
@@ -126,7 +126,7 @@ STATIC int w600_i2c_send_address(uint16_t addr, bool bit10, bool read) {
 
 // return value:
 // 0: Success
-STATIC int machine_i2c_read(uint16_t addr, uint8_t *dest, size_t len, bool nack) {
+static int machine_i2c_read(uint16_t addr, uint8_t *dest, size_t len, bool nack) {
 
     while (len > 1) {
         *dest++ = tls_i2c_read_byte(1, 0);
@@ -139,7 +139,7 @@ STATIC int machine_i2c_read(uint16_t addr, uint8_t *dest, size_t len, bool nack)
 // return value:
 //   >=0 - len bytes written and # acks received
 //   <0 - error, with errno being the negative of the return value
-STATIC int machine_i2c_write(uint16_t addr, const uint8_t *src, size_t len) {
+static int machine_i2c_write(uint16_t addr, const uint8_t *src, size_t len) {
     int ret;
     int ack_received = 0;
     uint8_t *buf = (uint8_t *)src;
@@ -199,7 +199,7 @@ int machine_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, mp_mac
     return transfer_ret;
 }
 
-STATIC const mp_machine_i2c_p_t machine_i2c_p = {
+static const mp_machine_i2c_p_t machine_i2c_p = {
     .transfer = machine_i2c_transfer,
 };
 
