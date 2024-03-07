@@ -49,7 +49,7 @@ extern int tls_fls_get_param(u8 type, void *param);
 extern void w600_ftps_start(int port, const char *user, const char *pass);
 extern const mp_obj_type_t w600_flash_type;
 
-STATIC mp_obj_t w600_flash_read(mp_obj_t offset_in, mp_obj_t buf_in) {
+static mp_obj_t w600_flash_read(mp_obj_t offset_in, mp_obj_t buf_in) {
     mp_int_t offset = mp_obj_get_int(offset_in);
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_WRITE);
@@ -59,9 +59,9 @@ STATIC mp_obj_t w600_flash_read(mp_obj_t offset_in, mp_obj_t buf_in) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(w600_flash_read_obj, w600_flash_read);
+static MP_DEFINE_CONST_FUN_OBJ_2(w600_flash_read_obj, w600_flash_read);
 
-STATIC mp_obj_t w600_flash_write(mp_obj_t offset_in, mp_obj_t buf_in) {
+static mp_obj_t w600_flash_write(mp_obj_t offset_in, mp_obj_t buf_in) {
     mp_int_t offset = mp_obj_get_int(offset_in);
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_READ);
@@ -71,9 +71,9 @@ STATIC mp_obj_t w600_flash_write(mp_obj_t offset_in, mp_obj_t buf_in) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(w600_flash_write_obj, w600_flash_write);
+static MP_DEFINE_CONST_FUN_OBJ_2(w600_flash_write_obj, w600_flash_write);
 
-STATIC mp_obj_t w600_flash_erase(mp_obj_t sector_in) {
+static mp_obj_t w600_flash_erase(mp_obj_t sector_in) {
     mp_int_t sector = mp_obj_get_int(sector_in);
     mp_int_t res = tls_fls_erase(sector);
     if (res != TLS_FLS_STATUS_OK) {
@@ -81,28 +81,28 @@ STATIC mp_obj_t w600_flash_erase(mp_obj_t sector_in) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(w600_flash_erase_obj, w600_flash_erase);
+static MP_DEFINE_CONST_FUN_OBJ_1(w600_flash_erase_obj, w600_flash_erase);
 
-STATIC mp_obj_t w600_flash_id() {
+static mp_obj_t w600_flash_id() {
     mp_uint_t flsid = 0;
     tls_fls_get_param(TLS_FLS_PARAM_TYPE_ID, &flsid);
     return mp_obj_new_int_from_uint(flsid);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(w600_flash_id_obj, w600_flash_id);
+static MP_DEFINE_CONST_FUN_OBJ_0(w600_flash_id_obj, w600_flash_id);
 
-STATIC mp_obj_t w600_flash_size(void) {
+static mp_obj_t w600_flash_size(void) {
     mp_uint_t flssize = 0;
     tls_fls_get_param(TLS_FLS_PARAM_TYPE_SIZE, &flssize);
     return mp_obj_new_int_from_uint(flssize);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(w600_flash_size_obj, w600_flash_size);
+static MP_DEFINE_CONST_FUN_OBJ_0(w600_flash_size_obj, w600_flash_size);
 
-STATIC mp_obj_t w600_flash_user_start(void) {
+static mp_obj_t w600_flash_user_start(void) {
     return MP_OBJ_NEW_SMALL_INT(USER_ADDR_START);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(w600_flash_user_start_obj, w600_flash_user_start);
+static MP_DEFINE_CONST_FUN_OBJ_0(w600_flash_user_start_obj, w600_flash_user_start);
 
-STATIC mp_obj_t w600_run_ftpserver(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t w600_run_ftpserver(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_port, ARG_username, ARG_password };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_port, MP_ARG_INT, {.u_int = 21} },
@@ -119,15 +119,15 @@ STATIC mp_obj_t w600_run_ftpserver(size_t n_args, const mp_obj_t *pos_args, mp_m
     w600_ftps_start(port, username, password);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(w600_run_ftpserver_obj, 0, w600_run_ftpserver);
+static MP_DEFINE_CONST_FUN_OBJ_KW(w600_run_ftpserver_obj, 0, w600_run_ftpserver);
 
-STATIC mp_obj_t rtos_task_info(void) {
+static mp_obj_t rtos_task_info(void) {
     tls_os_disp_task_stat_info();
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(rtos_task_info_obj, rtos_task_info);
+static MP_DEFINE_CONST_FUN_OBJ_0(rtos_task_info_obj, rtos_task_info);
 
-STATIC mp_obj_t w600_get_version(void) {
+static mp_obj_t w600_get_version(void) {
     char buf[128];
     mp_uint_t flssize = 0;
     tls_fls_get_param(TLS_FLS_PARAM_TYPE_SIZE, &flssize);
@@ -139,9 +139,9 @@ STATIC mp_obj_t w600_get_version(void) {
         SysCreatedTime, SysCreatedDate);
     return mp_obj_new_str(buf, len);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(w600_get_version_obj, w600_get_version);
+static MP_DEFINE_CONST_FUN_OBJ_0(w600_get_version_obj, w600_get_version);
 
-STATIC const mp_rom_map_elem_t w600_module_globals_table[] = {
+static const mp_rom_map_elem_t w600_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_w600) },
 
     { MP_ROM_QSTR(MP_QSTR_flash_read), MP_ROM_PTR(&w600_flash_read_obj) },
@@ -159,7 +159,7 @@ STATIC const mp_rom_map_elem_t w600_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_Flash),    MP_ROM_PTR(&w600_flash_type) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(w600_module_globals, w600_module_globals_table);
+static MP_DEFINE_CONST_DICT(w600_module_globals, w600_module_globals_table);
 
 const mp_obj_module_t w600_module = {
     .base = { &mp_type_module },

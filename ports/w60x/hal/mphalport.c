@@ -112,7 +112,7 @@ uint32_t mp_hal_ticks_us(void) {
     return mp_hal_ticks_us64();
 }
 
-STATIC inline void delay(uint32_t us) {
+static inline void delay(uint32_t us) {
     if (us < 20) {
         volatile int32_t loops = ((int32_t)us - 2) * 6 + us / 10 * 6;
         while (loops > 0) {
@@ -127,7 +127,7 @@ STATIC inline void delay(uint32_t us) {
     }
 }
 
-STATIC void __mp_hal_delay_ms(uint32_t ms) {
+static void __mp_hal_delay_ms(uint32_t ms) {
     if (ms / (1000 / HZ) > 0) {
         tls_os_time_delay(ms / (1000 / HZ));
     } else {
