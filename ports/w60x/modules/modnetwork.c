@@ -52,8 +52,8 @@ typedef struct _wlan_if_obj_t {
 } wlan_if_obj_t;
 
 const mp_obj_type_t wlan_if_type;
-STATIC wlan_if_obj_t wlan_sta_obj = {{&wlan_if_type}, IEEE80211_MODE_INFRA, false};
-STATIC wlan_if_obj_t wlan_ap_obj = {{&wlan_if_type}, IEEE80211_MODE_AP, false};
+static wlan_if_obj_t wlan_sta_obj = {{&wlan_if_type}, IEEE80211_MODE_INFRA, false};
+static wlan_if_obj_t wlan_ap_obj = {{&wlan_if_type}, IEEE80211_MODE_AP, false};
 
 // Set to "true" if the STA interface is requested to be connected by the
 // user, used for automatic reassociation.
@@ -64,14 +64,14 @@ static bool wifi_sta_connect_failed = false;
 // Set to "true" if the STA interface is connected to wifi and has IP address.
 static bool wifi_sta_connected = false;
 
-STATIC void require_if(mp_obj_t wlan_if, int if_no) {
+static void require_if(mp_obj_t wlan_if, int if_no) {
     wlan_if_obj_t *self = MP_OBJ_TO_PTR(wlan_if);
     if (self->if_id != if_no) {
         mp_raise_msg(&mp_type_OSError, if_no == IEEE80211_MODE_INFRA ? "STA mode required" : "SoftAP mode required");
     }
 }
 
-STATIC void w600_wifi_status_callback(u8 status) {
+static void w600_wifi_status_callback(u8 status) {
     switch (status) {
         case NETIF_IP_NET_UP: {
             wifi_sta_connected = true;
@@ -96,7 +96,7 @@ STATIC void w600_wifi_status_callback(u8 status) {
     return;
 }
 
-STATIC mp_obj_t w600_initialize() {
+static mp_obj_t w600_initialize() {
     static int initialized = 0;
     if (!initialized) {
         tls_netif_add_status_event(w600_wifi_status_callback);
@@ -104,9 +104,9 @@ STATIC mp_obj_t w600_initialize() {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(w600_initialize_obj, w600_initialize);
+static MP_DEFINE_CONST_FUN_OBJ_0(w600_initialize_obj, w600_initialize);
 
-STATIC mp_obj_t set_wlan(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t set_wlan(size_t n_args, const mp_obj_t *args) {
     static int initialized = 0;
     if (!initialized) {
         w600_initialize();
@@ -122,9 +122,9 @@ STATIC mp_obj_t set_wlan(size_t n_args, const mp_obj_t *args) {
         mp_raise_ValueError("invalid WLAN interface identifier");
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(set_wlan_obj, 0, 1, set_wlan);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(set_wlan_obj, 0, 1, set_wlan);
 
-STATIC mp_obj_t w600_active(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t w600_active(size_t n_args, const mp_obj_t *args) {
     wlan_if_obj_t *self = MP_OBJ_TO_PTR(args[0]);
 
     if (n_args > 1) {
@@ -142,9 +142,9 @@ STATIC mp_obj_t w600_active(size_t n_args, const mp_obj_t *args) {
     return self->active ? mp_const_true : mp_const_false;
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_active_obj, 1, 2, w600_active);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_active_obj, 1, 2, w600_active);
 
-STATIC mp_obj_t w600_connect(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t w600_connect(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_ssid, ARG_password, ARG_bssid };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_, MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -205,15 +205,15 @@ STATIC mp_obj_t w600_connect(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(w600_connect_obj, 1, w600_connect);
+static MP_DEFINE_CONST_FUN_OBJ_KW(w600_connect_obj, 1, w600_connect);
 
-STATIC mp_obj_t w600_disconnect(mp_obj_t self_in) {
+static mp_obj_t w600_disconnect(mp_obj_t self_in) {
     wifi_sta_connect_requested = false;
     tls_wifi_disconnect();
     return mp_const_none;
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(w600_disconnect_obj, w600_disconnect);
+static MP_DEFINE_CONST_FUN_OBJ_1(w600_disconnect_obj, w600_disconnect);
 
 enum {
     STAT_IDLE               = 0,
@@ -224,7 +224,7 @@ enum {
     STAT_GOT_IP             = 5,
 };
 
-STATIC mp_obj_t w600_status(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t w600_status(size_t n_args, const mp_obj_t *args) {
     wlan_if_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     if (n_args == 1) {
         if (self->if_id == IEEE80211_MODE_INFRA) {
@@ -281,11 +281,11 @@ STATIC mp_obj_t w600_status(size_t n_args, const mp_obj_t *args) {
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_status_obj, 1, 2, w600_status);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_status_obj, 1, 2, w600_status);
 
-STATIC tls_os_sem_t *w600_scan_finish_sem = NULL;
+static tls_os_sem_t *w600_scan_finish_sem = NULL;
 
-STATIC void w600_scan_finish_callback(void) {
+static void w600_scan_finish_callback(void) {
     if (w600_scan_finish_sem) {
         tls_os_sem_release(w600_scan_finish_sem);
     }
@@ -293,7 +293,7 @@ STATIC void w600_scan_finish_callback(void) {
     return;
 }
 
-STATIC mp_obj_t w600_scan(mp_obj_t self_in) {
+static mp_obj_t w600_scan(mp_obj_t self_in) {
     mp_obj_t list = mp_obj_new_list(0, NULL);
     MP_THREAD_GIL_EXIT();
     int ret = tls_os_sem_create(&w600_scan_finish_sem, 0);
@@ -338,9 +338,9 @@ STATIC mp_obj_t w600_scan(mp_obj_t self_in) {
     return list;
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(w600_scan_obj, w600_scan);
+static MP_DEFINE_CONST_FUN_OBJ_1(w600_scan_obj, w600_scan);
 
-STATIC mp_obj_t w600_isconnected(mp_obj_t self_in) {
+static mp_obj_t w600_isconnected(mp_obj_t self_in) {
     wlan_if_obj_t *self = MP_OBJ_TO_PTR(self_in);
     if (self->if_id == IEEE80211_MODE_INFRA) {
         return mp_obj_new_bool(wifi_sta_connected);
@@ -351,9 +351,9 @@ STATIC mp_obj_t w600_isconnected(mp_obj_t self_in) {
         return mp_obj_new_bool(stanum > 0);
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(w600_isconnected_obj, w600_isconnected);
+static MP_DEFINE_CONST_FUN_OBJ_1(w600_isconnected_obj, w600_isconnected);
 
-STATIC mp_obj_t w600_ifconfig(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t w600_ifconfig(size_t n_args, const mp_obj_t *args) {
     wlan_if_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     struct tls_ethif *ni = tls_netif_get_ethif();
     if (n_args == 1) {
@@ -416,7 +416,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_ifconfig_obj, 1, 2, w600_ifconfig);
 
 extern u8 *wpa_supplicant_get_mac(void);
 extern void wpa_supplicant_set_mac(u8 *mac);
-STATIC mp_obj_t w600_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
+static mp_obj_t w600_config(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
     if (n_args != 1 && kwargs->used != 0) {
         mp_raise_TypeError("either pos or kw args are allowed");
     }
@@ -554,9 +554,9 @@ unknown:
     mp_raise_ValueError("unknown config param");
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(w600_config_obj, 1, w600_config);
+static MP_DEFINE_CONST_FUN_OBJ_KW(w600_config_obj, 1, w600_config);
 
-STATIC mp_obj_t w600_oneshot(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t w600_oneshot(size_t n_args, const mp_obj_t *args) {
     wlan_if_obj_t *self = MP_OBJ_TO_PTR(args[0]);
 
     if (self->if_id != IEEE80211_MODE_INFRA) {
@@ -572,9 +572,9 @@ STATIC mp_obj_t w600_oneshot(size_t n_args, const mp_obj_t *args) {
     return mp_const_none;
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_oneshot_obj, 1, 2, w600_oneshot);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_oneshot_obj, 1, 2, w600_oneshot);
 
-STATIC const mp_rom_map_elem_t wlan_if_locals_dict_table[] = {
+static const mp_rom_map_elem_t wlan_if_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_active), MP_ROM_PTR(&w600_active_obj) },
     { MP_ROM_QSTR(MP_QSTR_connect), MP_ROM_PTR(&w600_connect_obj) },
     { MP_ROM_QSTR(MP_QSTR_disconnect), MP_ROM_PTR(&w600_disconnect_obj) },
@@ -586,7 +586,7 @@ STATIC const mp_rom_map_elem_t wlan_if_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_oneshot), MP_ROM_PTR(&w600_oneshot_obj) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(wlan_if_locals_dict, wlan_if_locals_dict_table);
+static MP_DEFINE_CONST_DICT(wlan_if_locals_dict, wlan_if_locals_dict_table);
 
 MP_DEFINE_CONST_OBJ_TYPE(
     wlan_if_type,
@@ -595,7 +595,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &wlan_if_locals_dict
     );
 
-STATIC const mp_rom_map_elem_t mp_module_network_globals_table[] = {
+static const mp_rom_map_elem_t mp_module_network_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_network) },
     { MP_ROM_QSTR(MP_QSTR___init__), MP_ROM_PTR(&w600_initialize_obj) },
     { MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&set_wlan_obj) },
@@ -619,7 +619,7 @@ STATIC const mp_rom_map_elem_t mp_module_network_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_STAT_GOT_IP), MP_ROM_INT(STAT_GOT_IP)},
 };
 
-STATIC MP_DEFINE_CONST_DICT(mp_module_network_globals, mp_module_network_globals_table);
+static MP_DEFINE_CONST_DICT(mp_module_network_globals, mp_module_network_globals_table);
 
 const mp_obj_module_t mp_module_network = {
     .base = { &mp_type_module },
