@@ -80,14 +80,14 @@ typedef enum {
     { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP_RESET),     MP_ROM_INT(MP_DEEPSLEEP_RESET) }, \
 
 
-STATIC mp_obj_t mp_machine_get_freq(void) {
+static mp_obj_t mp_machine_get_freq(void) {
     // get
     tls_sys_clk sysclk;
     tls_sys_clk_get(&sysclk);
     return mp_obj_new_int(sysclk.cpuclk * 1000000);
 }
 
-STATIC void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) {
+static void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) {
     mp_int_t freq = mp_obj_get_int(args[0]) / 1000000;
     if (freq != 40 && freq != 80) {
         mp_raise_ValueError("frequency can only be either 40MHz or 80MHz");
@@ -101,7 +101,7 @@ STATIC void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) {
     timer_init0(); // Reset the counters for ticks.
 }
 
-STATIC mp_obj_t machine_sleep(size_t n_args, const mp_obj_t *args) {
+static mp_obj_t machine_sleep(size_t n_args, const mp_obj_t *args) {
     mp_int_t mode;
     mode = MP_OP_PS_SLEEP;
     if (n_args > 0) {
@@ -110,10 +110,10 @@ STATIC mp_obj_t machine_sleep(size_t n_args, const mp_obj_t *args) {
     tls_wl_if_ps(mode);// MP_OP_PS_WAKEUP,MP_OP_PS_SLEEP
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj, 0, 1, machine_sleep);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj, 0, 1, machine_sleep);
 
 // Just a dummy function.
-STATIC void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) {
+static void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) {
     if (n_args > 0) {
         mp_int_t period = mp_obj_get_int(args[0]);
         if (period > 0) {
@@ -122,7 +122,7 @@ STATIC void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) {
     }
 };
 
-NORETURN STATIC void mp_machine_deepsleep(size_t n_args, const mp_obj_t *args) {
+NORETURN static void mp_machine_deepsleep(size_t n_args, const mp_obj_t *args) {
     mp_int_t period = 0x7f000000;  // Just a very long period
     if (n_args > 0) {
         period = mp_obj_get_int(args[0]);
@@ -137,7 +137,7 @@ NORETURN STATIC void mp_machine_deepsleep(size_t n_args, const mp_obj_t *args) {
     }
 }
 
-STATIC mp_int_t mp_machine_reset_cause(void) {
+static mp_int_t mp_machine_reset_cause(void) {
     if (tls_reg_read32(HR_PMU_INTERRUPT_SRC) & (1 << 8)) {
         return MP_DEEPSLEEP_RESET;
     } else {
@@ -145,7 +145,7 @@ STATIC mp_int_t mp_machine_reset_cause(void) {
     }
 }
 
-NORETURN STATIC void mp_machine_reset(void) {
+NORETURN static void mp_machine_reset(void) {
     tls_sys_reset();
     while (true) {  // Just a dummy loop to silence a compiler warning
         ;
@@ -159,13 +159,13 @@ NORETURN void mp_machine_bootloader(size_t n_args, const mp_obj_t *args) {
     }
 }
 
-STATIC mp_obj_t mp_machine_unique_id(void) {
+static mp_obj_t mp_machine_unique_id(void) {
     uint8_t *chipid;
     chipid = wpa_supplicant_get_mac();
     return mp_obj_new_bytes(chipid, 6);
 }
 
-STATIC void mp_machine_idle(void) {
+static void mp_machine_idle(void) {
     MICROPY_EVENT_POLL_HOOK
 }
 

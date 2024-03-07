@@ -32,7 +32,7 @@
 #include "modmachine.h"
 
 // Return the localtime as an 8-tuple.
-STATIC mp_obj_t mp_time_localtime_get(void) {
+static mp_obj_t mp_time_localtime_get(void) {
     struct tm tm;
     tls_get_rtc(&tm);
 
@@ -52,7 +52,7 @@ STATIC mp_obj_t mp_time_localtime_get(void) {
 }
 
 // Returns the number of seconds, as an integer, since the Epoch.
-STATIC mp_obj_t mp_time_time_get(void) {
+static mp_obj_t mp_time_time_get(void) {
     struct tm tblock;
     tls_get_rtc(&tblock);
     return mp_obj_new_int_from_uint(timeutils_mktime(tblock.tm_year + W600_YEAR_BASE,
