@@ -90,6 +90,8 @@ static mp_sched_node_t mp_wifi_poll_node;
 static soft_timer_entry_t mp_wifi_poll_timer;
 static void network_ninaw10_deinit(void);
 
+static bool network_ninaw10_dhcp_active = false;
+
 static bool network_ninaw10_poll_list_is_empty(void) {
     return MP_STATE_PORT(mp_wifi_poll_list) == NULL ||
            MP_STATE_PORT(mp_wifi_poll_list)->len == 0;
@@ -202,6 +204,7 @@ static mp_obj_t network_ninaw10_active(size_t n_args, const mp_obj_t *args) {
                 mp_raise_msg_varg(&mp_type_OSError,
                     MP_ERROR_TEXT("failed to initialize Nina-W10 module, error: %d"), error);
             }
+            network_ninaw10_dhcp_active = true;
             // check firmware version
             uint8_t semver[NINA_FW_VER_LEN];
             if (nina_fw_version(semver) != 0) {
@@ -370,6 +373,7 @@ static mp_obj_t network_ninaw10_ifconfig(size_t n_args, const mp_obj_t *args) {
         netutils_parse_ipv4_addr(items[2], ifconfig.gateway_addr, NETUTILS_BIG);
         netutils_parse_ipv4_addr(items[3], ifconfig.dns_addr, NETUTILS_BIG);
         nina_ifconfig(&ifconfig, true);
+        network_ninaw10_dhcp_active = false;
         return mp_const_none;
     }
 }
@@ -433,10 +437,11 @@ static mp_obj_t network_ninaw10_nic_ipconfig(size_t n_args, const mp_obj_t *args
 
         switch (mp_obj_str_get_qstr(args[1])) {
             case MP_QSTR_dhcp4: {
-                return mp_const_true;
+                return mp_obj_new_bool(network_ninaw10_dhcp_active);
             }
             case MP_QSTR_has_dhcp4: {
-                return mp_const_true;
+                uint32_t ip_addr = *(uint32_t *)&ifconfig.ip_addr[0];
+                return mp_obj_new_bool(network_ninaw10_dhcp_active && ip_addr != 0);
             }
             case MP_QSTR_addr4: {
                 mp_obj_t tuple[2] = {
@@ -465,8 +470,7 @@ static mp_obj_t network_ninaw10_nic_ipconfig(size_t n_args, const mp_obj_t *args
                 mp_map_elem_t *e = &kwargs->table[i];
                 switch (mp_obj_str_get_qstr(e->key)) {
                     case MP_QSTR_dhcp4: {
-                        // NINAW10 does not allow to control DHCP setting
-                        // So just keep the keyword and do nothing
+                        mp_raise_ValueError(MP_ERROR_TEXT("DHCP control unsupported"));
                         break;
                     }
                     case MP_QSTR_addr4: {
@@ -497,11 +501,13 @@ static mp_obj_t network_ninaw10_nic_ipconfig(size_t n_args, const mp_obj_t *args
                             netutils_parse_ipv4_addr(items[1], ifconfig.subnet_addr, NETUTILS_BIG);
                         }
                         nina_ifconfig(&ifconfig, true);
+                        network_ninaw10_dhcp_active = false;
                         break;
                     }
                     case MP_QSTR_gw4: {
                         netutils_parse_ipv4_addr(e->value, ifconfig.gateway_addr, NETUTILS_BIG);
                         nina_ifconfig(&ifconfig, true);
+                        network_ninaw10_dhcp_active = false;
                         break;
                     }
                     default: {
