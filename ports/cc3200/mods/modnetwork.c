@@ -143,6 +143,9 @@ static mp_obj_t network_server_deinit(mp_obj_t self_in) {
 static MP_DEFINE_CONST_FUN_OBJ_1(network_server_deinit_obj, network_server_deinit);
 #endif
 
+mp_obj_t mod_network_ipconfig(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs);
+MP_DEFINE_CONST_FUN_OBJ_KW(mod_network_ipconfig_obj, 0, mod_network_ipconfig);
+
 static const mp_rom_map_elem_t mp_module_network_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__),            MP_ROM_QSTR(MP_QSTR_network) },
     { MP_ROM_QSTR(MP_QSTR_WLAN),                MP_ROM_PTR(&mod_network_nic_type_wlan) },
@@ -150,6 +153,7 @@ static const mp_rom_map_elem_t mp_module_network_globals_table[] = {
 #if (MICROPY_PORT_HAS_TELNET || MICROPY_PORT_HAS_FTP)
     { MP_ROM_QSTR(MP_QSTR_Server),              MP_ROM_PTR(&network_server_type) },
 #endif
+    { MP_ROM_QSTR(MP_QSTR_ipconfig),            MP_ROM_PTR(&mod_network_ipconfig_obj) },
 };
 
 static MP_DEFINE_CONST_DICT(mp_module_network_globals, mp_module_network_globals_table);
