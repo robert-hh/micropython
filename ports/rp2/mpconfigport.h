@@ -210,7 +210,10 @@ extern const struct _mp_obj_type_t mp_network_cyw43_type;
 #define MICROPY_PY_SOCKET_EXTENDED_STATE    (1)
 #endif
 extern const struct _mp_obj_type_t mod_network_nic_type_nina;
-#define MICROPY_HW_NIC_NINAW10              { MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&mod_network_nic_type_nina) },
+#define MICROPY_HW_NIC_NINAW10 \
+    { MP_ROM_QSTR(MP_QSTR_WLAN), MP_ROM_PTR(&mod_network_nic_type_nina) }, \
+    { MP_ROM_QSTR(MP_QSTR_ipconfig), MP_ROM_PTR(&network_ninaw10_ipconfig_obj) },
+
 #else
 #define MICROPY_HW_NIC_NINAW10
 #endif
@@ -231,6 +234,8 @@ extern const struct _mp_obj_type_t mod_network_nic_type_wiznet5k;
     MICROPY_HW_NIC_NINAW10  \
     MICROPY_HW_NIC_WIZNET5K \
     MICROPY_BOARD_NETWORK_INTERFACES \
+
+#define MICROPY_PY_NETWORK_INCLUDEFILE    "ports/rp2/modnetwork.h"  
 
 // Additional entries for use with pendsv_schedule_dispatch.
 #ifndef MICROPY_BOARD_PENDSV_ENTRIES
