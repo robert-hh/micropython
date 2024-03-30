@@ -479,12 +479,7 @@ static mp_obj_t network_ninaw10_nic_ipconfig(size_t n_args, const mp_obj_t *args
                             size_t addr_len;
                             const char *input_str = mp_obj_str_get_data(e->value, &addr_len);
                             char *split = strchr(input_str, '/');
-                            const char *addr_str = input_str;
-                            int to_copy = addr_len;
                             if (split) {
-                                if (split - addr_str < to_copy) {
-                                    to_copy = split - addr_str;
-                                }
                                 mp_obj_t prefix_obj = mp_parse_num_integer(split + 1, strlen(split + 1), 10, NULL);
                                 prefix_bits = mp_obj_get_int(prefix_obj);
                                 uint32_t mask = -(1u << (32 - prefix_bits));
