@@ -284,7 +284,7 @@ ifdef MICROPY_PY_THREAD
 CFLAGS += -DMICROPY_PY_THREAD=$(MICROPY_PY_THREAD)
 endif
 
-CFLAGS += -D__HEAP_SIZE=0x24000
+CFLAGS += -D__HEAP_SIZE=0x25000
 CFLAGS += -Wno-unused-variable -Wno-unused-function -g
 ifeq ($(DEBUG),1)
 CFLAGS += -Og
