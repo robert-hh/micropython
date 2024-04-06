@@ -35,6 +35,7 @@
 #include "py/mphal.h"
 #include "py/gc.h"
 #include "extmod/virtpin.h"
+#include "shared/runtime/mpirq.h"
 
 #include "mphalport.h"
 #include "extmod/modmachine.h"
@@ -65,13 +66,10 @@ typedef struct _machine_pin_obj_t {
     enum tls_io_name id;
     enum tls_gpio_attr gpio_attr;
     enum mp_pin_mode mode;
-    bool mp_pin_irq_mode;
+    uint16_t mp_irq_trigger;
+    uint16_t mp_irq_flags;
+    mp_irq_obj_t *mp_irq_obj;  // user IRQ object
 } machine_pin_obj_t;
-
-typedef struct _machine_pin_irq_obj_t {
-    mp_obj_base_t base;
-    enum tls_io_name id;
-} machine_pin_irq_obj_t;
 
 static machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_00},
@@ -203,46 +201,44 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &machine_pin_board_pins_locals_dict
     );
 
-// forward declaration
-static const machine_pin_irq_obj_t machine_pin_irq_object[];
-
 static char *pin_mode_str[] = {"OUT", "IN", "", "OPEN_DRAIN"};
 
-void machine_pins_init(void) {
-    memset(&MP_STATE_PORT(machine_pin_irq_handler[0]), 0, sizeof(MP_STATE_PORT(machine_pin_irq_handler)));
-}
-
+// Do not call mp_irq_handler, since it fails for ishard = True
+// with a stack check fault.
 static void machine_pin_isr_handler(void *arg) {
-    machine_pin_obj_t *self = arg;
-    mp_obj_t handler = MP_STATE_PORT(machine_pin_irq_handler)[self->id];
-
-    if (self->mp_pin_irq_mode == false) {
-        mp_sched_schedule(handler, MP_OBJ_FROM_PTR(self));
-    } else { // Hard blib
-        mp_sched_lock();
-        // When executing code within a handler we must lock the GC to prevent
-        // any memory allocations.  We must also catch any exceptions.
-        gc_lock();
-        // save stack top and set temporary value to pass the stack check
-        char *saved_stack_top = MP_STATE_THREAD(stack_top);
-        MP_STATE_THREAD(stack_top) = (void *)&saved_stack_top + 1024; // kind of arbitrary
-        nlr_buf_t nlr;
-        if (nlr_push(&nlr) == 0) {
-            mp_call_function_1(handler, MP_OBJ_FROM_PTR(self));
-            nlr_pop();
-        } else {
-            // Uncaught exception; disable the callback so it doesn't run again.
-            MP_STATE_PORT(machine_pin_irq_handler)[self->id] = MP_OBJ_NULL;
-            tls_gpio_isr_register(self->id, 0, 0);
-            tls_gpio_irq_disable(self->id);
-            mp_printf(MICROPY_ERROR_PRINTER, "Uncaught exception in ExtInt interrupt handler GPIO %u\n", (unsigned int)self->id);
-            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+    mp_irq_obj_t *self = arg;
+    machine_pin_obj_t *parent = MP_OBJ_TO_PTR(self->parent);
+    if (self->handler != mp_const_none) {
+        parent->mp_irq_flags = tls_get_gpio_irq_status(parent->id);
+        if (self->ishard == false) {
+            mp_sched_schedule(self->handler, parent);
+        } else { // Hard blib
+            mp_sched_lock();
+            // When executing code within a handler we must lock the GC to prevent
+            // any memory allocations.  We must also catch any exceptions.
+            gc_lock();
+            // save stack top and set temporary value to pass the stack check
+            char *saved_stack_top = MP_STATE_THREAD(stack_top);
+            MP_STATE_THREAD(stack_top) = (void *)&saved_stack_top + 1024; // kind of arbitrary
+            nlr_buf_t nlr;
+            if (nlr_push(&nlr) == 0) {
+                mp_call_function_1(self->handler, MP_OBJ_FROM_PTR(parent));
+                nlr_pop();
+            } else {
+                // Uncaught exception; disable the callback so it doesn't run again.
+                self->handler = mp_const_none;
+                tls_gpio_isr_register(parent->id, 0, 0);
+                tls_gpio_irq_disable(parent->id);
+                mp_printf(MICROPY_ERROR_PRINTER, "Uncaught exception in ExtInt interrupt handler GPIO %u\n", (unsigned int)parent->id);
+                mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+            }
+            // restore the stack top value for stack checks and GC
+            MP_STATE_THREAD(stack_top) = saved_stack_top;
+            gc_unlock();
+            mp_sched_unlock();
         }
-        // restore the stack top value for stack checks and GC
-        MP_STATE_THREAD(stack_top) = saved_stack_top;
-        gc_unlock();
-        mp_sched_unlock();
     }
+    tls_clr_gpio_irq_status(parent->id);
 }
 
 static inline machine_pin_obj_t *mp_obj_to_pin_obj(mp_obj_t pin) {
@@ -440,12 +436,6 @@ static mp_obj_t machine_pin_on(mp_obj_t self_in) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
 
-static void machine_pin_irq_callback(void *p) {
-    machine_pin_obj_t *self = p;
-    machine_pin_isr_handler(self);
-    tls_clr_gpio_irq_status(self->id);
-}
-
 // pin.toggle()
 static mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
     machine_pin_obj_t *self = mp_obj_to_pin_obj(self_in);
@@ -453,6 +443,29 @@ static mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
+
+static mp_uint_t pin_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    self->mp_irq_trigger = new_trigger;
+    tls_gpio_irq_disable(self->id);
+    tls_gpio_irq_enable(self->id, new_trigger - 1);
+    return 0;
+}
+
+static mp_uint_t pin_irq_info(mp_obj_t self_in, mp_uint_t info_type) {
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (info_type == MP_IRQ_INFO_FLAGS) {
+        return self->mp_irq_flags;
+    } else if (info_type == MP_IRQ_INFO_TRIGGERS) {
+        return self->mp_irq_trigger;
+    }
+    return 0;
+}
+
+const mp_irq_methods_t pin_irq_methods = {
+    .trigger = pin_irq_trigger,
+    .info = pin_irq_info,
+};
 
 // pin.irq(trigger_mode)
 static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -466,18 +479,26 @@ static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
+    if (self->mp_irq_obj == NULL) {
+        self->mp_irq_trigger = 0;
+        self->mp_irq_obj = mp_irq_new(&pin_irq_methods, MP_OBJ_FROM_PTR(self));
+        MP_STATE_PORT(machine_pin_irq_object)[self->id] = self->mp_irq_obj;
+    }
+
     if (n_args > 1 || kw_args->used != 0) {
         // configure irq
         mp_obj_t handler = args[ARG_handler].u_obj;
-        uint32_t trigger = args[ARG_trigger].u_int;
-        if (handler == mp_const_none) {
-            handler = MP_OBJ_NULL;
+        if (handler != mp_const_none && !mp_obj_is_callable(handler)) {
+            mp_raise_ValueError(MP_ERROR_TEXT("handler must be None or callable"));
         }
-        self->mp_pin_irq_mode = args[ARG_hard].u_bool;
 
-        MP_STATE_PORT(machine_pin_irq_handler)[self->id] = handler;
-        if (handler != MP_OBJ_NULL) {
-            tls_gpio_isr_register(self->id, machine_pin_irq_callback, self);
+        uint32_t trigger = args[ARG_trigger].u_int;
+        self->mp_irq_obj->ishard = args[ARG_hard].u_bool;
+        self->mp_irq_obj->handler = handler;
+        self->mp_irq_trigger = trigger;
+
+        if (handler != mp_const_none) {
+            tls_gpio_isr_register(self->id, machine_pin_isr_handler, self->mp_irq_obj);
             tls_gpio_irq_enable(self->id, trigger - 1);
         } else {
             tls_gpio_irq_disable(self->id);
@@ -486,9 +507,23 @@ static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     }
 
     // return the irq object
-    return MP_OBJ_FROM_PTR(&machine_pin_irq_object[self->id]);
+    return self->mp_irq_obj;
 }
 static MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_irq_obj, 1, machine_pin_irq);
+
+void machine_pin_irq_init(void) {
+    memset(&MP_STATE_PORT(machine_pin_irq_object[0]), 0, sizeof(MP_STATE_PORT(machine_pin_irq_object)));
+}
+
+// Disable interrupts, clean irq vector table
+void machine_pin_irq_deinit_all(void) {
+    for (int i = 0; i < MP_ARRAY_SIZE(MP_STATE_PORT(machine_pin_irq_object)); i++) {
+        if (MP_STATE_PORT(machine_pin_irq_object[i]) != NULL) {
+            tls_gpio_irq_disable(i);
+            MP_STATE_PORT(machine_pin_irq_object[i]) = NULL;
+        }
+    }
+}
 
 static const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // instance methods
@@ -609,101 +644,4 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &machine_pin_locals_dict
     );
 
-/******************************************************************************/
-// Pin IRQ object
-
-const mp_obj_type_t machine_pin_irq_type;
-
-static const machine_pin_irq_obj_t machine_pin_irq_object[] = {
-    {{&machine_pin_irq_type}, WM_IO_PA_00},
-    {{&machine_pin_irq_type}, WM_IO_PA_01},
-    {{&machine_pin_irq_type}, WM_IO_PA_02},
-    {{&machine_pin_irq_type}, WM_IO_PA_03},
-    {{&machine_pin_irq_type}, WM_IO_PA_04},
-    {{&machine_pin_irq_type}, WM_IO_PA_05},
-
-    {{&machine_pin_irq_type}, WM_IO_PA_06},
-    {{&machine_pin_irq_type}, WM_IO_PA_07},
-    {{&machine_pin_irq_type}, WM_IO_PA_08},
-    {{&machine_pin_irq_type}, WM_IO_PA_09},
-    {{&machine_pin_irq_type}, WM_IO_PA_10},
-    {{&machine_pin_irq_type}, WM_IO_PA_11},
-
-    {{&machine_pin_irq_type}, WM_IO_PA_12},
-    {{&machine_pin_irq_type}, WM_IO_PA_13},
-    {{&machine_pin_irq_type}, WM_IO_PA_14},
-    {{&machine_pin_irq_type}, WM_IO_PA_15},
-
-
-    {{&machine_pin_irq_type}, WM_IO_PB_00},
-    {{&machine_pin_irq_type}, WM_IO_PB_01},
-    {{&machine_pin_irq_type}, WM_IO_PB_02},
-    {{&machine_pin_irq_type}, WM_IO_PB_03},
-    {{&machine_pin_irq_type}, WM_IO_PB_04},
-    {{&machine_pin_irq_type}, WM_IO_PB_05},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_06},
-    {{&machine_pin_irq_type}, WM_IO_PB_07},
-    {{&machine_pin_irq_type}, WM_IO_PB_08},
-    {{&machine_pin_irq_type}, WM_IO_PB_09},
-    {{&machine_pin_irq_type}, WM_IO_PB_10},
-    {{&machine_pin_irq_type}, WM_IO_PB_11},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_12},
-    {{&machine_pin_irq_type}, WM_IO_PB_13},
-    {{&machine_pin_irq_type}, WM_IO_PB_14},
-    {{&machine_pin_irq_type}, WM_IO_PB_15},
-    {{&machine_pin_irq_type}, WM_IO_PB_16},
-    {{&machine_pin_irq_type}, WM_IO_PB_17},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_18},
-    {{&machine_pin_irq_type}, WM_IO_PB_19},
-    {{&machine_pin_irq_type}, WM_IO_PB_20},
-    {{&machine_pin_irq_type}, WM_IO_PB_21},
-    {{&machine_pin_irq_type}, WM_IO_PB_22},
-    {{&machine_pin_irq_type}, WM_IO_PB_23},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_24},
-    {{&machine_pin_irq_type}, WM_IO_PB_25},
-    {{&machine_pin_irq_type}, WM_IO_PB_26},
-    {{&machine_pin_irq_type}, WM_IO_PB_27},
-    {{&machine_pin_irq_type}, WM_IO_PB_28},
-    {{&machine_pin_irq_type}, WM_IO_PB_29},
-
-    {{&machine_pin_irq_type}, WM_IO_PB_30},
-    {{&machine_pin_irq_type}, WM_IO_PB_31},
-};
-
-static mp_obj_t machine_pin_irq_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    machine_pin_irq_obj_t *self = self_in;
-    mp_arg_check_num(n_args, n_kw, 0, 0, false);
-    machine_pin_isr_handler(self);
-    return mp_const_none;
-}
-
-static mp_obj_t machine_pin_irq_trigger(size_t n_args, const mp_obj_t *args) {
-    machine_pin_irq_obj_t *self = args[0];
-
-    if (n_args == 2) {
-        // set trigger
-        tls_gpio_irq_enable(self->id, mp_obj_get_int(args[1]) - 1);
-    }
-    // return irq status
-    return MP_OBJ_NEW_SMALL_INT(tls_get_gpio_irq_status(self->id));
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_irq_trigger_obj, 1, 2, machine_pin_irq_trigger);
-
-static const mp_rom_map_elem_t machine_pin_irq_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_trigger), MP_ROM_PTR(&machine_pin_irq_trigger_obj) },
-};
-static MP_DEFINE_CONST_DICT(machine_pin_irq_locals_dict, machine_pin_irq_locals_dict_table);
-
-MP_DEFINE_CONST_OBJ_TYPE(
-    machine_pin_irq_type,
-    MP_QSTR_GPIO_IRQ,
-    MP_TYPE_FLAG_NONE,
-    call, machine_pin_irq_call,
-    locals_dict, &machine_pin_irq_locals_dict
-    );
-
-MP_REGISTER_ROOT_POINTER(mp_obj_t machine_pin_irq_handler[48]);
+MP_REGISTER_ROOT_POINTER(mp_obj_t machine_pin_irq_object[48]);
