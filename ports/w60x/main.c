@@ -30,8 +30,9 @@
 OS_STK mpy_task_stk[MPY_STACK_LEN];
 
 void uart_init(void);
-void machine_pins_init(void);
 void timer_init0(void);
+void machine_pin_irq_init(void);
+void machine_pin_irq_deinit_all(void);
 void tls_sys_reset(void);
 void machine_pwm_deinit_all(void);
 void check_esc_on_boot(void);
@@ -52,8 +53,8 @@ static void mpy_task(void *param) {
     #endif
     // start ticks_xx timer
     timer_init0();
-
     uart_init();
+    machine_pin_irq_init();
 
     // mp_printf(MP_PYTHON_PRINTER, "Stack base = %p, SP = %p\n", mpy_task_stk, sp);
     // mp_printf(MP_PYTHON_PRINTER, "avail_heap_size = %u\n", tls_mem_get_avail_heapsize());
@@ -77,7 +78,6 @@ soft_reset:
     mp_init();
     readline_init0();
 
-    machine_pins_init();
     // start rtc initial
     struct tm tblock;
     memset(&tblock, 0, sizeof(tblock));
@@ -126,6 +126,7 @@ soft_reset_exit:
     // Deinit devices
     machine_pwm_deinit_all();
     machine_uart_deinit_all();
+    machine_pin_irq_deinit_all();
 
     gc_sweep_all();
 
