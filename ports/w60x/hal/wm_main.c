@@ -14,6 +14,9 @@
 #include <string.h>
 #include "wm_irq.h"
 #include "tls_sys.h"
+#include "FreeRTOS.h"
+#include "rtostimers.h"
+#include "task.h"
 
 #include "wm_regs.h"
 #include "wm_type_def.h"
@@ -45,6 +48,8 @@
 #include "wm_gpio_afsel.h"
 #include "wm_pmu.h"
 #include "bootloader_helper.h"
+#include "mpthreadport.h"
+
 
 extern void tls_spifls_cs_switch(enum tls_io_name flashcs, int openflag);
 extern void tls_spifls_di_switch(enum tls_io_name flashdi, int openflag);
@@ -314,6 +319,9 @@ void task_start(void *data) {
         enable = TRUE;
         tls_param_set(TLS_PARAM_ID_PSM, &enable, TRUE);
     }
+
+    // Set the timer priority
+    vTaskPrioritySet(xTimerGetTimerDaemonTaskHandle(), MPY_TIMER_PRIO);
 
     UserMain();
     tls_sys_auto_mode_run();
