@@ -94,6 +94,15 @@ Currently available selections are:
 - WEMOS_W600
 - WIS600
 
+Required changes of the SDK
+---------------------------
+
+The option
+
+#define INCLUDE_xTimerGetTimerDaemonTaskHandle  1
+
+has to be set in FreeRTOS.h. Otherwise the firmware build fails.
+
 Makefile build options
 ----------------------
 
@@ -139,7 +148,6 @@ FROZEN_MANIFEST ?= manifest.py
 
 
 All options can be set in the command line or by changing Makefile.
-
 
 Flashing the Firmware
 -----------------------
