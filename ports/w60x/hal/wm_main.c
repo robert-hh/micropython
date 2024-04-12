@@ -124,7 +124,6 @@ extern void UserMain(void);
 extern void tls_fls_layout_init(void);
 extern void Debug_UartInit(void);
 
-
 void task_start(void *data);
 
 void tls_os_timer_init(void) {
@@ -195,7 +194,6 @@ int main(void) {
     /* before use malloc() function, must create mutex used by c_lib */
     tls_os_sem_create(&libc_sem, 1);
 
-
     {
         tls_os_task_create(NULL, NULL,
             task_start,
@@ -206,10 +204,8 @@ int main(void) {
             0);
     }
 
-
     /* initial os ticker */
     tls_os_timer_init();
-
 
     tls_os_start_scheduler();
 
