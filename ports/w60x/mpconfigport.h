@@ -133,16 +133,14 @@
         mp_handle_pending(true); \
         MICROPY_PY_SOCKET_EVENTS_HANDLER \
         MP_THREAD_GIL_EXIT(); \
-        tls_os_time_delay(1); \
         MP_THREAD_GIL_ENTER(); \
     } while (0);
 #else
 #define MICROPY_EVENT_POLL_HOOK \
     do { \
         extern void mp_handle_pending(bool raise_exc); \
-        MICROPY_PY_SOCKET_EVENTS_HANDLER \
         mp_handle_pending(true); \
-        tls_os_time_delay(1); \
+        MICROPY_PY_SOCKET_EVENTS_HANDLER \
     } while (0);
 #endif
 
