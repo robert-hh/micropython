@@ -223,10 +223,15 @@ mp_uint_t mp_thread_create(void *(*entry)(void *), void *arg, size_t *stack_size
 
 void mp_thread_finish(void) {
     mp_thread_mutex_lock(&thread_mutex, 1);
-    for (mp_thread_t *th = thread; th != NULL; th = th->next) {
+    for (mp_thread_t *th = thread, *prev = NULL; th != NULL; prev = th, th = th->next) {
         if (th->id == xTaskGetCurrentTaskHandle()) {
-            m_free(th->stack);
-            th->stack = NULL;
+            // Remove the thread entry from the thread list
+            // allowing it to get it's memory freed.
+            if (prev == NULL) {  // At the head of the list?
+                thread = th->next;
+            } else {
+                prev->next = th->next;
+            }
             break;
         }
     }
