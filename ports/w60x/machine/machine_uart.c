@@ -33,6 +33,9 @@ typedef struct _machine_uart_obj_t {
     tls_uart_options_t uartcfg;
     uint16_t mp_irq_trigger;   // user IRQ trigger mask
     uint16_t mp_irq_flags;     // user IRQ active IRQ flags
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    uint32_t mp_irq_timestamp;
+    #endif
     mp_irq_obj_t *mp_irq_obj;  // user IRQ object
 } machine_uart_obj_t;
 
@@ -190,6 +193,9 @@ static s16 mp_irq_callback_1(u16 irq_flags) {
     machine_uart_obj_t *self = uart_list[1];
     if (self && self->mp_irq_obj && (self->mp_irq_trigger & irq_flags)) {
         self->mp_irq_flags = irq_flags;
+        #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+        self->mp_irq_timestamp = mp_hal_ticks_us();
+        #endif
         mp_irq_handler(self->mp_irq_obj);
     }
     return 0;
@@ -199,10 +205,20 @@ static s16 mp_irq_callback_2(u16 irq_flags) {
     machine_uart_obj_t *self = uart_list[2];
     if (self && self->mp_irq_obj && (self->mp_irq_trigger & irq_flags)) {
         self->mp_irq_flags = irq_flags;
+        #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+        self->mp_irq_timestamp = mp_hal_ticks_us();
+        #endif
         mp_irq_handler(self->mp_irq_obj);
     }
     return 0;
 }
+
+#if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+static mp_uint_t uart_irq_timestamp(mp_obj_t self_in) {
+    machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    return self->mp_irq_timestamp;
+}
+#endif
 
 static mp_uint_t uart_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {
     machine_uart_obj_t *self = MP_OBJ_TO_PTR(self_in);
@@ -223,6 +239,9 @@ static mp_uint_t uart_irq_info(mp_obj_t self_in, mp_uint_t info_type) {
 const mp_irq_methods_t uart_irq_methods = {
     .trigger = uart_irq_trigger,
     .info = uart_irq_info,
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    .timestamp = uart_irq_timestamp,
+    #endif
 };
 
 static mp_irq_obj_t *mp_machine_uart_irq(machine_uart_obj_t *self, bool any_args, mp_arg_val_t *args) {
