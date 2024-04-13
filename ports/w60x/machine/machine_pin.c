@@ -34,6 +34,7 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "py/gc.h"
+#include "py/smallint.h"
 #include "extmod/virtpin.h"
 #include "shared/runtime/mpirq.h"
 
@@ -66,10 +67,16 @@ typedef struct _machine_pin_obj_t {
     enum tls_io_name id;
     enum tls_gpio_attr gpio_attr;
     enum mp_pin_mode mode;
-    uint16_t mp_irq_trigger;
-    uint16_t mp_irq_flags;
-    mp_irq_obj_t *mp_irq_obj;  // user IRQ object
 } machine_pin_obj_t;
+
+typedef struct _machine_pin_irq_obj_t {
+    mp_irq_obj_t base;
+    uint16_t mp_irq_flags;
+    uint16_t mp_irq_trigger;
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    uint32_t mp_irq_timestamp;
+    #endif
+} machine_pin_irq_obj_t;
 
 static machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_00},
@@ -206,12 +213,16 @@ static char *pin_mode_str[] = {"OUT", "IN", "", "OPEN_DRAIN"};
 // Do not call mp_irq_handler, since it fails for ishard = True
 // with a stack check fault.
 static void machine_pin_isr_handler(void *arg) {
-    mp_irq_obj_t *self = arg;
-    machine_pin_obj_t *parent = MP_OBJ_TO_PTR(self->parent);
-    if (self->handler != mp_const_none) {
-        parent->mp_irq_flags = tls_get_gpio_irq_status(parent->id);
-        if (self->ishard == false) {
-            mp_sched_schedule(self->handler, parent);
+    machine_pin_irq_obj_t *self = arg;
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    self->mp_irq_timestamp = mp_hal_ticks_us();
+    #endif
+    machine_pin_obj_t *parent = MP_OBJ_TO_PTR(self->base.parent);
+    mp_obj_t handler = self->base.handler;
+    if (handler != mp_const_none) {
+        self->mp_irq_flags = tls_get_gpio_irq_status(parent->id);
+        if (self->base.ishard == false) {
+            mp_sched_schedule(handler, parent);
         } else { // Hard blib
             mp_sched_lock();
             // When executing code within a handler we must lock the GC to prevent
@@ -222,11 +233,11 @@ static void machine_pin_isr_handler(void *arg) {
             MP_STATE_THREAD(stack_top) = (void *)&saved_stack_top + 1024; // kind of arbitrary
             nlr_buf_t nlr;
             if (nlr_push(&nlr) == 0) {
-                mp_call_function_1(self->handler, MP_OBJ_FROM_PTR(parent));
+                mp_call_function_1(handler, MP_OBJ_FROM_PTR(parent));
                 nlr_pop();
             } else {
                 // Uncaught exception; disable the callback so it doesn't run again.
-                self->handler = mp_const_none;
+                self->base.handler = mp_const_none;
                 tls_gpio_isr_register(parent->id, 0, 0);
                 tls_gpio_irq_disable(parent->id);
                 mp_printf(MICROPY_ERROR_PRINTER, "Uncaught exception in ExtInt interrupt handler GPIO %u\n", (unsigned int)parent->id);
@@ -444,9 +455,18 @@ static mp_obj_t machine_pin_toggle(mp_obj_t self_in) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
 
+#if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+static mp_uint_t pin_irq_timestamp(mp_obj_t self_in) {
+    machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
+    return (irq->mp_irq_timestamp & (MICROPY_PY_TIME_TICKS_PERIOD - 1));
+}
+#endif
+
 static mp_uint_t pin_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {
     machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    self->mp_irq_trigger = new_trigger;
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
+    irq->mp_irq_trigger = new_trigger;
     tls_gpio_irq_disable(self->id);
     tls_gpio_irq_enable(self->id, new_trigger - 1);
     return 0;
@@ -454,10 +474,11 @@ static mp_uint_t pin_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {
 
 static mp_uint_t pin_irq_info(mp_obj_t self_in, mp_uint_t info_type) {
     machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
     if (info_type == MP_IRQ_INFO_FLAGS) {
-        return self->mp_irq_flags;
+        return irq->mp_irq_flags;
     } else if (info_type == MP_IRQ_INFO_TRIGGERS) {
-        return self->mp_irq_trigger;
+        return irq->mp_irq_trigger;
     }
     return 0;
 }
@@ -465,6 +486,9 @@ static mp_uint_t pin_irq_info(mp_obj_t self_in, mp_uint_t info_type) {
 const mp_irq_methods_t pin_irq_methods = {
     .trigger = pin_irq_trigger,
     .info = pin_irq_info,
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    .timestamp = pin_irq_timestamp,
+    #endif
 };
 
 // pin.irq(trigger_mode)
@@ -479,10 +503,16 @@ static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    if (self->mp_irq_obj == NULL) {
-        self->mp_irq_trigger = 0;
-        self->mp_irq_obj = mp_irq_new(&pin_irq_methods, MP_OBJ_FROM_PTR(self));
-        MP_STATE_PORT(machine_pin_irq_object)[self->id] = self->mp_irq_obj;
+    machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
+    if (irq == NULL) {
+        irq = m_new_obj(machine_pin_irq_obj_t);
+        irq->base.base.type = &mp_irq_type;
+        irq->base.methods = (mp_irq_methods_t *)&pin_irq_methods;
+        irq->base.parent = MP_OBJ_FROM_PTR(self);
+        irq->base.handler = mp_const_none;
+        irq->base.ishard = false;
+        irq->mp_irq_trigger = 0;
+        MP_STATE_PORT(machine_pin_irq_object[self->id]) = irq;
     }
 
     if (n_args > 1 || kw_args->used != 0) {
@@ -493,12 +523,12 @@ static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
         }
 
         uint32_t trigger = args[ARG_trigger].u_int;
-        self->mp_irq_obj->ishard = args[ARG_hard].u_bool;
-        self->mp_irq_obj->handler = handler;
-        self->mp_irq_trigger = trigger;
+        irq->base.ishard = args[ARG_hard].u_bool;
+        irq->base.handler = handler;
+        irq->mp_irq_trigger = trigger;
 
         if (handler != mp_const_none) {
-            tls_gpio_isr_register(self->id, machine_pin_isr_handler, self->mp_irq_obj);
+            tls_gpio_isr_register(self->id, machine_pin_isr_handler, irq);
             tls_gpio_irq_enable(self->id, trigger - 1);
         } else {
             tls_gpio_irq_disable(self->id);
@@ -507,7 +537,7 @@ static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     }
 
     // return the irq object
-    return self->mp_irq_obj;
+    return MP_OBJ_FROM_PTR(irq);
 }
 static MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_irq_obj, 1, machine_pin_irq);
 
@@ -644,4 +674,4 @@ MP_DEFINE_CONST_OBJ_TYPE(
     locals_dict, &machine_pin_locals_dict
     );
 
-MP_REGISTER_ROOT_POINTER(mp_obj_t machine_pin_irq_object[48]);
+MP_REGISTER_ROOT_POINTER(void *machine_pin_irq_object[48]);
