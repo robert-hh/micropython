@@ -176,8 +176,10 @@ MPY_SRC_C += \
 	hal/mpthreadport.c \
 	hal/uart.c \
 	hal/w600_flash.c \
+	hal/w600_wdg_irq.c \
 	hal/wm_fwup.c \
 	hal/wm_hostspi.c \
+	hal/wm_gpio.c \
 	hal/wm_main.c \
 	hal/wm_uart.c \
 	machine/machine_adc.c \
