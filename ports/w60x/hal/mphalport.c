@@ -48,23 +48,20 @@
 #include "mphalport.h"
 
 #define CNT_START_VALUE (0xffffffff)
-static uint64_t ticks_total = 0;
+volatile uint64_t wdg_ticks_total;
+uint32_t wdg_ticks_reload_value = CNT_START_VALUE;
 static uint32_t ticks_per_us = 40;
-static uint32_t ticks_reload_value = CNT_START_VALUE;
 
-void WDG_IRQHandler(void *data) {
-    tls_reg_write32(HR_WDG_INT_CLR, 0x01);
-    ticks_total += ticks_reload_value;
-}
+extern uint64_t get_wdg_counter_value(void);
 
 void timer_init0() {
 
     tls_sys_clk sysclk;
     tls_sys_clk_get(&sysclk);
     ticks_per_us = sysclk.apbclk;
-    ticks_total = 0;
+    wdg_ticks_total = 0;
 
-    tls_reg_write32(HR_WDG_LOAD_VALUE, CNT_START_VALUE);
+    tls_reg_write32(HR_WDG_LOAD_VALUE, wdg_ticks_reload_value);
     tls_reg_write32(HR_WDG_CTRL, 0x1);              /* enable irq */
     tls_reg_write32(HR_WDG_INT_CLR, 0x01);
 
@@ -79,29 +76,52 @@ void tls_sys_reset(void) {
 }
 
 void mp_hal_wdg_enable(uint32_t usec) {
-    // Adjust the ticks_total counter
-    ticks_total += ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
+    // Adjust the wdg_ticks_total counter
+    wdg_ticks_total += wdg_ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
     // Load the new value
-    ticks_reload_value = ticks_per_us * usec;
+    wdg_ticks_reload_value = ticks_per_us * usec;
     // Enable the Watchdog
     tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551); // For changing the timeout
-    tls_reg_write32(HR_WDG_LOAD_VALUE, ticks_reload_value);
+    tls_reg_write32(HR_WDG_LOAD_VALUE, wdg_ticks_reload_value);
     tls_reg_write32(HR_WDG_INT_CLR, 0x01);
     tls_reg_write32(HR_WDG_CTRL, 0x3);      /* enable irq & reset */
     tls_reg_write32(HR_WDG_LOCK, 1);
 }
 
 void mp_hal_wdg_feed(void) {
-    // Adjust the ticks_total counter
-    ticks_total += ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
+    // Adjust the wdg_ticks_total counter
+    wdg_ticks_total += wdg_ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
     // Reset the watchdog
     tls_reg_write32(HR_WDG_LOCK, 0x1ACCE551);
     tls_reg_write32(HR_WDG_INT_CLR, 0x01);
     tls_reg_write32(HR_WDG_LOCK, 1);
 }
 
+// simplified division by the constant 40. Adapted by @rkompass,
+// according to Henry S. Warren JR.: "Hackers Delight" 2nd Ed., ISBN-13: 978-0-321-84268-8
+// Even if it does not look simple, the algorithm takes a constant time of ~300 ns
+// The 64 bit straight division a/40 in contrast takes 2-11 µs.
+
 uint64_t mp_hal_ticks_us64(void) {
-    return (ticks_total + (ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE))) / ticks_per_us;
+    uint64_t t = get_wdg_counter_value();
+    uint64_t t0 = get_wdg_counter_value();
+    // If the t > t0, a counter roll-over may have happened
+    // during reading of t, which is the too large by wdg_ticks_reload_value.
+    if (t > t0) {
+        t -= wdg_ticks_reload_value;
+    }
+    t >>= 3;  // divide by 8
+    uint64_t x = t & 0xffffffffull;    // lower 32 bits
+    uint64_t y = t >> 32;   // upper 32 bits
+    uint64_t xc = x * 0xccccccccull;
+    uint64_t yc = y * 0x33333333ull;
+    uint64_t r = (xc + x) >> 32;
+    r += xc + y;
+    r >>= 2;
+    r += yc;
+    r >>= 32;
+    r += yc;
+    return r;
 }
 
 uint32_t mp_hal_ticks_ms(void) {
