@@ -36,11 +36,9 @@
 #include "py/gc.h"
 #include "py/smallint.h"
 #include "extmod/virtpin.h"
-#include "shared/runtime/mpirq.h"
-
-#include "mphalport.h"
 #include "extmod/modmachine.h"
-#include "mpthreadport.h"
+#include "shared/runtime/mpirq.h"
+#include "machine_pin.h"
 
 enum mp_pin_mode {
     GPIO_MODE_INPUT = WM_GPIO_DIR_INPUT,
@@ -68,15 +66,6 @@ typedef struct _machine_pin_obj_t {
     enum tls_gpio_attr gpio_attr;
     enum mp_pin_mode mode;
 } machine_pin_obj_t;
-
-typedef struct _machine_pin_irq_obj_t {
-    mp_irq_obj_t base;
-    uint16_t mp_irq_flags;
-    uint16_t mp_irq_trigger;
-    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
-    uint32_t mp_irq_timestamp;
-    #endif
-} machine_pin_irq_obj_t;
 
 static machine_pin_obj_t machine_pin_obj[] = {
     {{&machine_pin_type}, WM_IO_PA_00},
@@ -214,9 +203,6 @@ static char *pin_mode_str[] = {"OUT", "IN", "", "OPEN_DRAIN"};
 // with a stack check fault.
 static void machine_pin_isr_handler(void *arg) {
     machine_pin_irq_obj_t *self = arg;
-    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
-    self->mp_irq_timestamp = mp_hal_ticks_us();
-    #endif
     machine_pin_obj_t *parent = MP_OBJ_TO_PTR(self->base.parent);
     mp_obj_t handler = self->base.handler;
     if (handler != mp_const_none) {
@@ -459,7 +445,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_toggle_obj, machine_pin_toggle);
 static mp_uint_t pin_irq_timestamp(mp_obj_t self_in) {
     machine_pin_obj_t *self = MP_OBJ_TO_PTR(self_in);
     machine_pin_irq_obj_t *irq = MP_STATE_PORT(machine_pin_irq_object[self->id]);
-    return (irq->mp_irq_timestamp & (MICROPY_PY_TIME_TICKS_PERIOD - 1));
+    return irq->mp_irq_timestamp & (MICROPY_PY_TIME_TICKS_PERIOD - 1);
 }
 #endif
 
