@@ -12,6 +12,12 @@
 #include "wm_irq.h"
 #include "wm_osal.h"
 #include "tls_common.h"
+#include "py/runtime.h"
+#if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+#include "py/mphal.h"
+#include "shared/runtime/mpirq.h"
+#include "machine_pin.h"
+#endif
 
 struct gpio_irq_context {
     tls_gpio_irq_callback callback;
@@ -21,60 +27,38 @@ struct gpio_irq_context {
 static struct gpio_irq_context gpio_context[WM_IO_PB_30 - WM_IO_PA_00 + 1] = {{0, 0}};
 
 void GPIOA_IRQHandler(void) {
-    u32 reg = tls_reg_read32(HR_GPIO_MIS) & 0xffff;
-    u8 i = 0;
-    if (reg & 0xff00) {
-        reg >>= 8;
-        i += 8;
-    }
-    if (reg & 0x00f0) {
-        reg >>= 4;
-        i += 4;
-    }
-    if (reg & 0x000c) {
-        reg >>= 2;
-        i += 2;
-    }
-    if (reg & 0x0002) {
-        reg >>= 1;
-        i += 1;
-    }
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    u32 timestamp = mp_hal_ticks_us();
+    #endif
+    u32 reg = tls_reg_read32(HR_GPIO_MIS);
 
-    if (reg && NULL != gpio_context[i].callback) {
-        gpio_context[i].callback(gpio_context[i].arg);
+    for (u8 i = (reg & 0xff) ? 0 : 8; i <= WM_IO_PA_15 && reg != 0; i++) {
+        if (reg & BIT(i)) {
+            #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+            ((machine_pin_irq_obj_t *)(gpio_context[i].arg))->mp_irq_timestamp = timestamp;
+            #endif
+            gpio_context[i].callback(gpio_context[i].arg);
+            reg &= ~BIT(i);
+        }
     }
-
     return;
 }
 
 void GPIOB_IRQHandler(void) {
+    #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+    u32 timestamp = mp_hal_ticks_us();
+    #endif
     u32 reg = tls_reg_read32(HR_GPIO_MIS + TLS_IO_AB_OFFSET);
-    u8 i = WM_IO_PB_00;
-    if (reg & 0xffff0000) {
-        reg >>= 16;
-        i += 16;
-    }
-    if (reg & 0xff00) {
-        reg >>= 8;
-        i += 8;
-    }
-    if (reg & 0x00f0) {
-        reg >>= 4;
-        i += 4;
-    }
-    if (reg & 0x000c) {
-        reg >>= 2;
-        i += 2;
-    }
-    if (reg & 0x0002) {
-        reg >>= 1;
-        i += 1;
-    }
 
-    if (reg && NULL != gpio_context[i].callback) {
-        gpio_context[i].callback(gpio_context[i].arg);
+    for (u8 i = (reg & 0x1ff) ? WM_IO_PB_00 : 9 + WM_IO_PB_00; i <= WM_IO_PB_31 && reg != 0; i++) {
+        if (reg & BIT(i - WM_IO_PB_00)) {
+            #if MICROPY_PY_MACHINE_IRQ_TIMESTAMP
+            ((machine_pin_irq_obj_t *)(gpio_context[i].arg))->mp_irq_timestamp = timestamp;
+            #endif
+            gpio_context[i].callback(gpio_context[i].arg);
+            reg &= ~BIT(i - WM_IO_PB_00);
+        }
     }
-
     return;
 }
 
