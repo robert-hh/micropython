@@ -125,7 +125,7 @@ SECBOOT ?= 0
 
 CODESIZE ?= 0xc0000
 
-    The amount of flash reserved for the MicroPyhton code. Lowering
+    The amount of flash reserved for the MicroPython code. Lowering
     it increases the size of the flash file system, and the opposite.
 
 MICROPY_USE_FATFS ?= 0
