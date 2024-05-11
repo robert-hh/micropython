@@ -268,10 +268,12 @@ mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
 
     machine_spi_obj_t *self = mp_obj_malloc(machine_spi_obj_t, &machine_spi_type);
 
-    if (mp_obj_get_int(args[0]) == 1) {
+    if (mp_obj_get_int(args[0]) == 0) {
+        self->spi_type = 0;
+    } else if (mp_obj_get_int(args[0]) == 1) {
         self->spi_type = 1;
     } else {
-        self->spi_type = 0;
+        mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("SPI(%d) does not exist"), mp_obj_get_int(args[0]));
     }
 
     mp_map_t kw_args;
