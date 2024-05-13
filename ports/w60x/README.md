@@ -146,6 +146,13 @@ FROZEN_MANIFEST ?= manifest.py
 
     Specifies the name of the manifest file.
 
+MACHINE_HSPI ?= 0
+
+    Controls whether the HSPI mode at SPI(1) is available. This HSPI
+    works as slave device only, and it's use is not documented.
+    So it's disabled by default.
+    When both HSPI and DMA are not used for SPI, the MicroPython heap
+    space is increased by 16 kByte.
 
 All options can be set in the command line or by changing Makefile.
 

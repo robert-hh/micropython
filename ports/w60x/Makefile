@@ -37,13 +37,15 @@ GIT_SUBMODULES = lib/mbedtls
 
 QSTR_DEFS = qstrdefsport.h
 
+# Firmware configuration options.
+#
 MICROPY_USE_FATFS ?= 0
 MICROPY_USE_LITTLEFS = 1
-
 MICROPY_PY_THREAD ?= 0
+MACHINE_HSPI ?= 0
+CODESIZE ?= 0xc0000  # 768 k reserved for code
 
 MICROPY_PY_SSL ?= 1
-
 ifeq ($(MICROPY_PY_SSL),1)
 MICROPY_SSL_MBEDTLS = 1
 else
@@ -51,9 +53,6 @@ MICROPY_SSL_MBEDTLS = 0
 endif
 
 SECBOOT ?= 1
-
-CODESIZE ?= 0xc0000  # 768 k reserved for code
-
 ifeq ($(SECBOOT),1)
 CODEADDRESS = 0x8010100
 else
@@ -286,8 +285,15 @@ ifdef MICROPY_PY_THREAD
 CFLAGS += -DMICROPY_PY_THREAD=$(MICROPY_PY_THREAD)
 endif
 
-CFLAGS += -D__HEAP_SIZE=0x25000
 CFLAGS += -Wno-unused-variable -Wno-unused-function -g
+CFLAGS += -DMICROPY_MACHINE_HSPI=$(MACHINE_HSPI)
+ifeq ($(MACHINE_HSPI),1)
+	CFLAGS += -D__HEAP_SIZE=0x25000
+	HEAPLIMIT = 0x20038000
+else
+	CFLAGS += -D__HEAP_SIZE=0x27000
+	HEAPLIMIT = 0x2003A000
+endif
 ifeq ($(DEBUG),1)
 CFLAGS += -Og
 else
@@ -327,6 +333,7 @@ $(GOAL).elf: $(OBJ_FILES) $(LIB_SRC)
 	$(CC) -o $(OUTPUT_PATH)/$(GOAL).elf $(OBJ_FILES) $(LDFLAGS) \
 		-Wl,--gc-sections -Wl,--defsym=_codesize=$(CODESIZE) \
 		-Wl,--defsym=_codeaddress=$(CODEADDRESS) \
+		-Wl,--defsym=HEAPLIMIT=$(HEAPLIMIT) \
 		-Wl,--print-memory-usage \
 		-Wl,--start-group $(LIB_SRC) -Wl,--end-group \
 		-Wl,-Map,$(OUTPUT_PATH)/$(GOAL).map -Wl,--warn-common
