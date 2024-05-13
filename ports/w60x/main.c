@@ -27,6 +27,8 @@
 
 #include "mpthreadport.h"
 
+#define HEAP_RESERVED_SPACE (20 * 1024)
+
 OS_STK mpy_task_stk[MPY_STACK_LEN];
 
 void uart_init(void);
@@ -60,9 +62,9 @@ static void mpy_task(void *param) {
     // mp_printf(MP_PYTHON_PRINTER, "avail_heap_size = %u\n", tls_mem_get_avail_heapsize());
     // Allocate the uPy heap using malloc and get the largest available region
     #if MICROPY_SSL_MBEDTLS
-    u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 8) / 10; // 80%
+    u32 mp_task_heap_size = tls_mem_get_avail_heapsize() - HEAP_RESERVED_SPACE;
     #else
-    u32 mp_task_heap_size = (tls_mem_get_avail_heapsize() * 8) / 10; // 80%
+    u32 mp_task_heap_size = tls_mem_get_avail_heapsize() - HEAP_RESERVED_SPACE;
     #endif
     void *mp_task_heap = tls_mem_alloc(mp_task_heap_size);
 
