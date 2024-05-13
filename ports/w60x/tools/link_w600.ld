@@ -153,7 +153,7 @@ SECTIONS
 	PROVIDE(__stack = __StackTop);
 
 	ASSERT(__StackTop <= 0x20028000, "stack address error")
-	ASSERT(__HeapLimit <= 0x20038000, "heap size error")
+	ASSERT(__HeapLimit <= HEAPLIMIT, "heap size error")
 }
 
 _ram_end = ORIGIN(RAM) + LENGTH(RAM);
