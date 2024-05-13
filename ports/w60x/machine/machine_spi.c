@@ -159,24 +159,25 @@ static void machine_spi_deinit(mp_obj_base_t *self_in) {
 }
 
 static void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8_t *src, uint8_t *dest) {
-    int ret = TLS_SPI_STATUS_OK;
     machine_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     if (0 == self->spi_type) {
         if (src && dest && len) {
-            ret = w600_spi_write_read((u8 *)src, dest, len);
+            w600_spi_write_read((u8 *)src, dest, len);
         } else if (src && len) {
-            ret = w600_spi_write((u8 *)src, len);
+            w600_spi_write((u8 *)src, len);
         } else if (dest && len) {
-            ret = w600_spi_read(dest, len);
+            w600_spi_read(dest, len);
         }
+    #if MICROPY_MACHINE_HSPI
     } else {
         machine_spi_rx_len = len;
         machine_spi_rx_buf = dest;
-        ret = tls_hspi_tx_data((char *)src, len);
+        int ret = tls_hspi_tx_data((char *)src, len);
         if (len == ret) {
             /* do nothing */
         }
+    #endif
     }
 }
 
@@ -193,7 +194,6 @@ static void machine_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
 
 static void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     machine_spi_obj_t *self = (machine_spi_obj_t *)self_in;
-    int ret;
     enum { ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_sck, ARG_mosi, ARG_miso, ARG_cs };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = DEFAULT_SPI_BAUDRATE} },
@@ -246,20 +246,22 @@ static void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
         }
 
         int mode = ((self->polarity << 1) | self->phase) & 0x03;
-        ret = tls_spi_setup(mode, TLS_SPI_CS_LOW, self->baudrate);
+        tls_spi_setup(mode, TLS_SPI_CS_LOW, self->baudrate);
+    #if MICROPY_MACHINE_HSPI
     } else {
         if (WM_IO_PB_16 == self->sck) {
             wm_hspi_gpio_config(0);
         } else if (WM_IO_PB_08 == self->sck) {
             wm_hspi_gpio_config(1);
         }
-        ret = tls_slave_spi_init();
+        int ret = tls_slave_spi_init();
         if (0 == ret) {
             tls_set_high_speed_interface_type(HSPI_INTERFACE_SPI);
             tls_set_hspi_user_mode(1);
             tls_hspi_rx_cmd_callback_register(machine_spi_rx_cmd_callback);
             tls_hspi_rx_data_callback_register(machine_spi_rx_data_callback);
         }
+    #endif
     }
 }
 
@@ -270,8 +272,10 @@ mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
 
     if (mp_obj_get_int(args[0]) == 0) {
         self->spi_type = 0;
+    #if MICROPY_MACHINE_HSPI
     } else if (mp_obj_get_int(args[0]) == 1) {
         self->spi_type = 1;
+    #endif
     } else {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("SPI(%d) does not exist"), mp_obj_get_int(args[0]));
     }
