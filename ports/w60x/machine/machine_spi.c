@@ -92,6 +92,7 @@ static void w600_spi_set_endian(u8 endian) {
 }
 
 static u8 w600_spi_write(u8 *data, u32 len) {
+    #if 0
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -108,11 +109,15 @@ static u8 w600_spi_write(u8 *data, u32 len) {
             cnt += SPI_DMA_BUF_MAX_SIZE;
         }
     }
-
+    
     return tls_spi_write(data + cnt, remain);
+    #else
+    return tls_spi_write(data, len);
+    #endif
 }
 
 static u8 w600_spi_read(u8 *data, u32 len) {
+    #if 0
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -131,9 +136,13 @@ static u8 w600_spi_read(u8 *data, u32 len) {
     }
 
     return tls_spi_read(data + cnt, remain);
+    #else
+    return tls_spi_read(data, len);
+    #endif
 }
 
 static u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len) {
+    #if 0
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -152,6 +161,9 @@ static u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len) {
     }
 
     return tls_spi_write_readinto(tx_data + cnt, rx_data + cnt, remain);
+    #else
+    return tls_spi_write_readinto(tx_data, rx_data, len);
+    #endif
 }
 
 static void machine_spi_deinit(mp_obj_base_t *self_in) {
