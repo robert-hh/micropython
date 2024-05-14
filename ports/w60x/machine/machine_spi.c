@@ -46,13 +46,17 @@
 #define DEFAULT_SPI_BITS        (8)
 #define DEFAULT_SPI_FIRSTBIT    (MICROPY_PY_MACHINE_SPI_MSB)
 
+// Block SPI_DMA_TRANSFER since it is not working as expected.
+// SPI_DMA_TRANSFER requires tranfer slicing to be enabled.
+#define ENABLE_SPI_DMA_TRANSFER (0)
+
 typedef struct _machine_spi_obj_t {
     mp_obj_base_t base;
 
     uint32_t baudrate;
     uint8_t polarity;
     uint8_t phase;
-    uint8_t bits;
+    int8_t bits;
     uint8_t firstbit;
     int8_t sck;
     int8_t mosi;
@@ -92,7 +96,7 @@ static void w600_spi_set_endian(u8 endian) {
 }
 
 static u8 w600_spi_write(u8 *data, u32 len) {
-    #if 0
+    #if ENABLE_SPI_DMA_TRANSFER
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -117,7 +121,7 @@ static u8 w600_spi_write(u8 *data, u32 len) {
 }
 
 static u8 w600_spi_read(u8 *data, u32 len) {
-    #if 0
+    #if ENABLE_SPI_DMA_TRANSFER
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -142,7 +146,7 @@ static u8 w600_spi_read(u8 *data, u32 len) {
 }
 
 static u8 w600_spi_write_read(u8 *tx_data, u8 *rx_data, u32 len) {
-    #if 0
+    #if ENABLE_SPI_DMA_TRANSFER
     u32 cnt;
     u32 repeat;
     u32 remain;
@@ -198,7 +202,7 @@ static void machine_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8
 
 static void machine_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    mp_printf(print, "SPI(id=%u, baudrate=%u, polarity=%u, phase=%u, bits=%u, firstbit=%u, sck=%d, mosi=%d, miso=%d, cs=%d)",
+    mp_printf(print, "SPI(id=%u, baudrate=%u, polarity=%u, phase=%u, bits=%d, firstbit=%u, sck=%d, mosi=%d, miso=%d, cs=%d)",
         self->spi_type, self->baudrate, self->polarity,
         self->phase, self->bits, self->firstbit,
         self->sck, self->mosi, self->miso, self->cs);
@@ -208,11 +212,11 @@ static void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
     machine_spi_obj_t *self = (machine_spi_obj_t *)self_in;
     enum { ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_sck, ARG_mosi, ARG_miso, ARG_cs };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = DEFAULT_SPI_BAUDRATE} },
-        { MP_QSTR_polarity, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_SPI_POLARITY} },
-        { MP_QSTR_phase,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_SPI_PHASE} },
-        { MP_QSTR_bits,     MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_SPI_BITS} },
-        { MP_QSTR_firstbit, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_SPI_FIRSTBIT} },
+        { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = -1} },
+        { MP_QSTR_polarity, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
+        { MP_QSTR_phase,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
+        { MP_QSTR_bits,     MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -2} },
+        { MP_QSTR_firstbit, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
         { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_mosi,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_miso,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
@@ -223,15 +227,33 @@ static void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args),
         allowed_args, args);
 
-    self->baudrate = args[ARG_baudrate].u_int;
-    self->polarity = args[ARG_polarity].u_int;
-    self->phase = args[ARG_phase].u_int;
-    self->bits = args[ARG_bits].u_int;
-    self->firstbit = args[ARG_firstbit].u_int;
-    self->sck = args[ARG_sck].u_obj == MP_OBJ_NULL ? WM_IO_PB_16 : machine_pin_get_id(args[ARG_sck].u_obj);
-    self->mosi = args[ARG_mosi].u_obj == MP_OBJ_NULL ? WM_IO_PB_18 : machine_pin_get_id(args[ARG_mosi].u_obj);
-    self->miso = args[ARG_miso].u_obj == MP_OBJ_NULL ? WM_IO_PB_17 : machine_pin_get_id(args[ARG_miso].u_obj);
-    self->cs = args[ARG_cs].u_obj == MP_OBJ_NULL ? 0 : machine_pin_get_id(args[ARG_cs].u_obj);
+    if (args[ARG_baudrate].u_int != -1) {
+        self->baudrate = args[ARG_baudrate].u_int;
+    }
+    if (args[ARG_polarity].u_int != -1) {
+        self->polarity = args[ARG_polarity].u_int;
+    }
+    if (args[ARG_phase].u_int != -1) {
+        self->phase = args[ARG_phase].u_int;
+    }
+    if (args[ARG_bits].u_int != -2) {
+        self->bits = args[ARG_bits].u_int;
+    }
+    if (args[ARG_firstbit].u_int != -1) {
+        self->firstbit = args[ARG_firstbit].u_int;
+    }
+    if (args[ARG_sck].u_obj != MP_OBJ_NULL) {
+        self->sck = machine_pin_get_id(args[ARG_sck].u_obj);
+    }
+    if (args[ARG_mosi].u_obj != MP_OBJ_NULL) {
+        self->mosi = machine_pin_get_id(args[ARG_mosi].u_obj);
+    }
+    if (args[ARG_miso].u_obj != MP_OBJ_NULL) {
+        self->miso = machine_pin_get_id(args[ARG_miso].u_obj);
+    }
+    if (args[ARG_cs].u_obj != MP_OBJ_NULL) {
+        self->cs = machine_pin_get_id(args[ARG_cs].u_obj);
+    }
 
     if (0 == self->spi_type) {
         wm_spi_ck_config(self->sck);
@@ -245,16 +267,16 @@ static void machine_spi_init(mp_obj_base_t *self_in, size_t n_args, const mp_obj
             w600_spi_set_endian(self->firstbit ? 1 : 0);
         }
 
-        if (-1 == self->bits) {
+        if (8 == self->bits) {
+            tls_spi_trans_type(SPI_BYTE_TRANSFER);
+        } else if (32 == self->bits) {
+            tls_spi_trans_type(SPI_WORD_TRANSFER);
+        #if ENABLE_SPI_DMA_TRANSFER
+        } else if (-1 == self->bits) {
             tls_spi_trans_type(SPI_DMA_TRANSFER);
+        #endif
         } else {
-            if (8 == self->bits) {
-                tls_spi_trans_type(SPI_BYTE_TRANSFER);
-            } else if (32 == self->bits) {
-                tls_spi_trans_type(SPI_WORD_TRANSFER);
-            } else {
-                tls_spi_trans_type(SPI_DMA_TRANSFER);
-            }
+            mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("bits=%d invalid"), self->bits);
         }
 
         int mode = ((self->polarity << 1) | self->phase) & 0x03;
@@ -291,7 +313,16 @@ mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     } else {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("SPI(%d) does not exist"), mp_obj_get_int(args[0]));
     }
-
+    // Set the default values
+    self->baudrate = DEFAULT_SPI_BAUDRATE;
+    self->polarity = DEFAULT_SPI_POLARITY;
+    self->phase = DEFAULT_SPI_PHASE;
+    self->bits = DEFAULT_SPI_BITS;
+    self->firstbit = DEFAULT_SPI_FIRSTBIT;
+    self->sck = WM_IO_PB_16;
+    self->mosi = WM_IO_PB_18; 
+    self->miso = WM_IO_PB_17;
+    self->cs = 0;
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, args + n_args);
     machine_spi_init((mp_obj_base_t *)self, n_args - 1, args + 1, &kw_args);
