@@ -43,7 +43,7 @@ MICROPY_USE_FATFS ?= 0
 MICROPY_USE_LITTLEFS = 1
 MICROPY_PY_THREAD ?= 0
 MACHINE_HSPI ?= 0
-CODESIZE ?= 0xc0000  # 768 k reserved for code
+CODESIZE ?= 0xb0000  # 704 k reserved for code
 
 MICROPY_PY_SSL ?= 1
 ifeq ($(MICROPY_PY_SSL),1)

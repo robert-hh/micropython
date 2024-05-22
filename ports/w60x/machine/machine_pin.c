@@ -515,9 +515,11 @@ static mp_obj_t machine_pin_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
 
         if (handler != mp_const_none) {
             tls_gpio_isr_register(self->id, machine_pin_isr_handler, irq);
+            tls_clr_gpio_irq_status(self->id);
             tls_gpio_irq_enable(self->id, trigger - 1);
         } else {
             tls_gpio_irq_disable(self->id);
+            tls_clr_gpio_irq_status(self->id);
             tls_gpio_isr_register(self->id, 0, 0);
         }
     }
