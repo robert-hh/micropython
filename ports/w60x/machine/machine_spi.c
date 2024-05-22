@@ -47,7 +47,7 @@
 #define DEFAULT_SPI_FIRSTBIT    (MICROPY_PY_MACHINE_SPI_MSB)
 
 // Block SPI_DMA_TRANSFER since it is not working as expected.
-// SPI_DMA_TRANSFER requires tranfer slicing to be enabled.
+// SPI_DMA_TRANSFER requires transfer slicing to be enabled.
 #define ENABLE_SPI_DMA_TRANSFER (0)
 
 typedef struct _machine_spi_obj_t {
@@ -113,7 +113,7 @@ static u8 w600_spi_write(u8 *data, u32 len) {
             cnt += SPI_DMA_BUF_MAX_SIZE;
         }
     }
-    
+
     return tls_spi_write(data + cnt, remain);
     #else
     return tls_spi_write(data, len);
@@ -320,7 +320,7 @@ mp_obj_t machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     self->bits = DEFAULT_SPI_BITS;
     self->firstbit = DEFAULT_SPI_FIRSTBIT;
     self->sck = WM_IO_PB_16;
-    self->mosi = WM_IO_PB_18; 
+    self->mosi = WM_IO_PB_18;
     self->miso = WM_IO_PB_17;
     self->cs = 0;
     mp_map_t kw_args;
