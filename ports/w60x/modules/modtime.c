@@ -25,7 +25,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "wm_include.h"
 #include "wm_rtc.h"
 #include "py/obj.h"
 #include "shared/timeutils/timeutils.h"
