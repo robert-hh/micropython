@@ -2,6 +2,7 @@
 // overriding defaults in py/mpconfig.h.
 // Board specific definitions
 #include "mpconfigboard.h"
+#include <stdint.h>
 
 #define MICROPY_W600_VERSION    "B1.6"
 
@@ -61,6 +62,7 @@
 #define MICROPY_PY_MACHINE_INCLUDEFILE      "ports/w60x/modules/modmachine.c"
 #define MICROPY_PY_MACHINE_BARE_METAL_FUNCS (1)
 #define MICROPY_PY_MACHINE_BOOTLOADER       (1)
+#define MICROPY_PY_MACHINE_RESET            (1)
 #define MICROPY_PY_MACHINE_DISABLE_IRQ_ENABLE_IRQ (1)
 #define MICROPY_PY_MACHINE_PIN_MAKE_NEW     mp_pin_make_new
 #define MICROPY_PY_MACHINE_IRQ_TIMESTAMP    (1)
