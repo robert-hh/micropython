@@ -8,8 +8,8 @@
 * All rights reserved.
 *
 *****************************************************************************/
+#include "py/runtime.h"
 #include <string.h>
-#include "wm_include.h"
 #include "wm_mem.h"
 #include "wm_crypto_hard.h"
 #include "wm_rtc.h"
@@ -18,7 +18,6 @@
 #include "py/stackctrl.h"
 #include "py/nlr.h"
 #include "py/compile.h"
-#include "py/runtime.h"
 #include "py/repl.h"
 #include "py/gc.h"
 #include "py/mphal.h"

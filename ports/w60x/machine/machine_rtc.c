@@ -25,15 +25,13 @@
  * THE SOFTWARE.
  */
 
-#include "wm_include.h"
-#include "wm_rtc.h"
-
-#include "py/obj.h"
 #include "py/runtime.h"
+#include "py/obj.h"
 #include "timeutils.h"
-
 #include "extmod/modmachine.h"
 #include "modmachine.h"
+
+#include "wm_rtc.h"
 
 typedef struct _machine_rtc_obj_t {
     mp_obj_base_t base;
