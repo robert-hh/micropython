@@ -25,13 +25,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "wm_sockets2.0.3.h"
-#include <sys/time.h>
-
-#include "wm_include.h"
 #include "wm_rtc.h"
 #include "modmachine.h"
-
 #include "lib/oofatfs/ff.h"
 #include "shared/timeutils/timeutils.h"
 
