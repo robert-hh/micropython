@@ -128,20 +128,25 @@ static void mp_machine_uart_init_helper(machine_uart_obj_t *self, size_t n_args,
         }
     }
 
-    // set tx/rx pins
-    mp_hal_pin_obj_t tx = 1, rx = 3;
-    if (args[ARG_tx].u_obj != MP_OBJ_NULL) {
-        tx = mp_hal_get_pin_obj(args[ARG_tx].u_obj);
-    }
-    if (args[ARG_rx].u_obj != MP_OBJ_NULL) {
-        rx = mp_hal_get_pin_obj(args[ARG_rx].u_obj);
-    }
-    if (tx == 1 && rx == 3) {
-        system_uart_de_swap();
-    } else if (tx == 15 && rx == 13) {
-        system_uart_swap();
-    } else {
-        mp_raise_ValueError(MP_ERROR_TEXT("invalid tx/rx"));
+    // check uart tx/rx swap only for UART 0
+    if (self->uart_id == 0) {
+        // set tx/rx pins
+        mp_hal_pin_obj_t tx = 1, rx = 3;
+        if (args[ARG_tx].u_obj != MP_OBJ_NULL) {
+            tx = mp_hal_get_pin_obj(args[ARG_tx].u_obj);
+        }
+        if (args[ARG_rx].u_obj != MP_OBJ_NULL) {
+            rx = mp_hal_get_pin_obj(args[ARG_rx].u_obj);
+        }
+        if (tx == 1 && rx == 3) {
+            system_uart_de_swap();
+        } else if (tx == 15 && rx == 13) {
+            system_uart_swap();
+        } else {
+            mp_raise_ValueError(MP_ERROR_TEXT("invalid tx/rx"));
+        }
+    } else if (self->uart_id == 1 && (args[ARG_tx].u_obj != MP_OBJ_NULL || args[ARG_rx].u_obj != MP_OBJ_NULL)) {
+        mp_raise_ValueError(MP_ERROR_TEXT("cannot set tx/rx"));
     }
 
     // set stop bits
