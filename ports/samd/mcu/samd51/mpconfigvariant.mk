@@ -1,0 +1,1 @@
+FROZEN_MANIFEST ?= mcu/$(MCU_SERIES_LOWER)/manifest.py
