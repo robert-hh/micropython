@@ -13,12 +13,6 @@ ifeq ($(wildcard $(BOARD_DIR)/.),)
 $(error Invalid BOARD specified: $(BOARD_DIR))
 endif
 
-ifneq ($(BOARD_VARIANT),)
-ifeq ($(wildcard $(BOARD_DIR)/mpconfigvariant_$(BOARD_VARIANT).mk),)
-$(error Invalid BOARD_VARIANT specified: $(BOARD_VARIANT))
-endif
-endif
-
 # If the build directory is not given, make it reflect the board name (and
 # optionally the board variant).
 ifneq ($(BOARD_VARIANT),)
@@ -33,14 +27,24 @@ UF2CONV ?= $(TOP)/tools/uf2conv.py
 MCU_SERIES_LOWER = $(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')
 
 include ../../py/mkenv.mk
-# Include board specific .mk file, and optional board variant .mk file.
+
+# Include board and MCU specific .mk files, and optional board variant .mk file.
 include $(BOARD_DIR)/mpconfigboard.mk
+include mcu/$(MCU_SERIES_LOWER)/mpconfigmcu.mk
+
 ifeq ($(BOARD_VARIANT),)
 -include $(BOARD_DIR)/mpconfigvariant.mk
+-include mcu/$(MCU_SERIES_LOWER)/mpconfigvariant.mk
 else
-include $(BOARD_DIR)/mpconfigvariant_$(BOARD_VARIANT).mk
+	ifneq (,$(wildcard mcu/$(MCU_SERIES_LOWER)/mpconfigvariant_$(BOARD_VARIANT).mk))
+	include mcu/$(MCU_SERIES_LOWER)/mpconfigvariant_$(BOARD_VARIANT).mk
+	else
+		ifeq (,$(wildcard $(BOARD_DIR)/mpconfigvariant_$(BOARD_VARIANT).mk))
+		$(error Invalid BOARD_VARIANT specified: $(BOARD_VARIANT))
+		endif
+		include $(BOARD_DIR)/mpconfigvariant_$(BOARD_VARIANT).mk
+	endif
 endif
-include mcu/$(MCU_SERIES_LOWER)/mpconfigmcu.mk
 
 # Qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
