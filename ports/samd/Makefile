@@ -25,8 +25,19 @@ UF2CONV ?= $(TOP)/tools/uf2conv.py
 MCU_SERIES_LOWER = $(shell echo $(MCU_SERIES) | tr '[:upper:]' '[:lower:]')
 
 include ../../py/mkenv.mk
+
+# Include board and MCU specific .mk files, and optional board variant .mk file.
 include $(BOARD_DIR)/mpconfigboard.mk
 include mcu/$(MCU_SERIES_LOWER)/mpconfigmcu.mk
+
+ifeq ($(BOARD_VARIANT),)
+-include mcu/$(MCU_SERIES_LOWER)/mpconfigvariant.mk
+else
+ifeq ($(wildcard mcu/$(MCU_SERIES_LOWER)/mpconfigvariant_$(BOARD_VARIANT).mk),)
+$(error Invalid BOARD_VARIANT specified: $(BOARD_VARIANT))
+endif
+include mcu/$(MCU_SERIES_LOWER)/mpconfigvariant_$(BOARD_VARIANT).mk
+endif
 
 # Qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
