@@ -50,7 +50,7 @@ status_t flexspi_nor_write_enable(FLEXSPI_Type *base, uint32_t baseAddr) {
     flexspi_transfer_t flashXfer;
     status_t status;
 
-    /* Write neable */
+    /* Write enable */
     flashXfer.deviceAddress = baseAddr;
     flashXfer.port = kFLEXSPI_PortA1;
     flashXfer.cmdType = kFLEXSPI_Command;
@@ -106,9 +106,9 @@ status_t flexspi_nor_enable_quad_mode(FLEXSPI_Type *base) __attribute__((section
 status_t flexspi_nor_enable_quad_mode(FLEXSPI_Type *base) {
     flexspi_transfer_t flashXfer;
     status_t status;
-    uint32_t writeValue = 0x40;
+    uint32_t writeValue = qspiflash_config.memConfig.deviceModeArg;
 
-    /* Write neable */
+    /* Write enable */
     status = flexspi_nor_write_enable(base, 0);
 
     if (status != kStatus_Success) {
@@ -213,7 +213,7 @@ status_t flexspi_nor_flash_page_program(FLEXSPI_Type *base, uint32_t dstAddr, co
     flashXfer.port = kFLEXSPI_PortA1;
     flashXfer.cmdType = kFLEXSPI_Write;
     flashXfer.SeqNumber = 1;
-    flashXfer.seqIndex = NOR_CMD_LUT_SEQ_IDX_PAGEPROGRAM_QUAD;
+    flashXfer.seqIndex = NOR_CMD_LUT_SEQ_IDX_PAGEPROGRAM;
     flashXfer.data = (uint32_t *)src;
     flashXfer.dataSize = size;
     status = FLEXSPI_TransferBlocking(base, &flashXfer);
