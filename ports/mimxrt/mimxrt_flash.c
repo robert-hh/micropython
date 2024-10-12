@@ -31,10 +31,6 @@
 #include "extmod/vfs.h"
 #include "modmimxrt.h"
 #include "flash.h"
-#include BOARD_FLASH_OPS_HEADER_H
-
-
-extern flexspi_nor_config_t qspiflash_config;
 
 typedef struct _mimxrt_flash_obj_t {
     mp_obj_base_t base;

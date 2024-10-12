@@ -27,9 +27,7 @@
 #define MICROPY_INCLUDED_MIMXRT_HAL_FLEXSPI_HYPER_FLASH_H
 
 #include "mpconfigboard.h"
-#include "flexspi_flash_config.h"
-#include "fsl_flexspi.h"
-// #include BOARD_FLASH_CONFIG_HEADER_H
+#include BOARD_FLASH_CONFIG_HEADER_H
 
 #if defined MICROPY_HW_FLASH_INTERNAL
 #define BOARD_FLEX_SPI FLEXSPI2

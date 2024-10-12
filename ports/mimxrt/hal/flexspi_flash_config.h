@@ -23,20 +23,7 @@
 #define FLEXSPI_CFG_BLK_VERSION (0x56010400UL) // V1.4.0
 #define FLEXSPI_CFG_BLK_SIZE    (512)
 
-/* FLEXSPI Feature related definitions */
-#define FLEXSPI_FEATURE_HAS_PARALLEL_MODE 1
-
 /* Lookup table related definitions */
-#define CMD_INDEX_READ        0
-#define CMD_INDEX_READSTATUS  1
-#define CMD_INDEX_WRITEENABLE 2
-#define CMD_INDEX_WRITE       4
-
-#define CMD_LUT_SEQ_IDX_READ        0
-#define CMD_LUT_SEQ_IDX_READSTATUS  1
-#define CMD_LUT_SEQ_IDX_WRITEENABLE 3
-#define CMD_LUT_SEQ_IDX_WRITE       9
-
 #define CMD_SDR        0x01
 #define CMD_DDR        0x21
 #define RADDR_SDR      0x02
@@ -75,55 +62,42 @@
     (FLEXSPI_LUT_OPERAND0(op0) | FLEXSPI_LUT_NUM_PADS0(pad0) | FLEXSPI_LUT_OPCODE0(cmd0) | FLEXSPI_LUT_OPERAND1(op1) | \
     FLEXSPI_LUT_NUM_PADS1(pad1) | FLEXSPI_LUT_OPCODE1(cmd1))
 
+#define EMPTY_LUT \
+    FLEXSPI_LUT_SEQ(0, 0, 0, 0, 0, 0), \
+    FLEXSPI_LUT_SEQ(0, 0, 0, 0, 0, 0), \
+    FLEXSPI_LUT_SEQ(0, 0, 0, 0, 0, 0), \
+    FLEXSPI_LUT_SEQ(0, 0, 0, 0, 0, 0), \
+
 // !@brief Definitions for FlexSPI Serial Clock Frequency
 typedef enum _FlexSpiSerialClockFreq
 {
-    kFlexSpiSerialClk_30MHz  = 1,
-    kFlexSpiSerialClk_50MHz  = 2,
-    kFlexSpiSerialClk_60MHz  = 3,
-    kFlexSpiSerialClk_75MHz  = 4,
-    kFlexSpiSerialClk_80MHz  = 5,
-    kFlexSpiSerialClk_100MHz = 6,
-    kFlexSpiSerialClk_133MHz = 7,
-    kFlexSpiSerialClk_166MHz = 8,
+    kFLEXSPISerialClk_30MHz  = 1,
+    kFLEXSPISerialClk_50MHz  = 2,
+    kFLEXSPISerialClk_60MHz  = 3,
+    kFLEXSPISerialClk_75MHz  = 4,
+    kFLEXSPISerialClk_80MHz  = 5,
+    kFLEXSPISerialClk_100MHz = 6,
+    kFLEXSPISerialClk_133MHz = 7,
+    kFLEXSPISerialClk_166MHz = 8,
 } flexspi_serial_clk_freq_t;
-
-// !@brief FlexSPI clock configuration type
-enum
-{
-    kFlexSpiClk_SDR, // !< Clock configure for SDR mode
-    kFlexSpiClk_DDR, // !< Clock configurat for DDR mode
-};
 
 // !@brief FlexSPI Read Sample Clock Source definition
 typedef enum _FlashReadSampleClkSource
 {
-    kFlexSPIReadSampleClk_LoopbackInternally      = 0,
-    kFlexSPIReadSampleClk_LoopbackFromDqsPad      = 1,
-    kFlexSPIReadSampleClk_LoopbackFromSckPad      = 2,
-    kFlexSPIReadSampleClk_ExternalInputFromDqsPad = 3,
+    kFLEXSPIReadSampleClk_LoopbackInternally      = 0,
+    kFLEXSPIReadSampleClk_LoopbackFromDqsPad      = 1,
+    kFLEXSPIReadSampleClk_LoopbackFromSckPad      = 2,
+    kFLEXSPIReadSampleClk_ExternalInputFromDqsPad = 3,
 } flexspi_read_sample_clk_t;
-
-// !@brief Misc feature bit definitions
-enum
-{
-    kFlexSpiMiscOffset_DiffClkEnable            = 0, // !< Bit for Differential clock enable
-    kFlexSpiMiscOffset_Ck2Enable                = 1, // !< Bit for CK2 enable
-    kFlexSpiMiscOffset_ParallelEnable           = 2, // !< Bit for Parallel mode enable
-    kFlexSpiMiscOffset_WordAddressableEnable    = 3, // !< Bit for Word Addressable enable
-    kFlexSpiMiscOffset_SafeConfigFreqEnable     = 4, // !< Bit for Safe Configuration Frequency enable
-    kFlexSpiMiscOffset_PadSettingOverrideEnable = 5, // !< Bit for Pad setting override enable
-    kFlexSpiMiscOffset_DdrModeEnable            = 6, // !< Bit for DDR clock confiuration indication.
-};
 
 // !@brief Flash Type Definition
 enum
 {
-    kFlexSpiDeviceType_SerialNOR    = 1,    // !< Flash devices are Serial NOR
-    kFlexSpiDeviceType_SerialNAND   = 2,    // !< Flash devices are Serial NAND
-    kFlexSpiDeviceType_SerialRAM    = 3,    // !< Flash devices are Serial RAM/HyperFLASH
-    kFlexSpiDeviceType_MCP_NOR_NAND = 0x12, // !< Flash device is MCP device, A1 is Serial NOR, A2 is Serial NAND
-    kFlexSpiDeviceType_MCP_NOR_RAM  = 0x13, // !< Flash device is MCP device, A1 is Serial NOR, A2 is Serial RAMs
+    kFLEXSPIDeviceType_SerialNOR    = 1,    // !< Flash devices are Serial NOR
+    kFLEXSPIDeviceType_SerialNAND   = 2,    // !< Flash devices are Serial NAND
+    kFLEXSPIDeviceType_SerialRAM    = 3,    // !< Flash devices are Serial RAM/HyperFLASH
+    kFLEXSPIDeviceType_MCP_NOR_NAND = 0x12, // !< Flash device is MCP device, A1 is Serial NOR, A2 is Serial NAND
+    kFLEXSPIDeviceType_MCP_NOR_RAM  = 0x13, // !< Flash device is MCP device, A1 is Serial NOR, A2 is Serial RAMs
 };
 
 // !@brief Flash Pad Definitions
@@ -135,14 +109,6 @@ enum
     kSerialFlash_8Pads = 8,
 };
 
-// !@brief FlexSPI LUT Sequence structure
-typedef struct _lut_sequence
-{
-    uint8_t seqNum; // !< Sequence Number, valid number: 1-16
-    uint8_t seqId;  // !< Sequence Index, valid number: 0-15
-    uint16_t reserved;
-} flexspi_lut_seq_t;
-
 // !@brief Flash Configuration Command Type
 enum
 {
@@ -153,6 +119,27 @@ enum
     kDeviceConfigCmdType_Spi2NoCmd,  // !< Switch to 0-4-4/0-8-8 mode
     kDeviceConfigCmdType_Reset,      // !< Reset device command
 };
+
+/*! @brief Misc feature bit definitions */
+enum
+{
+    kFLEXSPIMiscOffset_DiffClkEnable            = 0U, /*!< Bit for Differential clock enable */
+    kFLEXSPIMiscOffset_Ck2Enable                = 1U, /*!< Bit for CK2 enable */
+    kFLEXSPIMiscOffset_ParallelEnable           = 2U, /*!< Bit for Parallel mode enable */
+    kFLEXSPIMiscOffset_WordAddressableEnable    = 3U, /*!< Bit for Word Addressable enable */
+    kFLEXSPIMiscOffset_SafeConfigFreqEnable     = 4U, /*!< Bit for Safe Configuration Frequency enable */
+    kFLEXSPIMiscOffset_PadSettingOverrideEnable = 5U, /*!< Bit for Pad setting override enable */
+    kFLEXSPIMiscOffset_DdrModeEnable            = 6U, /*!< Bit for DDR clock confiuration indication. */
+    kFLEXSPIMiscOffset_UseValidTimeForAllFreq   = 7U, /*!< Bit for DLLCR settings under all modes */
+};
+
+// !@brief FlexSPI LUT Sequence structure
+typedef struct _lut_sequence
+{
+    uint8_t seqNum; // !< Sequence Number, valid number: 1-16
+    uint8_t seqId;  // !< Sequence Index, valid number: 0-15
+    uint16_t reserved;
+} flexspi_lut_seq_t;
 
 // !@brief FlexSPI Memory Configuration Block
 typedef struct _FlexSPIConfig
@@ -209,20 +196,20 @@ typedef struct _FlexSPIConfig
 } flexspi_mem_config_t;
 
 /*  */
-#define NOR_CMD_LUT_SEQ_IDX_READ_NORMAL 0
+#define NOR_CMD_LUT_SEQ_IDX_READ 0
 #define NOR_CMD_LUT_SEQ_IDX_READSTATUSREG 1
-#define NOR_CMD_LUT_SEQ_IDX_READ_FAST_QUAD 2
+#define NOR_CMD_LUT_SEQ_IDX_READSTATUS_XPI 2
 #define NOR_CMD_LUT_SEQ_IDX_WRITEENABLE 3
-#define NOR_CMD_LUT_SEQ_IDX_READSTATUS_XPI 4
+#define NOR_CMD_LUT_SEQ_IDX_WRITESTATUSREG 4
 #define NOR_CMD_LUT_SEQ_IDX_ERASESECTOR 5
-#define NOR_CMD_LUT_SEQ_IDX_WRITESTATUSREG 6
-#define NOR_CMD_LUT_SEQ_IDX_PAGEPROGRAM_QUAD 7
-#define NOR_CMD_LUT_SEQ_IDX_READID 8
+#define NOR_CMD_LUT_SEQ_IDX_READQUAD 6
+#define NOR_CMD_LUT_SEQ_IDX_READID 7
+#define NOR_CMD_LUT_SEQ_IDX_ERASEBLOCK 8
 #define NOR_CMD_LUT_SEQ_IDX_PAGEPROGRAM 9
-#define NOR_CMD_LUT_SEQ_IDX_ENTERQPI 10
+#define NOR_CMD_LUT_SEQ_IDX_PAGEPROGRAM_QUAD 10
 #define NOR_CMD_LUT_SEQ_IDX_CHIPERASE 11
-#define NOR_CMD_LUT_SEQ_IDX_EXITQPI 12
-#define NOR_CMD_LUT_SEQ_IDX_ERASEBLOCK 13
+// Index 12 is left empty
+#define NOR_CMD_LUT_SEQ_IDX_READ_SFDP 13
 
 #define HYPERFLASH_CMD_LUT_SEQ_IDX_READDATA    0
 #define HYPERFLASH_CMD_LUT_SEQ_IDX_WRITEDATA   1
@@ -253,6 +240,14 @@ typedef struct _flexspi_nor_config
 
 #define FLASH_BUSY_STATUS_POL 0
 #define FLASH_BUSY_STATUS_OFFSET 0
+
+#ifndef MICROPY_HW_FLASH_SAMPLE_CLK
+#define MICROPY_HW_FLASH_SAMPLE_CLK kFLEXSPIReadSampleClk_LoopbackFromDqsPad
+#endif
+
+#ifndef MICROPY_HW_FLASH_CLK
+#define MICROPY_HW_FLASH_CLK kFLEXSPISerialClk_100MHz
+#endif
 
 #ifdef __cplusplus
 extern "C" {

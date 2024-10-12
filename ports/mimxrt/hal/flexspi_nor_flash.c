@@ -108,7 +108,7 @@ status_t flexspi_nor_enable_quad_mode(FLEXSPI_Type *base) {
     status_t status;
     uint32_t writeValue = 0x40;
 
-    /* Write neable */
+    /* Write enable */
     status = flexspi_nor_write_enable(base, 0);
 
     if (status != kStatus_Success) {
