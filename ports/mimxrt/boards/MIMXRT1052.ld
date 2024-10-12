@@ -5,7 +5,7 @@ reserved_size = MICROPY_HW_FLASH_RESERVED;
 
 #if MICROPY_HW_FLASH_TYPE == qspi_nor_flash
 flash_start         = 0x60000000;
-#elif MICROPY_HW_FLASH_TYPE == qspi_hyper_flash
+#elif MICROPY_HW_FLASH_TYPE == hyper_flash
 flash_start         = 0x60000000;
 #else
 #error Unknown MICROPY_HW_FLASH_TYPE

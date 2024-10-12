@@ -27,15 +27,6 @@
 #define FLEXSPI_FEATURE_HAS_PARALLEL_MODE 1
 
 /* Lookup table related definitions */
-#define CMD_INDEX_READ        0
-#define CMD_INDEX_READSTATUS  1
-#define CMD_INDEX_WRITEENABLE 2
-#define CMD_INDEX_WRITE       4
-
-#define CMD_LUT_SEQ_IDX_READ        0
-#define CMD_LUT_SEQ_IDX_READSTATUS  1
-#define CMD_LUT_SEQ_IDX_WRITEENABLE 3
-#define CMD_LUT_SEQ_IDX_WRITE       9
 
 #define CMD_SDR        0x01
 #define CMD_DDR        0x21
