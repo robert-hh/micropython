@@ -228,22 +228,3 @@ status_t flexspi_nor_flash_page_program(FLEXSPI_Type *base, uint32_t dstAddr, co
 
     return status;
 }
-
-status_t flexspi_nor_get_vendor_id(FLEXSPI_Type *base, uint8_t *vendorId) __attribute__((section(".ram_functions")));
-status_t flexspi_nor_get_vendor_id(FLEXSPI_Type *base, uint8_t *vendorId) {
-    uint32_t temp;
-    flexspi_transfer_t flashXfer;
-    flashXfer.deviceAddress = 0;
-    flashXfer.port = kFLEXSPI_PortA1;
-    flashXfer.cmdType = kFLEXSPI_Read;
-    flashXfer.SeqNumber = 1;
-    flashXfer.seqIndex = NOR_CMD_LUT_SEQ_IDX_READID;
-    flashXfer.data = &temp;
-    flashXfer.dataSize = 2;
-
-    status_t status = FLEXSPI_TransferBlocking(base, &flashXfer);
-
-    *vendorId = temp;
-
-    return status;
-}

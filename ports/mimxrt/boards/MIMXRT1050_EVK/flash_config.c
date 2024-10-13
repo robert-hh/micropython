@@ -22,25 +22,21 @@ __attribute__((section(".boot_hdr.conf")))
 #pragma location = ".boot_hdr.conf"
 #endif
 
-#ifndef MICROPY_HW_FLASH_CLK
-#define MICROPY_HW_FLASH_CLK kFlexSpiSerialClk_133MHz
-#endif
-
 const flexspi_nor_config_t qspiflash_config = {
     .memConfig =
     {
         .tag = FLEXSPI_CFG_BLK_TAG,
         .version = FLEXSPI_CFG_BLK_VERSION,
-        .readSampleClkSrc = kFlexSPIReadSampleClk_ExternalInputFromDqsPad,
+        .readSampleClkSrc = kFLEXSPIReadSampleClk_ExternalInputFromDqsPad,
         .csHoldTime = 3u,
         .csSetupTime = 3u,
         .columnAddressWidth = 3u,
         // Enable DDR mode, Wordaddressable, Safe configuration, Differential clock
         .controllerMiscOption =
-            (1u << kFlexSpiMiscOffset_DdrModeEnable) | (1u << kFlexSpiMiscOffset_WordAddressableEnable) |
-            (1u << kFlexSpiMiscOffset_SafeConfigFreqEnable) | (1u << kFlexSpiMiscOffset_DiffClkEnable),
+            (1u << kFLEXSPIMiscOffset_DdrModeEnable) | (1u << kFLEXSPIMiscOffset_WordAddressableEnable) |
+            (1u << kFLEXSPIMiscOffset_SafeConfigFreqEnable) | (1u << kFLEXSPIMiscOffset_DiffClkEnable),
         .sflashPadType = kSerialFlash_8Pads,
-        .serialClkFreq = MICROPY_HW_FLASH_CLK,
+        .serialClkFreq = kFLEXSPISerialClk_133MHz,
         .sflashA1Size = MICROPY_HW_FLASH_SIZE,
         .dataValidTime = {16u, 16u},
         .lookupTable =
