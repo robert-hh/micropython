@@ -253,14 +253,10 @@ endif
 
 # Add sources for respective board flash type
 # Add hal/flexspi_nor_flash.c or hal/flashspi_hyper_flash.c respectively
-SRC_HAL_C += hal/flexspi_$(subst qspi_,,$(FLEXSPI_FLASH_TYPE)).c
-#
-# Add custom (board specific) or default configuration
-ifeq ($(MICROPY_HW_BOARD_FLASH_FILES),1)
-    SRC_HAL_C += $(BOARD_DIR)/$(FLEXSPI_FLASH_TYPE)_config.c
-else
-    SRC_HAL_C += hal/$(FLEXSPI_FLASH_TYPE)_config.c
-endif
+# and flash_config.c from the board directory.
+SRC_HAL_C += \
+	hal/flexspi_$(subst qspi_,,$(FLEXSPI_FLASH_TYPE)).c \
+	$(BOARD_DIR)/flash_config.c
 
 ifeq ($(MICROPY_PY_BLUETOOTH),1)
 SRC_C += mpbthciport.c
@@ -372,13 +368,7 @@ CFLAGS += \
 # Configure respective board flash type
 # Add hal/flexspi_nor_flash.h or hal/flexspi_hyper_flash.h respectively
 CFLAGS += -DBOARD_FLASH_OPS_HEADER_H=\"hal/flexspi_$(subst qspi_,,$(FLEXSPI_FLASH_TYPE)).h\"
-#
-# Add custom (board specific) or default configuration
-ifeq ($(MICROPY_HW_BOARD_FLASH_FILES),1)
-    CFLAGS += -DBOARD_FLASH_CONFIG_HEADER_H=\"$(BOARD)_flexspi_flash_config.h\"
-else
-    CFLAGS += -DBOARD_FLASH_CONFIG_HEADER_H=\"hal/flexspi_flash_config.h\"
-endif
+CFLAGS += -DBOARD_FLASH_CONFIG_HEADER_H=\"hal/flexspi_flash_config.h\"
 
 # Configure floating point support
 ifeq ($(MICROPY_FLOAT_IMPL),single)
