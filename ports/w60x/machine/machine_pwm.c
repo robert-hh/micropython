@@ -40,7 +40,7 @@ typedef struct _machine_pwm_obj_t {
     mp_hal_pin_obj_t pin;
     bool defer_start;
     uint8_t channel;
-    uint8_t duty;
+    uint16_t duty;
     uint8_t pnum;
     bool invert;
     uint32_t freq;
@@ -88,10 +88,12 @@ static int w600_pwm_multiplex_config(machine_pwm_obj_t *self) {
 void w600_pwm_start(machine_pwm_obj_t *self) {
     if (self->freq != -1 && self->duty != -1 && self->defer_start == false) {
         tls_pwm_stop(self->channel);
-        w600_pwm_multiplex_config(self);
-        tls_pwm_init(self->channel, self->freq, self->duty, self->pnum);
-        tls_pwm_out_inverse_cmd(self->channel, self->invert);
-        tls_pwm_start(self->channel);
+        if (self->duty > 0) {
+            w600_pwm_multiplex_config(self);
+            tls_pwm_init(self->channel, self->freq, self->duty - 1, self->pnum);
+            tls_pwm_out_inverse_cmd(self->channel, self->invert);
+            tls_pwm_start(self->channel);
+        }
     }
 }
 
@@ -116,7 +118,7 @@ static void mp_machine_pwm_init_helper(machine_pwm_obj_t *self,
     self->defer_start = true;
     if (args[ARG_pnum].u_int != -1) {
         tval = args[ARG_pnum].u_int;
-        if ((tval < 0) || (tval > 255)) {
+        if ((tval < 0) || (tval > 256)) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError,
                 "Bad period num %d", tval));
         }
@@ -202,7 +204,7 @@ static mp_obj_t mp_machine_pwm_duty_get(machine_pwm_obj_t *self) {
 }
 
 static void mp_machine_pwm_duty_set(machine_pwm_obj_t *self, mp_int_t duty) {
-    if ((duty < 0) || (duty > 255)) {
+    if ((duty < 0) || (duty > 256)) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError,
             "Bad duty %d", duty));
     }
@@ -215,7 +217,7 @@ static mp_obj_t mp_machine_pwm_duty_get_u16(machine_pwm_obj_t *self) {
 }
 
 static void mp_machine_pwm_duty_set_u16(machine_pwm_obj_t *self, mp_int_t duty) {
-    mp_machine_pwm_duty_set(self, duty / 256);
+    mp_machine_pwm_duty_set(self, (duty + 128) / 256);
 }
 
 static mp_obj_t mp_machine_pwm_duty_get_ns(machine_pwm_obj_t *self) {
