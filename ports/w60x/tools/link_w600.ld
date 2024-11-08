@@ -49,7 +49,7 @@ SECTIONS
 	.text :
 	{
 		KEEP(*(.isr_vector))
-        *(EXCLUDE_FILE(*machine_bitstream.o *w600_wdg_irq.o) .text*)
+        *(EXCLUDE_FILE(*machine_bitstream.o *w600_wdg_irq.o *machine_pulse.o *mphalport.o) .text*)
 
 		KEEP(*(.init))
 		KEEP(*(.fini))
