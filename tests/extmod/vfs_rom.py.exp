@@ -1,0 +1,8 @@
+test_file_operations (__main__.Test) ... ok
+test_import (__main__.Test) ... ok
+test_memory_mapping (__main__.Test) ... ok
+test_romfs_inner (__main__.Test) ... ok
+----------------------------------------------------------------------
+Ran 4 tests
+
+OK
