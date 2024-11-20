@@ -1,8 +1,16 @@
-test_file_operations (__main__.Test) ... ok
-test_import (__main__.Test) ... ok
-test_memory_mapping (__main__.Test) ... ok
-test_romfs_inner (__main__.Test) ... ok
+test_constructor (__main__.TestStandalone) ... ok
+test_mount (__main__.TestStandalone) ... ok
+test_ilistdir (__main__.TestStandalone) ... ok
+test_stat (__main__.TestStandalone) ... ok
+test_statvfs (__main__.TestStandalone) ... ok
+test_open (__main__.TestStandalone) ... ok
+test_file_seek (__main__.TestStandalone) ... ok
+test_memory_mapping (__main__.TestStandalone) ... ok
+test_listdir (__main__.TestMounted) ... ok
+test_chdir (__main__.TestMounted) ... ok
+test_import (__main__.TestMounted) ... ok
+test_romfs_inner (__main__.TestMounted) ... ok
 ----------------------------------------------------------------------
-Ran 4 tests
+Ran 12 tests
 
 OK
