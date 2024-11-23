@@ -8,9 +8,10 @@ test_file_seek (__main__.TestStandalone) ... ok
 test_memory_mapping (__main__.TestStandalone) ... ok
 test_listdir (__main__.TestMounted) ... ok
 test_chdir (__main__.TestMounted) ... ok
-test_import (__main__.TestMounted) ... ok
+test_import_py (__main__.TestMounted) ... ok
+test_import_mpy (__main__.TestMounted) ... ok
 test_romfs_inner (__main__.TestMounted) ... ok
 ----------------------------------------------------------------------
-Ran 12 tests
+Ran 13 tests
 
 OK
