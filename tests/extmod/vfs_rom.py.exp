@@ -5,6 +5,7 @@ test_stat (__main__.TestStandalone) ... ok
 test_statvfs (__main__.TestStandalone) ... ok
 test_open (__main__.TestStandalone) ... ok
 test_file_seek (__main__.TestStandalone) ... ok
+test_file_ioctl_invalid (__main__.TestStandalone) ... ok
 test_memory_mapping (__main__.TestStandalone) ... ok
 test_listdir (__main__.TestMounted) ... ok
 test_chdir (__main__.TestMounted) ... ok
@@ -12,6 +13,6 @@ test_import_py (__main__.TestMounted) ... ok
 test_import_mpy (__main__.TestMounted) ... ok
 test_romfs_inner (__main__.TestMounted) ... ok
 ----------------------------------------------------------------------
-Ran 13 tests
+Ran 14 tests
 
 OK
