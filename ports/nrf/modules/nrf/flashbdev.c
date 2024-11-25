@@ -202,4 +202,62 @@ void flashbdev_init(void) {
     nrf_flash_obj.len = num_pages * FLASH_PAGESIZE;
 }
 
+#if MICROPY_VFS_ROM
+
+extern byte _vfsrom_start[];
+extern byte _vfsrom_size[];
+
+#define MICROPY_HW_ROMFS_BASE ((uint32_t)_vfsrom_start)
+#define MICROPY_HW_ROMFS_BYTES ((uint32_t)_vfsrom_size)
+
+static nrf_flash_obj_t nrf_flash_romfs_obj = {
+    .base = { &nrf_flashbdev_type },
+    .start = MICROPY_HW_ROMFS_BASE, // Get from MCU-Specific loader script.
+    .len = MICROPY_HW_ROMFS_BYTES, // Get from MCU-Specific loader script.
+};
+
+mp_obj_t mp_vfs_rom_ioctl(size_t n_args, const mp_obj_t *args) {
+    if (MICROPY_HW_ROMFS_BYTES <= 0) {
+        return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+    }
+    switch (mp_obj_get_int(args[0])) {
+        case -1: // request object-based capabilities
+            return MP_OBJ_FROM_PTR(&nrf_flash_romfs_obj);
+        case 0: // number of segments
+            return MP_OBJ_NEW_SMALL_INT(1);
+        case 1: // address
+            return mp_obj_new_int(MICROPY_HW_ROMFS_BASE);
+        #if 0
+        case 2: // num blocks
+            return MP_OBJ_NEW_SMALL_INT(MICROPY_HW_ROMFS_BYTES / VFSROM_BLOCK_SIZE);
+        case 3: // block_size
+            return MP_OBJ_NEW_SMALL_INT(VFSROM_BLOCK_SIZE);
+        case 4: { // erase one block at offset address of flash
+            if (n_args < 2) {
+                return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+            }
+            // Erase sector.
+            flash_page_erase(MICROPY_HW_ROMFS_BASE + mp_obj_get_int(args[1]));
+            return MP_OBJ_NEW_SMALL_INT(0);
+        }
+        case 5: { // write to byte offset address in flash
+            if (n_args < 3) {
+                return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+            }
+            uint32_t dest = MICROPY_HW_ROMFS_BASE + mp_obj_get_int(args[1]);
+            mp_buffer_info_t bufinfo;
+            mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
+
+            // Write data to flash.
+            flash_write_bytes(dest, bufinfo.buf, bufinfo.len);
+            return MP_OBJ_NEW_SMALL_INT(0);
+        }
+        #endif
+        default:
+            return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+    }
+}
+
+#endif // MICROPY_VFS_ROM
+
 #endif // MICROPY_PY_NRF && MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
