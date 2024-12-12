@@ -73,6 +73,8 @@ mp_obj_t mp_vfs_rom_file_open(mp_obj_t self_in, mp_obj_t path_in, mp_obj_t mode_
     mp_import_stat_t stat = mp_vfs_rom_search_filesystem(self, path, &o->file_size, &o->file_data);
     if (stat == MP_IMPORT_STAT_NO_EXIST) {
         mp_raise_OSError(MP_ENOENT);
+    } else if (stat == MP_IMPORT_STAT_DIR) {
+        mp_raise_OSError(MP_EISDIR);
     }
 
     return MP_OBJ_FROM_PTR(o);

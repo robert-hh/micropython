@@ -35,7 +35,8 @@
 #if MICROPY_VFS_ROM
 
 #define MAGIC_BYTE0 (0x80 | 'R')
-#define MAGIC_BYTE1 ('M')
+#define MAGIC_BYTE1 (0x80 | 'M')
+#define MAGIC_BYTE2 (0x00 | '1')
 
 struct _mp_obj_vfs_rom_t {
     mp_obj_base_t base;
@@ -45,40 +46,69 @@ struct _mp_obj_vfs_rom_t {
 };
 
 mp_import_stat_t mp_vfs_rom_search_filesystem(mp_obj_vfs_rom_t *self, const char *path, size_t *size_out, const uint8_t **data_out) {
-    if (path[0] == '/') {
-        ++path;
-    }
     size_t path_len = strlen(path);
     const uint8_t *fs = self->filesystem;
-    while (fs < self->filesystem_top) {
+    const uint8_t *fs_top = self->filesystem_top;
+    /*
+    if (*path == '/') {
+        ++path;
+        --path_len;
+    }
+    if (path_len == 0) {
+        if (size_out != NULL) {
+            *size_out = fs_top - fs;
+            *data_out = fs;
+        }
+        return MP_IMPORT_STAT_DIR;
+    }
+    */
+    while (fs < fs_top) {
         mp_uint_t record_kind = mp_decode_uint(&fs);
         mp_uint_t record_len = mp_decode_uint(&fs);
         const uint8_t *fs_next = fs + record_len;
-        mp_uint_t name_len;
-        mp_uint_t data_len;
-        mp_import_stat_t type;
         if (record_kind == 1) {
             // A directory.
-            type = MP_IMPORT_STAT_DIR;
-            name_len = record_len;
-            data_len = 0;
+            mp_uint_t name_len = mp_decode_uint(&fs);
+            if (name_len <= path_len && (path[name_len] == '\0' || path[name_len] == '/') && memcmp(path, fs, name_len) == 0) {
+                // Enter this directory.
+                fs += name_len;
+                fs_top = fs_next;
+                path += name_len;
+                path_len -= name_len;
+                if (*path == '/') {
+                    ++path;
+                    --path_len;
+                }
+                if (path_len == 0) {
+                    if (size_out != NULL) {
+                        *size_out = fs_top - fs;
+                        *data_out = fs;
+                    }
+                    return MP_IMPORT_STAT_DIR;
+                }
+            } else {
+                // Skip this directory.
+                fs = fs_next;
+            }
         } else if (record_kind == 2) {
             // A file.
-            type = MP_IMPORT_STAT_FILE;
-            name_len = mp_decode_uint(&fs);
-            data_len = mp_decode_uint(&fs);
-        } else {
-            fs = fs_next;
-            continue;
-        }
-        if (path_len == name_len && memcmp(path, fs, path_len) == 0) {
-            if (size_out != NULL) {
-                *size_out = data_len;
-                *data_out = fs + name_len;
+            mp_uint_t name_len = mp_decode_uint(&fs);
+            if (name_len == path_len && memcmp(path, fs, path_len) == 0) {
+                // Return this file.
+                fs += name_len;
+                if (size_out != NULL) {
+                    *size_out = mp_decode_uint(&fs);
+                    *data_out = fs;
+                }
+                return MP_IMPORT_STAT_FILE;
+            } else {
+                // Skip this file.
+                fs = fs_next;
             }
-            return type;
+        } else {
+            // Skip this record.
+            fs = fs_next;
         }
-        fs = fs_next;
     }
     return MP_IMPORT_STAT_NO_EXIST;
 }
@@ -103,7 +133,8 @@ static mp_obj_t vfs_rom_make_new(const mp_obj_type_t *type, size_t n_args, size_
 
     // Verify it is a ROMFS.
     if (!(self->filesystem[0] == MAGIC_BYTE0
-          && self->filesystem[1] == MAGIC_BYTE1)) {
+          && self->filesystem[1] == MAGIC_BYTE1
+          && self->filesystem[2] == MAGIC_BYTE2)) {
         mp_raise_OSError(MP_ENODEV);
     }
 
@@ -150,19 +181,12 @@ typedef struct _vfs_rom_ilistdir_it_t {
     mp_obj_base_t base;
     mp_fun_1_t iternext;
     bool is_str;
-    const char *path;
     const uint8_t *index;
     const uint8_t *index_top;
 } vfs_rom_ilistdir_it_t;
 
 static mp_obj_t vfs_rom_ilistdir_it_iternext(mp_obj_t self_in) {
     vfs_rom_ilistdir_it_t *self = MP_OBJ_TO_PTR(self_in);
-
-    const char *path = self->path;
-    if (path[0] == '/' || (path[0] == '.' && path[1] == '\0')) {
-        ++path;
-    }
-    size_t path_len = strlen(path);
 
     while (self->index < self->index_top) {
         mp_uint_t record_kind = mp_decode_uint(&self->index);
@@ -174,14 +198,15 @@ static mp_obj_t vfs_rom_ilistdir_it_iternext(mp_obj_t self_in) {
         if (record_kind == 1) {
             // A directory.
             type = MP_S_IFDIR;
-            name_len = record_len;
-            data_len = 0;
+            name_len = mp_decode_uint(&self->index);
+            data_len = index_next - self->index - name_len;
         } else if (record_kind == 2) {
             // A file.
             type = MP_S_IFREG;
             name_len = mp_decode_uint(&self->index);
-            data_len = mp_decode_uint(&self->index);
+            data_len = mp_decode_uint_value(self->index + name_len);
         } else {
+            // Skip this record.
             self->index = index_next;
             continue;
         }
@@ -189,32 +214,20 @@ static mp_obj_t vfs_rom_ilistdir_it_iternext(mp_obj_t self_in) {
         const uint8_t *name_str = self->index;
         self->index = index_next;
 
-        if (name_len == 0) {
-            // Don't include the root directory entry in listdir output.
-        } else if ((path_len == 0 && memchr(name_str, '/', name_len) == NULL)
-                   || (path_len < name_len && name_str[path_len] == '/'
-                       && memcmp(path, name_str, path_len) == 0
-                       && memchr(name_str + path_len + 1, '/', name_len - path_len - 1) == NULL)) {
-            // Make 4-tuple with info about this entry: (name, attr, inode, size)
-            mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(4, NULL));
+        // Make 4-tuple with info about this entry: (name, attr, inode, size)
+        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(4, NULL));
 
-            if (path_len > 0) {
-                name_str += path_len + 1;
-                name_len -= path_len + 1;
-            }
-
-            if (self->is_str) {
-                t->items[0] = mp_obj_new_str((const char *)name_str, name_len);
-            } else {
-                t->items[0] = mp_obj_new_bytes(name_str, name_len);
-            }
-
-            t->items[1] = MP_OBJ_NEW_SMALL_INT(type);
-            t->items[2] = MP_OBJ_NEW_SMALL_INT(0);
-            t->items[3] = mp_obj_new_int(data_len);
-
-            return MP_OBJ_FROM_PTR(t);
+        if (self->is_str) {
+            t->items[0] = mp_obj_new_str((const char *)name_str, name_len);
+        } else {
+            t->items[0] = mp_obj_new_bytes(name_str, name_len);
         }
+
+        t->items[1] = MP_OBJ_NEW_SMALL_INT(type);
+        t->items[2] = MP_OBJ_NEW_SMALL_INT(0);
+        t->items[3] = mp_obj_new_int(data_len);
+
+        return MP_OBJ_FROM_PTR(t);
     }
 
     return MP_OBJ_STOP_ITERATION;
@@ -226,12 +239,12 @@ static mp_obj_t vfs_rom_ilistdir(mp_obj_t self_in, mp_obj_t path_in) {
     iter->base.type = &mp_type_polymorph_iter;
     iter->iternext = vfs_rom_ilistdir_it_iternext;
     iter->is_str = mp_obj_get_type(path_in) == &mp_type_str;
-    iter->path = vfs_rom_get_path_str(self, path_in);
-    if (mp_vfs_rom_search_filesystem(self, iter->path, NULL, NULL) != MP_IMPORT_STAT_DIR) {
+    const char *path = vfs_rom_get_path_str(self, path_in);
+    size_t size;
+    if (mp_vfs_rom_search_filesystem(self, path, &size, &iter->index) != MP_IMPORT_STAT_DIR) {
         mp_raise_OSError(MP_ENOENT);
     }
-    iter->index = self->filesystem;
-    iter->index_top = self->filesystem_top;
+    iter->index_top = iter->index + size;
     return MP_OBJ_FROM_PTR(iter);
 }
 static MP_DEFINE_CONST_FUN_OBJ_2(vfs_rom_ilistdir_obj, vfs_rom_ilistdir);
