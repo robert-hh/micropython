@@ -4,11 +4,11 @@ import struct, sys, os
 
 
 class VfsRomWriter:
-    MAGIC = 0x294d
+    ROMFS_HEADER = b"\xd2\xcd\x31"
 
     def __init__(self):
-        self.data = bytearray()
-        self.mkdir("")
+        self._dir_stack = [(None, bytearray())]
+        self.opendir("")
 
     def _encode_uint(self, value):
         encoded = [value & 0x7F]
@@ -22,47 +22,50 @@ class VfsRomWriter:
         return self._encode_uint(kind) + self._encode_uint(len(payload)) + payload
 
     def finalise(self):
-        encoded_kind = self._encode_uint(VfsRomWriter.MAGIC)
-        encoded_len = self._encode_uint(len(self.data))
-        if (len(encoded_len) + len(self.data)) % 2 == 1:
+        self.closedir()
+        _, data = self._dir_stack.pop()
+        encoded_kind = VfsRomWriter.ROMFS_HEADER
+        encoded_len = self._encode_uint(len(data))
+        if (len(encoded_kind) + len(encoded_len) + len(data)) % 2 == 1:
             encoded_len = b"\x80" + encoded_len
-        self.data = encoded_kind + encoded_len + self.data
-        return self.data
+        data = encoded_kind + encoded_len + data
+        return data
 
-    def mkdir(self, dirname):
-        payload = bytes(dirname, "ascii")
-        self.data += self._pack(1, payload)
+    def opendir(self, dirname):
+        self._dir_stack.append((dirname, bytearray()))
+
+    def closedir(self):
+        dirname, dirdata = self._dir_stack.pop()
+        dirdata = self._encode_uint(len(dirname)) + bytes(dirname, "ascii") + dirdata
+        self._dir_stack[-1][1].extend(self._pack(1, dirdata))
 
     def mkfile(self, filename, filedata):
         filename = bytes(filename, "ascii")
         payload = self._encode_uint(len(filename))
-        payload += self._encode_uint(len(filedata))
         payload += filename
+        payload += self._encode_uint(len(filedata))
         payload += filedata
-        self.data += self._pack(2, payload)
+        self._dir_stack[-1][1].extend(self._pack(2, payload))
 
 
-def copy_recursively(vfs, src_dir, dest_dir):
-    if dest_dir == "/":
-        dest_dir = ""
+def copy_recursively(vfs, src_dir, depth):
     assert src_dir.endswith("/")
-    assert len(dest_dir) == 0 or dest_dir.endswith("/")
     DIR = 1 << 14
     for name in os.listdir(src_dir):
         if name in (".", ".."):
             continue
         src_name = src_dir + name
-        dest_name = dest_dir + name
         st = os.stat(src_name)
         if st[0] & DIR:
-            print(" -", dest_name + "/")
-            vfs.mkdir(dest_name)
-            copy_recursively(vfs, src_name + "/", dest_name + "/")
+            print(" " * 4 * depth + "|-", name + "/")
+            vfs.opendir(name)
+            copy_recursively(vfs, src_name + "/", depth + 1)
+            vfs.closedir()
         else:
             # todo mpy-cross .py files
-            print(" -", dest_name)
+            print(" " * 4 * depth + "|-", name)
             with open(src_name, "rb") as src:
-                vfs.mkfile(dest_name, src.read())
+                vfs.mkfile(name, src.read())
 
 
 def make_romfs(src_dir, dest_dir):
@@ -74,7 +77,7 @@ def make_romfs(src_dir, dest_dir):
     # Build the filesystem recursively.
     print("Building romfs filesystem, source directory: {}".format(src_dir))
     try:
-        copy_recursively(vfs, src_dir, dest_dir)
+        copy_recursively(vfs, src_dir, 0)
     except OSError as er:
         if er.args[0] == 28:  # ENOSPC
             print("Error: not enough space on filesystem", file=sys.stderr)
