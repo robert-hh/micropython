@@ -59,11 +59,11 @@ test_mpy = (
 
 
 class VfsRomWriter:
-    MAGIC = 0x294d
+    ROMFS_HEADER = b"\xd2\xcd\x31"
 
     def __init__(self):
-        self.data = bytearray()
-        self.mkdir("")
+        self._dir_stack = [(None, bytearray())]
+        self.opendir("")
 
     def _encode_uint(self, value):
         encoded = [value & 0x7F]
@@ -77,33 +77,45 @@ class VfsRomWriter:
         return self._encode_uint(kind) + self._encode_uint(len(payload)) + payload
 
     def finalise(self):
-        encoded_kind = self._encode_uint(VfsRomWriter.MAGIC)
-        encoded_len = self._encode_uint(len(self.data))
-        if (len(encoded_len) + len(self.data)) % 2 == 1:
+        self.closedir()
+        _, data = self._dir_stack.pop()
+        encoded_kind = VfsRomWriter.ROMFS_HEADER
+        encoded_len = self._encode_uint(len(data))
+        if (len(encoded_kind) + len(encoded_len) + len(data)) % 2 == 1:
             encoded_len = b"\x80" + encoded_len
-        self.data = encoded_kind + encoded_len + self.data
-        return self.data
+        data = encoded_kind + encoded_len + data
+        return data
 
-    def mkdir(self, dirname):
-        payload = bytes(dirname, "ascii")
-        self.data += self._pack(1, payload)
+    def opendir(self, dirname):
+        self._dir_stack.append((dirname, bytearray()))
+
+    def closedir(self):
+        dirname, dirdata = self._dir_stack.pop()
+        dirdata = self._encode_uint(len(dirname)) + bytes(dirname, "ascii") + dirdata
+        self._dir_stack[-1][1].extend(self._pack(1, dirdata))
 
     def mkfile(self, filename, filedata):
         filename = bytes(filename, "ascii")
         payload = self._encode_uint(len(filename))
-        payload += self._encode_uint(len(filedata))
         payload += filename
+        payload += self._encode_uint(len(filedata))
         payload += filedata
-        self.data += self._pack(2, payload)
+        self._dir_stack[-1][1].extend(self._pack(2, payload))
+
+
+def _make_romfs(fs, files):
+    for filename, contents in files:
+        if isinstance(contents, tuple):
+            fs.opendir(filename)
+            _make_romfs(fs, contents)
+            fs.closedir()
+        else:
+            fs.mkfile(filename, contents)
 
 
 def make_romfs(files):
     fs = VfsRomWriter()
-    for filename, contents in files:
-        if filename.endswith("/"):
-            fs.mkdir(filename[:-1])
-        else:
-            fs.mkfile(filename, contents)
+    _make_romfs(fs, files)
     return fs.finalise()
 
 
@@ -129,16 +141,17 @@ class TestBase(unittest.TestCase):
             (
                 ("fs.romfs", fs_inner),
                 ("test.txt", b"contents"),
-                ("dir/", b""),
-                ("dir/a.py", b""),
-                ("dir/b.py", b""),
-                ("dir/test.mpy", test_mpy),
+                ("dir", (
+                    ("a.py", b""),
+                    ("b.py", b""),
+                    ("test.mpy", test_mpy),
+                )),
             )
         )
         cls.romfs_ilistdir = [
-            ("fs.romfs", IFREG, 0, 46),
+            ("fs.romfs", IFREG, 0, 48),
             ("test.txt", IFREG, 0, 8),
-            ("dir", IFDIR, 0, 0),
+            ("dir", IFDIR, 0, 185),
         ]
         cls.romfs_listdir = [x[0] for x in cls.romfs_ilistdir]
         cls.romfs_listdir_dir = ["a.py", "b.py", "test.mpy"]
@@ -168,37 +181,45 @@ class TestStandalone(TestBase):
 
     def test_stat(self):
         fs = vfs.VfsRom(self.romfs)
-        self.assertEqual(fs.stat(""), (IFDIR, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-        self.assertEqual(fs.stat("/"), (IFDIR, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-        self.assertEqual(fs.stat("test.txt"), (IFREG, 0, 0, 0, 0, 0, 8, 0, 0, 0))
-        self.assertEqual(fs.stat("dir"), (IFDIR, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        self.assertEqual(fs.stat(""), (IFDIR, 0, 0, 0, 0, 0, 272, 0, 0, 0))
+        self.assertEqual(fs.stat("/"), (IFDIR, 0, 0, 0, 0, 0, 272, 0, 0, 0))
+        self.assertEqual(fs.stat("/test.txt"), (IFREG, 0, 0, 0, 0, 0, 8, 0, 0, 0))
+        self.assertEqual(fs.stat("/dir"), (IFDIR, 0, 0, 0, 0, 0, 185, 0, 0, 0))
         with self.assertRaises(OSError):
-            fs.stat("does not exist")
+            fs.stat("/does-not-exist")
 
     def test_statvfs(self):
         fs = vfs.VfsRom(self.romfs)
-        self.assertEqual(fs.statvfs(""), (1, 0, 282, 0, 0, 0, 0, 0, 0, 32767))
+        self.assertEqual(fs.statvfs(""), (1, 0, 276, 0, 0, 0, 0, 0, 0, 32767))
 
     def test_open(self):
         fs = vfs.VfsRom(self.romfs)
-        with fs.open("test.txt", "") as f:
+
+        with fs.open("/test.txt", "") as f:
             self.assertEqual(f.read(), "contents")
-        with fs.open("test.txt", "rt") as f:
+        with fs.open("/test.txt", "rt") as f:
             self.assertEqual(f.read(), "contents")
-        with fs.open("test.txt", "rb") as f:
+        with fs.open("/test.txt", "rb") as f:
             self.assertEqual(f.read(), b"contents")
+
+        with self.assertRaises(OSError) as ctx:
+            fs.open("/file-does-not-exist", "")
+        self.assertEqual(ctx.exception.errno, errno.ENOENT)
+
+        with self.assertRaises(OSError) as ctx:
+            fs.open("/dir", "rb")
+        self.assertEqual(ctx.exception.errno, errno.EISDIR)
+
         with self.assertRaises(OSError):
-            fs.open("file does not exist", "")
+            fs.open("/test.txt", "w")
         with self.assertRaises(OSError):
-            fs.open("test.txt", "w")
+            fs.open("/test.txt", "a")
         with self.assertRaises(OSError):
-            fs.open("test.txt", "a")
-        with self.assertRaises(OSError):
-            fs.open("test.txt", "+")
+            fs.open("/test.txt", "+")
 
     def test_file_seek(self):
         fs = vfs.VfsRom(self.romfs)
-        with fs.open("test.txt", "") as f:
+        with fs.open("/test.txt", "") as f:
             self.assertEqual(f.seek(0, SEEK_SET), 0)
             self.assertEqual(f.seek(3, SEEK_SET), 3)
             self.assertEqual(f.read(), "tents")
@@ -211,7 +232,7 @@ class TestStandalone(TestBase):
     @unittest.skipIf(select is None, "no select module")
     def test_file_ioctl_invalid(self):
         fs = vfs.VfsRom(self.romfs)
-        with fs.open("test.txt", "") as f:
+        with fs.open("/test.txt", "") as f:
             p = select.poll()
             p.register(f)
             with self.assertRaises(OSError):
@@ -219,7 +240,7 @@ class TestStandalone(TestBase):
 
     def test_memory_mapping(self):
         fs = vfs.VfsRom(self.romfs)
-        with fs.open("test.txt", "rb") as f:
+        with fs.open("/test.txt", "rb") as f:
             addr = uctypes.addressof(f)
             data = memoryview(f)
             self.assertIn(addr, self.romfs_addr_range)
@@ -253,6 +274,28 @@ class TestMounted(TestBase):
         # chdir within the romfs is not implemented.
         with self.assertRaises(OSError):
             os.chdir("/test_rom/dir")
+
+    def test_stat(self):
+        self.assertEqual(os.stat("/test_rom"), (IFDIR, 0, 0, 0, 0, 0, 272, 0, 0, 0))
+        self.assertEqual(os.stat("/test_rom/"), (IFDIR, 0, 0, 0, 0, 0, 272, 0, 0, 0))
+        self.assertEqual(os.stat("/test_rom/test.txt"), (IFREG, 0, 0, 0, 0, 0, 8, 0, 0, 0))
+        self.assertEqual(os.stat("/test_rom/dir"), (IFDIR, 0, 0, 0, 0, 0, 185, 0, 0, 0))
+        with self.assertRaises(OSError):
+            os.stat("/test_rom/does-not-exist")
+
+    def test_open(self):
+        with open("/test_rom/test.txt") as f:
+            self.assertEqual(f.read(), "contents")
+        with open("/test_rom/test.txt", "b") as f:
+            self.assertEqual(f.read(), b"contents")
+
+        with self.assertRaises(OSError) as ctx:
+            open("/test_rom/file-does-not-exist")
+        self.assertEqual(ctx.exception.errno, errno.ENOENT)
+
+        with self.assertRaises(OSError) as ctx:
+            open("/test_rom/dir")
+        self.assertEqual(ctx.exception.errno, errno.EISDIR)
 
     def test_import_py(self):
         sys.path.append("/test_rom/dir")
