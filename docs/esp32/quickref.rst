@@ -188,8 +188,9 @@ Use the :mod:`time <time>` module::
 Timers
 ------
 
-The ESP32 port has four hardware timers. Use the :ref:`machine.Timer <machine.Timer>` class
-with a timer ID from 0 to 3 (inclusive)::
+The ESP32 port has one, two or four hardware timers, depending on the ESP32 device type.
+Use the :ref:`machine.Timer <machine.Timer>` class  with a timer ID of
+0, 0 and 1, or from 0 to 3 (inclusive)::
 
     from machine import Timer
 
