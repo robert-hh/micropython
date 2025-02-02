@@ -49,6 +49,9 @@ extern uint8_t __vfs_start;
 extern uint8_t __vfs_end;
 extern uint8_t __flash_start;
 
+extern bool flash_busy_status_pol;
+extern bool flash_busy_status_offset;
+
 void flash_init(void);
 status_t flash_erase_sector(uint32_t erase_addr);
 status_t flash_erase_block(uint32_t erase_addr);

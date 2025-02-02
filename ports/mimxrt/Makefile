@@ -244,6 +244,7 @@ ifeq ($(MICROPY_HW_FLASH_TYPE),$(filter $(MICROPY_HW_FLASH_TYPE),qspi_nor_flash)
 else ifeq ($(MICROPY_HW_FLASH_TYPE),$(filter $(MICROPY_HW_FLASH_TYPE),hyper_flash))
     MICROPY_HW_FLASH_BASE = 0x60000000
     FLEXSPI_FLASH_TYPE = $(MICROPY_HW_FLASH_TYPE)
+    CFLAGS += -DMICROPY_HW_HYPERFLASH=1
 else ifeq ($(MICROPY_HW_FLASH_TYPE),$(filter $(MICROPY_HW_FLASH_TYPE),internal))
     # The internal flash is an SPI NOR Flash.
     MICROPY_HW_FLASH_BASE = 0x70000000

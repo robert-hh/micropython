@@ -241,10 +241,6 @@ typedef struct _flexspi_nor_config
 #define FLASH_BUSY_STATUS_POL 0
 #define FLASH_BUSY_STATUS_OFFSET 0
 
-#ifndef MICROPY_HW_FLASH_SAMPLE_CLK
-#define MICROPY_HW_FLASH_SAMPLE_CLK kFLEXSPIReadSampleClk_LoopbackFromDqsPad
-#endif
-
 #ifndef MICROPY_HW_FLASH_CLK
 #define MICROPY_HW_FLASH_CLK kFLEXSPISerialClk_100MHz
 #endif

@@ -37,6 +37,9 @@
 #include "fsl_common.h"
 #include "flexspi_nor_flash.h"
 
+extern bool flash_busy_status_pol;
+extern bool flash_busy_status_offset;
+
 void flexspi_nor_reset(FLEXSPI_Type *base) __attribute__((section(".ram_functions")));
 void flexspi_nor_reset(FLEXSPI_Type *base) {
     // Using content of FLEXSPI_SoftwareReset directly to prevent issues when compiler does not inline function
@@ -84,14 +87,14 @@ status_t flexspi_nor_wait_bus_busy(FLEXSPI_Type *base) {
         if (status != kStatus_Success) {
             return status;
         }
-        if (FLASH_BUSY_STATUS_POL) {
-            if (readValue & (1U << FLASH_BUSY_STATUS_OFFSET)) {
+        if (flash_busy_status_pol) {
+            if (readValue & (1U << flash_busy_status_offset)) {
                 isBusy = false;
             } else {
                 isBusy = true;
             }
         } else {
-            if (readValue & (1U << FLASH_BUSY_STATUS_OFFSET)) {
+            if (readValue & (1U << flash_busy_status_offset)) {
                 isBusy = true;
             } else {
                 isBusy = false;

@@ -26,12 +26,67 @@
 
 #include "flash.h"
 
-void flash_init(void) {
-    // Upload the custom flash configuration
-    // This should be performed by the boot ROM but for some reason it is not.
-    FLEXSPI_UpdateLUT(BOARD_FLEX_SPI, 0,
-        qspiflash_config.memConfig.lookupTable,
-        ARRAY_SIZE(qspiflash_config.memConfig.lookupTable));
+#include "fsl_cache.h"
+#include "fsl_flexspi.h"
+
+bool flash_busy_status_pol = 0;
+bool flash_busy_status_offset = 0;
+
+#if !defined(MIMXRT117x_SERIES) && !MICROPY_HW_HYPERFLASH
+static uint16_t freq_table_mhz[] = {
+    60,  // Entry 0 to 2 are out of range
+    60,  // So it is set to 60
+    60,  // as lowest possible MHz value
+    60,
+    75,
+    80,
+    100,
+    133,
+    166
+};
+#endif
+
+__attribute__((section(".ram_functions"))) void flash_init(void) {
+    // Make sure everything is flushed after updating the LUT.
+    // Get the busy status flags from the flash config & store them locally.
+    flash_busy_status_pol = qspiflash_config.memConfig.busyBitPolarity;
+    flash_busy_status_offset = qspiflash_config.memConfig.busyOffset;
+    // Update the LUT to make sure all entries are available. Copy the values to
+    // memory first so that we don't read from the flash as we update the LUT.
+    uint32_t lut_copy[64];
+    memcpy(lut_copy, (const uint32_t *)&qspiflash_config.memConfig.lookupTable, 64 * sizeof(uint32_t));
+    FLEXSPI_UpdateLUT(BOARD_FLEX_SPI, 0, lut_copy, 64);
+
+    #if !defined(MIMXRT117x_SERIES) && !MICROPY_HW_HYPERFLASH
+    // The PFD is 480 * 18 / PFD0_FRAC. We do / 18 which outputs 480 MHz.
+    // We pre-calculate the divider here as long as the freq_table_mhz is accessible.
+    uint32_t freq_divider = (480 + freq_table_mhz[MICROPY_HW_FLASH_CLK] / 2) / freq_table_mhz[MICROPY_HW_FLASH_CLK] - 1;
+    __DSB();
+    __ISB();
+
+    __disable_irq();
+    SCB_DisableDCache();
+    while (!FLEXSPI_GetBusIdleStatus(FLEXSPI)) {
+    }
+    FLEXSPI_Enable(FLEXSPI, false);
+
+    // Disable FlexSPI clock
+    CCM->CCGR6 &= ~CCM_CCGR6_CG5_MASK;
+    // Changing the clock is OK now.
+    // The PFD is 480 * 18 / PFD0_FRAC. We do / 18 which outputs 480 MHz.
+    CCM_ANALOG->PFD_480 = (CCM_ANALOG->PFD_480 & ~CCM_ANALOG_PFD_480_TOG_PFD0_FRAC_MASK) | CCM_ANALOG_PFD_480_TOG_PFD0_FRAC(17);
+    // This divides down the 480 Mhz by PODF + 1. So 508 / (3 + 1) = 127 MHz, 508 / (4 + 1) = 101.7 MHz.
+    CCM->CSCMR1 = (CCM->CSCMR1 & ~CCM_CSCMR1_FLEXSPI_PODF_MASK) | CCM_CSCMR1_FLEXSPI_PODF(freq_divider);
+    // Re-enable FlexSPI
+    CCM->CCGR6 |= CCM_CCGR6_CG5_MASK;
+
+    FLEXSPI_Enable(FLEXSPI, true);
+    FLEXSPI_SoftwareReset(FLEXSPI);
+    while (!FLEXSPI_GetBusIdleStatus(FLEXSPI)) {
+    }
+    SCB_EnableDCache();
+    __enable_irq();
+    #endif
 
     // Configure FLEXSPI IP FIFO access.
     BOARD_FLEX_SPI->MCR0 &= ~(FLEXSPI_MCR0_ARDFEN_MASK);
