@@ -143,9 +143,20 @@ static inline mp_uint_t mp_hal_ticks_cpu(void) {
     return DWT->CYCCNT;
 }
 
+#if defined(MIMXRT101x_SERIES)
+static inline mp_uint_t mp_hal_get_cpu_freq(void) {
+    return CLOCK_GetCoreFreq();
+}
+#elif defined(MIMXRT102x_SERIES)
+static inline mp_uint_t mp_hal_get_cpu_freq(void) {
+    return CLOCK_GetAhbFreq();
+}
+#else
 static inline mp_uint_t mp_hal_get_cpu_freq(void) {
     return CLOCK_GetCpuClkFreq();
 }
+#endif
+
 
 enum {
     MP_HAL_MAC_WLAN0 = 0,

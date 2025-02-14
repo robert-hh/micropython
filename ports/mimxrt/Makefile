@@ -124,7 +124,6 @@ endif
 
 # NXP SDK sources
 SRC_HAL_IMX_C += \
-	$(MCU_DIR)/drivers/fsl_clock.c \
 	$(MCUX_SDK_DIR)/drivers/common/fsl_common.c \
 	$(MCUX_SDK_DIR)/drivers/common/fsl_common_arm.c \
 	$(MCUX_SDK_DIR)/drivers/dmamux/fsl_dmamux.c \
@@ -155,6 +154,7 @@ INC_HAL_IMX += \
 	-I$(TOP)/$(MCU_DIR) \
 	-I$(TOP)/$(MCU_DIR)/drivers \
 	-I$(TOP)/$(MCUX_SDK_DIR)/drivers/common \
+	-I$(TOP)/$(MCUX_SDK_DIR)/drivers/dcdc_1 \
 	-I$(TOP)/$(MCUX_SDK_DIR)/drivers/dmamux \
 	-I$(TOP)/$(MCUX_SDK_DIR)/drivers/edma \
 	-I$(TOP)/$(MCUX_SDK_DIR)/drivers/flexram \
@@ -197,6 +197,11 @@ APPLICATION_ADDR := 0x3000C000
 endif
 
 ifeq ($(MCU_SERIES), MIMXRT1176)
+INC += -I$(TOP)/$(MCU_DIR)/drivers/cm7
+
+SRC_C += \
+	hal/fsl_clock_MIMXRT1176.c
+
 SRC_HAL_IMX_C += \
 	$(MCU_DIR)/drivers/cm7/fsl_cache.c \
 	$(MCU_DIR)/drivers/fsl_dcdc.c \
@@ -217,8 +222,10 @@ INC_HAL_IMX += \
 CFLAGS += -DCACHE_MODE_WRITE_THROUGH=1
 else
 SRC_HAL_IMX_C += \
+	$(MCU_DIR)/drivers/fsl_clock.c \
 	$(MCUX_SDK_DIR)/drivers/adc_12b1msps_sar/fsl_adc.c \
 	$(MCUX_SDK_DIR)/drivers/cache/armv7-m7/fsl_cache.c \
+	$(MCUX_SDK_DIR)/drivers/dcdc_1/fsl_dcdc.c \
 	$(MCUX_SDK_DIR)/drivers/gpc_1/fsl_gpc.c \
 	$(MCUX_SDK_DIR)/drivers/src/fsl_src.c \
 	$(MCUX_SDK_DIR)/drivers/trng/fsl_trng.c
