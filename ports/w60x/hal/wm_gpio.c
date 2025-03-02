@@ -348,7 +348,7 @@ void tls_clr_gpio_irq_status(enum tls_io_name gpio_pin) {
  *
  * @param[in]      gpio_pin    gpio pin num
  * @param[in]      callback    the gpio interrupt call back function
- * @param[in]      arg         parammeter for the callback
+ * @param[in]      arg         parameter for the callback
  *
  * @return         None
  *

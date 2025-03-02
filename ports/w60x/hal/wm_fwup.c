@@ -19,6 +19,7 @@
 #include "wm_fwup.h"
 #include "wm_flash_map.h"
 #include "wm_internal_flash.h"
+#include "py/runtime.h"
 
 extern u32 flashtotalsize;
 
@@ -34,6 +35,7 @@ unsigned int USER_ADDR_START = 0;
 unsigned int TLS_FLASH_PARAM_DEFAULT = 0;
 unsigned int USER_AREA_LEN = 0;
 unsigned int USER_ADDR_END = 0;
+unsigned int MICROPY_HW_ROMFS_PART0_SIZE = 0;
 
 
 /**Upgrade image header area & System parameter area */
@@ -74,5 +76,6 @@ void tls_fls_layout_init(void) {
     USER_ADDR_START = (TLS_FLASH_END_ADDR + 1);
     USER_AREA_LEN = FLASH_BASE_ADDR + flashtotalsize - USER_ADDR_START;
     USER_ADDR_END = (USER_ADDR_START + USER_AREA_LEN - 1);
-
+    MICROPY_HW_ROMFS_PART0_SIZE = flashtotalsize > 0x100000 ?
+        MICROPY_HW_VFSROM_BYTES * 2 : MICROPY_HW_VFSROM_BYTES;
 }
