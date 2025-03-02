@@ -104,6 +104,10 @@
 #define FFCONF_H                            "lib/oofatfs/ffconf.h"
 #define MICROPY_PY_SYS_PLATFORM             "w600"
 #define MICROPY_PLATFORM_VERSION            "SDK G3.04.00"
+#ifndef MICROPY_HW_VFSROM_BYTES
+#define MICROPY_HW_VFSROM_BYTES             (64 * 1024)
+#endif
+#define MICROPY_VFS_ROM                     (1)
 
 // fatfs configuration
 #define MICROPY_FATFS_ENABLE_LFN            (1)

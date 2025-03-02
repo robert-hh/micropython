@@ -30,11 +30,14 @@
 #include "wm_flash_map.h"
 
 #include "py/runtime.h"
+#include "py/mperrno.h"
 
 #include "extmod/vfs.h"
 
-#define INTERNAL_FLS_BASE               (USER_ADDR_START)
-#define INTERNAL_FLS_LEN                (USER_AREA_LEN)
+extern unsigned int MICROPY_HW_ROMFS_PART0_SIZE;
+#define MICROPY_HW_ROMFS_PART0_START    (USER_ADDR_START)
+#define VFS_FILESYSTEM_BASE             (USER_ADDR_START + MICROPY_HW_ROMFS_PART0_SIZE)
+#define VFS_FILESYSTEM_LEN              (USER_AREA_LEN - MICROPY_HW_ROMFS_PART0_SIZE)
 #define INTERNAL_FLS_FS_PAGE_SIZE       (INSIDE_FLS_PAGE_SIZE)
 #define INTERNAL_FLS_FS_SECTOR_SIZE     (INSIDE_FLS_SECTOR_SIZE)
 
@@ -43,14 +46,21 @@
 // block protocol.
 
 // there is a singleton Flash object
+typedef struct _w600_flash_obj_t {
+    mp_obj_base_t base;
+    uint32_t flash_base;
+    uint32_t flash_size;
+} w600_flash_obj_t;
+
 extern const mp_obj_type_t w600_flash_type;
-static const mp_obj_base_t w600_flash_obj = {&w600_flash_type};
+static w600_flash_obj_t w600_flash_obj = {{&w600_flash_type}, 0, 0};
 
 static mp_obj_t w600_flash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     // check arguments
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
-
     // return singleton object
+    w600_flash_obj.flash_base = VFS_FILESYSTEM_BASE;
+    w600_flash_obj.flash_size = VFS_FILESYSTEM_LEN;
     return (mp_obj_t)&w600_flash_obj;
 }
 
@@ -67,8 +77,21 @@ static mp_obj_t eraseblock(uint32_t addr_in) {
     return mp_const_none;
 }
 
+static mp_int_t w600_flash_get_buffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo, mp_uint_t flags) {
+    w600_flash_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (flags == MP_BUFFER_READ) {
+        bufinfo->buf = (void *)self->flash_base;
+        bufinfo->len = self->flash_size;
+        bufinfo->typecode = 'B';
+        return 0;
+    } else {
+        // Write unsupported.
+        return 1;
+    }
+}
 static mp_obj_t w600_flash_readblocks(size_t n_args, const mp_obj_t *args) {
-    uint32_t offset = (mp_obj_get_int(args[1]) * INTERNAL_FLS_FS_SECTOR_SIZE) + INTERNAL_FLS_BASE;
+    w600_flash_obj_t *self = MP_OBJ_TO_PTR(args[0]);
+    uint32_t offset = (mp_obj_get_int(args[1]) * INTERNAL_FLS_FS_SECTOR_SIZE) + self->flash_base;
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_WRITE);
     if (n_args == 4) {
@@ -83,7 +106,8 @@ static mp_obj_t w600_flash_readblocks(size_t n_args, const mp_obj_t *args) {
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_flash_readblocks_obj, 3, 4, w600_flash_readblocks);
 
 static mp_obj_t w600_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
-    uint32_t offset = (mp_obj_get_int(args[1]) * INTERNAL_FLS_FS_SECTOR_SIZE) + INTERNAL_FLS_BASE;
+    w600_flash_obj_t *self = MP_OBJ_TO_PTR(args[0]);
+    uint32_t offset = (mp_obj_get_int(args[1]) * INTERNAL_FLS_FS_SECTOR_SIZE) + self->flash_base;
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
     if (n_args == 3) {
@@ -100,7 +124,8 @@ static mp_obj_t w600_flash_writeblocks(size_t n_args, const mp_obj_t *args) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(w600_flash_writeblocks_obj, 3, 4, w600_flash_writeblocks);
 
-static mp_obj_t w600_flash_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in) {
+static mp_obj_t w600_flash_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_t arg_in) {
+    w600_flash_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t cmd = mp_obj_get_int(cmd_in);
 
     switch (cmd) {
@@ -111,14 +136,14 @@ static mp_obj_t w600_flash_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in
         case MP_BLOCKDEV_IOCTL_SYNC:
             return MP_OBJ_NEW_SMALL_INT(0);
         case MP_BLOCKDEV_IOCTL_BLOCK_COUNT:
-            return MP_OBJ_NEW_SMALL_INT(INTERNAL_FLS_LEN / INTERNAL_FLS_FS_SECTOR_SIZE);
+            return MP_OBJ_NEW_SMALL_INT(self->flash_size / INTERNAL_FLS_FS_SECTOR_SIZE);
         case MP_BLOCKDEV_IOCTL_BLOCK_SIZE:
             return MP_OBJ_NEW_SMALL_INT(INTERNAL_FLS_FS_SECTOR_SIZE);
         case MP_BLOCKDEV_IOCTL_BLOCK_ERASE: {
             // The tlf_fls_write() function erase a sector if required. Thus, erase is not
             // required. The function & call is kept for visibility
 
-            // int sector = mp_obj_get_int(arg_in) + INTERNAL_FLS_BASE / INTERNAL_FLS_FS_SECTOR_SIZE;
+            // int sector = mp_obj_get_int(arg_in) + self->flash_base / INTERNAL_FLS_FS_SECTOR_SIZE;
             // mp_printf(MP_PYTHON_PRINTER, "erase_ioctl %d -> %d\n", mp_obj_get_int(arg_in), sector);
             // tls_fls_erase(sector);
         }
@@ -143,5 +168,29 @@ MP_DEFINE_CONST_OBJ_TYPE(
     MP_QSTR_Flash,
     MP_TYPE_FLAG_NONE,
     make_new, w600_flash_make_new,
+    buffer, w600_flash_get_buffer,
     locals_dict, &w600_flash_locals_dict
     );
+
+
+#if MICROPY_HW_VFSROM_BYTES > 0
+
+static w600_flash_obj_t w600_flash_romfs_obj = {{&w600_flash_type }, 0, 0};
+
+mp_obj_t mp_vfs_rom_ioctl(size_t n_args, const mp_obj_t *args) {
+    switch (mp_obj_get_int(args[0])) {
+        case MP_VFS_ROM_IOCTL_GET_NUMBER_OF_SEGMENTS:
+            return MP_OBJ_NEW_SMALL_INT(1);
+        case MP_VFS_ROM_IOCTL_GET_SEGMENT:
+            w600_flash_romfs_obj.flash_base = MICROPY_HW_ROMFS_PART0_START;
+            w600_flash_romfs_obj.flash_size = MICROPY_HW_ROMFS_PART0_SIZE;
+            return MP_OBJ_FROM_PTR(&w600_flash_romfs_obj);
+        default:
+            return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+    }
+}
+#else
+mp_obj_t mp_vfs_rom_ioctl(size_t n_args, const mp_obj_t *args) {
+    return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
+}
+#endif

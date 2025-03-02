@@ -64,7 +64,7 @@ def deviceWaitBoot(timeout=3):
     started = time.time()
     buff = b""
     while time.time() - started < timeout:
-        serial_device.write(b"\x1B")
+        serial_device.write(b"\x1b")
         buff = buff + serial_device.read(1)
         buff = buff[-16:]  # Remember last 16 chars
         if buff.endswith(b"CCCC"):
