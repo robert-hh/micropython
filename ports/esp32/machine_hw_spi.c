@@ -36,6 +36,7 @@
 #include "driver/spi_master.h"
 #include "soc/gpio_sig_map.h"
 #include "soc/spi_pins.h"
+#include "driver/gpio.h"
 
 // SPI mappings by device, naming used by IDF old/new
 // upython   | ESP32     | ESP32S2   | ESP32S3 | ESP32C3 | ESP32C6
@@ -102,6 +103,7 @@ typedef struct _machine_hw_spi_obj_t {
     int8_t sck;
     int8_t mosi;
     int8_t miso;
+    int8_t drive;
     spi_device_handle_t spi;
     enum {
         MACHINE_HW_SPI_STATE_NONE,
@@ -119,7 +121,7 @@ static const machine_hw_spi_default_pins_t machine_hw_spi_default_pins[MICROPY_H
 };
 
 // Common arguments for init() and make new
-enum { ARG_id, ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_sck, ARG_mosi, ARG_miso };
+enum { ARG_id, ARG_baudrate, ARG_polarity, ARG_phase, ARG_bits, ARG_firstbit, ARG_drive, ARG_sck, ARG_mosi, ARG_miso };
 static const mp_arg_t spi_allowed_args[] = {
     { MP_QSTR_id,       MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = -1} },
     { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = -1} },
@@ -127,6 +129,7 @@ static const mp_arg_t spi_allowed_args[] = {
     { MP_QSTR_phase,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
     { MP_QSTR_bits,     MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
     { MP_QSTR_firstbit, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
+    { MP_QSTR_drive,    MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1 } },
     { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_mosi,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_miso,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
@@ -225,6 +228,12 @@ static void machine_hw_spi_init_internal(machine_hw_spi_obj_t *self, mp_arg_val_
         changed = true;
     }
 
+    mp_int_t strength = args[ARG_drive].u_int;
+    if (0 <= strength && strength < GPIO_DRIVE_CAP_MAX) {
+        self->drive = strength;
+        changed = true;
+    }
+
     if (changed) {
         if (self->state == MACHINE_HW_SPI_STATE_INIT) {
             self->state = MACHINE_HW_SPI_STATE_DEINIT;
@@ -293,6 +302,10 @@ static void machine_hw_spi_init_internal(machine_hw_spi_obj_t *self, mp_arg_val_
             spi_bus_free(self->host);
             return;
     }
+
+    gpio_set_drive_capability(self->mosi, self->drive);
+    gpio_set_drive_capability(self->sck, self->drive);
+
     self->state = MACHINE_HW_SPI_STATE_INIT;
 }
 
@@ -395,9 +408,9 @@ static void machine_hw_spi_transfer(mp_obj_base_t *self_in, size_t len, const ui
 
 static void machine_hw_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     machine_hw_spi_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    mp_printf(print, "SPI(id=%u, baudrate=%u, polarity=%u, phase=%u, bits=%u, firstbit=%u, sck=%d, mosi=%d, miso=%d)",
+    mp_printf(print, "SPI(id=%u, baudrate=%u, polarity=%u, phase=%u, bits=%u, firstbit=%u, drive=%u, sck=%d, mosi=%d, miso=%d)",
         self->host, self->baudrate, self->polarity,
-        self->phase, self->bits, self->firstbit,
+        self->phase, self->bits, self->firstbit, self->drive,
         self->sck, self->mosi, self->miso);
 }
 
@@ -444,8 +457,8 @@ mp_obj_t machine_hw_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("SPI(%d) doesn't exist"), spi_id);
     }
     // Replace -1 non-pin args with default values
-    static const mp_int_t defaults[] = { 500000, 0, 0, 8, MICROPY_PY_MACHINE_SPI_MSB };
-    for (int i = ARG_baudrate; i <= ARG_firstbit; i++) {
+    static const mp_int_t defaults[] = { 500000, 0, 0, 8, MICROPY_PY_MACHINE_SPI_MSB, GPIO_DRIVE_CAP_DEFAULT };
+    for (int i = ARG_baudrate; i <= ARG_drive; i++) {
         if (args[i].u_int == -1) {
             args[i].u_int = defaults[i - ARG_baudrate];
         }
