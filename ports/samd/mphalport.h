@@ -94,10 +94,6 @@ static inline mp_uint_t mp_hal_ticks_cpu(void) {
 }
 #endif
 
-static inline uint64_t mp_hal_time_ns(void) {
-    return mp_hal_ticks_us_64() * 1000;
-}
-
 // C-level pin HAL
 
 #include "py/obj.h"

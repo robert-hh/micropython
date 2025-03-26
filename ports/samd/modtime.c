@@ -54,3 +54,10 @@ static mp_obj_t mp_time_time_get(void) {
     return mp_obj_new_int_from_uint(timeutils_mktime(
         tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec));
 }
+
+uint64_t mp_hal_time_ns(void) {
+    timeutils_struct_time_t tm;
+    rtc_gettime(&tm);
+    return (uint64_t)timeutils_mktime(tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour,
+        tm.tm_min, tm.tm_sec) * 1000000000ULL;
+}
