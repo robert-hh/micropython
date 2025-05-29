@@ -57,11 +57,11 @@ typedef struct _iomux_table_t {
     uint32_t configRegister;
 } iomux_table_t;
 
-static const uint8_t i2c_index_table[] = MICROPY_HW_I2C_INDEX;
-static LPI2C_Type *i2c_base_ptr_table[] = LPI2C_BASE_PTRS;
-static const iomux_table_t iomux_table[] = { IOMUX_TABLE_I2C };
-
 #define MICROPY_HW_I2C_NUM     ARRAY_SIZE(i2c_index_table)
+const uint8_t i2c_index_table[] = MICROPY_HW_I2C_INDEX;
+LPI2C_Type *i2c_base_ptr_table[] = LPI2C_BASE_PTRS;
+const uint8_t micropy_hw_i2c_num = MICROPY_HW_I2C_NUM;
+static const iomux_table_t iomux_table[] = { IOMUX_TABLE_I2C };
 
 #define SCL (iomux_table[index])
 #define SDA (iomux_table[index + 1])
