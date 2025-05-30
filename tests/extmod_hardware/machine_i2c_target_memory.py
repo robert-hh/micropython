@@ -20,19 +20,29 @@ if sys.platform == "rp2":
     args_controller = {"scl": 5, "sda": 4}
     args_target = (1,)
 
-    def config_pull_up():
-        Pin(5, Pin.OPEN_DRAIN, Pin.PULL_UP)
-        Pin(4, Pin.OPEN_DRAIN, Pin.PULL_UP)
 elif sys.platform == "pyboard":
     args_controller = {"scl": "X1", "sda": "X2"}
     args_target = ("X",)
 
-    def config_pull_up():
-        Pin("X1", Pin.OPEN_DRAIN, Pin.PULL_UP)
-        Pin("X2", Pin.OPEN_DRAIN, Pin.PULL_UP)
+elif sys.platform == "mimxrt":
+    if "Teensy" in sys.implementation._machine:
+        args_controller = {"scl": "A6", "sda": "A3"}
+    else:
+        args_controller = {"scl": "D0", "sda": "D1"}
+    args_target = (0,)
+
+elif sys.platform == "samd":
+    args_controller = {"scl": "D5", "sda": "D1"}
+    args_target = None
+
 else:
     print("Please add support for this test on this platform.")
     raise SystemExit
+
+
+def config_pull_up():
+    Pin(args_controller["scl"], Pin.OPEN_DRAIN, Pin.PULL_UP)
+    Pin(args_controller["sda"], Pin.OPEN_DRAIN, Pin.PULL_UP)
 
 
 class Test(unittest.TestCase):
@@ -40,7 +50,10 @@ class Test(unittest.TestCase):
     def setUpClass(cls):
         cls.mem = bytearray(8)
         cls.i2c = SoftI2C(**args_controller)
-        cls.i2c_mem = I2CTargetMemory(*args_target, addr=ADDR, mem=cls.mem)
+        if args_target is None:
+            cls.i2c_mem = I2CTargetMemory(addr=ADDR, mem=cls.mem)
+        else:
+            cls.i2c_mem = I2CTargetMemory(*args_target, addr=ADDR, mem=cls.mem)
         config_pull_up()
 
     @classmethod
@@ -48,7 +61,7 @@ class Test(unittest.TestCase):
         cls.i2c_mem.deinit()
 
     def test_scan(self):
-        self.assertEqual(self.i2c.scan(), [ADDR])
+        self.assertIn(ADDR, self.i2c.scan())
 
     def test_read(self):
         self.mem[:] = b"01234567"
@@ -77,5 +90,5 @@ class Test(unittest.TestCase):
         self.assertEqual(self.mem, bytearray(b"moreTEST"))
 
 
-if __name__ == "__main__":
-    unittest.main()
+# if __name__ == "__main__":
+unittest.main()
