@@ -41,13 +41,15 @@ typedef struct _machine_i2c_target_memory_obj_t {
     uint8_t addr;
     lpi2c_slave_config_t *slave_config;
     lpi2c_slave_handle_t handle;
+    mp_obj_t callback;
 } machine_i2c_target_memory_obj_t;
 
 
 MP_REGISTER_ROOT_POINTER(mp_obj_t pyb_i2cslave_mem[MICROPY_HW_I2C_NUM_MAX]);
 
 static void lpi2c_slave_mem_callback(LPI2C_Type *base, lpi2c_slave_transfer_t *xfer, void *param) {
-    machine_i2c_target_data_t *data = (machine_i2c_target_data_t *)param;
+    machine_i2c_target_memory_obj_t *self = (machine_i2c_target_memory_obj_t *)param;
+    machine_i2c_target_data_t *data = &i2c_target_data[self->i2c_id];
 
     switch (xfer->event)
     {
@@ -65,6 +67,9 @@ static void lpi2c_slave_mem_callback(LPI2C_Type *base, lpi2c_slave_transfer_t *x
         //  Transfer done
         case kLPI2C_SlaveCompletionEvent:
             machine_i2c_target_data_reset(data);
+            if (self->callback != MP_OBJ_NULL) {
+                mp_sched_schedule(self->callback, self);
+            }
             break;
 
         default:
@@ -74,12 +79,13 @@ static void lpi2c_slave_mem_callback(LPI2C_Type *base, lpi2c_slave_transfer_t *x
 
 static mp_obj_t mp_machine_i2c_target_memory_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // TODO: reconsider order of arguments
-    enum { ARG_id, ARG_addr, ARG_mem, ARG_drive };
+    enum { ARG_id, ARG_addr, ARG_mem, ARG_drive, ARG_callback };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_id, MP_ARG_INT, {.u_int = DEFAULT_I2C_ID} },
         { MP_QSTR_addr, MP_ARG_REQUIRED | MP_ARG_INT },
         { MP_QSTR_mem, MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_drive, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = DEFAULT_I2C_DRIVE} },
+        { MP_QSTR_callback, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     };
 
     // Parse args.
@@ -101,8 +107,12 @@ static mp_obj_t mp_machine_i2c_target_memory_make_new(const mp_obj_type_t *type,
     if (drive < 1 || drive > 7) {
         drive = DEFAULT_I2C_DRIVE;
     }
-    // Set the target address.
+    // Set the target address and callback
     self->addr = args[ARG_addr].u_int;
+    self->callback = args[ARG_callback].u_obj;
+    if (self->callback == mp_const_none) {
+        self->callback = MP_OBJ_NULL;
+    }
     // Initialise data.
     MP_STATE_PORT(pyb_i2cslave_mem)[i2c_hw_id] = args[ARG_mem].u_obj;
     machine_i2c_target_data_t *data = &i2c_target_data[self->i2c_id];
@@ -118,7 +128,7 @@ static mp_obj_t mp_machine_i2c_target_memory_make_new(const mp_obj_type_t *type,
     self->slave_config->sclGlitchFilterWidth_ns = DEFAULT_I2C_FILTER_NS;
     LPI2C_SlaveInit(self->i2c_inst, self->slave_config, BOARD_BOOTCLOCKRUN_LPI2C_CLK_ROOT);
     // Create the LPI2C handle for the non-blocking transfer
-    LPI2C_SlaveTransferCreateHandle(self->i2c_inst, &self->handle, lpi2c_slave_mem_callback, data);
+    LPI2C_SlaveTransferCreateHandle(self->i2c_inst, &self->handle, lpi2c_slave_mem_callback, self);
     // Start accepting I2C transfers on the LPI2C slave peripheral
     status_t reVal = LPI2C_SlaveTransferNonBlocking(self->i2c_inst, &self->handle,
         kLPI2C_SlaveCompletionEvent |
