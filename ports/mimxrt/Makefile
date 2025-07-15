@@ -297,7 +297,6 @@ SRC_C += \
 	mpnetworkport.c \
 	msc_disk.c \
 	network_lan.c \
-	nina_wifi_bsp.c \
 	pendsv.c \
 	pin.c \
 	psram.c \
