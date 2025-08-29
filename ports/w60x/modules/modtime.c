@@ -31,23 +31,18 @@
 #include "modmachine.h"
 
 // Return the localtime as an 8-tuple.
-static mp_obj_t mp_time_localtime_get(void) {
-    struct tm tm;
-    tls_get_rtc(&tm);
+static void mp_time_localtime_get(timeutils_struct_time_t *tm) {
+    struct tm tm_rtc;
+    tls_get_rtc(&tm_rtc);
 
-    tm.tm_wday = timeutils_calc_weekday(tm.tm_year + W600_YEAR_BASE, tm.tm_mon, tm.tm_mday);
-    tm.tm_yday = timeutils_year_day(tm.tm_year, tm.tm_mon, tm.tm_mday);
-    mp_obj_t tuple[8] = {
-        tuple[0] = mp_obj_new_int(tm.tm_year + W600_YEAR_BASE),
-        tuple[1] = mp_obj_new_int(tm.tm_mon),
-        tuple[2] = mp_obj_new_int(tm.tm_mday),
-        tuple[3] = mp_obj_new_int(tm.tm_hour),
-        tuple[4] = mp_obj_new_int(tm.tm_min),
-        tuple[5] = mp_obj_new_int(tm.tm_sec),
-        tuple[6] = mp_obj_new_int(tm.tm_wday),
-        tuple[7] = mp_obj_new_int(tm.tm_yday),
-    };
-    return mp_obj_new_tuple(8, tuple);
+    tm->tm_year  = tm_rtc.tm_year + W600_YEAR_BASE;
+    tm->tm_mon = tm_rtc.tm_mon;
+    tm->tm_mday = tm_rtc.tm_mday;
+    tm->tm_hour = tm_rtc.tm_hour;
+    tm->tm_min = tm_rtc.tm_min;
+    tm->tm_sec = tm_rtc.tm_sec;
+    tm->tm_wday = timeutils_calc_weekday(tm_rtc.tm_year + W600_YEAR_BASE, tm_rtc.tm_mon, tm_rtc.tm_mday);
+    tm->tm_yday = timeutils_year_day(tm_rtc.tm_year, tm_rtc.tm_mon, tm_rtc.tm_mday);
 }
 
 // Returns the number of seconds, as an integer, since the Epoch.
