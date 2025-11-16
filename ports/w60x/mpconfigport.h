@@ -122,7 +122,7 @@
 // type definitions for the specific machine
 
 #define BYTES_PER_WORD (4)
-#define MICROPY_MAKE_POINTER_CALLABLE(p) ((void *)((uint32_t)(p) | 1))
+#define MICROPY_MAKE_POINTER_CALLABLE(p) ((void *)((mp_uint_t)(p) | 1))
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
 #define MP_SSIZE_MAX (0x7fffffff)
 
@@ -154,6 +154,6 @@
 #define UINT_FMT "%u"
 #define INT_FMT "%d"
 
-typedef int32_t mp_int_t; // must be pointer size
-typedef uint32_t mp_uint_t; // must be pointer size
+// mp_int_t and mp_uint_t are now defined in py/mpconfig.h
+// for OBJREPR D.
 typedef long mp_off_t;

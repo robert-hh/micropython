@@ -175,8 +175,8 @@ Some boards like the Wemos W600 require pushing reset at the start of the upload
 upload tool waits for synchronisation with the target board.
 Connecting pin PA0 to GND while pushing reset will ensure that the bootloader of the board
 will start and go into synchronization mode to allow the upload.
-Once the new Micropython firmware is on the board this grounding of PA0 is no longer necessary.
-Then you also may execute `machine.bootloader` from within Micropython to start the bootloader.
+Once the new MicroPython firmware is on the board this grounding of PA0 is no longer necessary.
+Then you also may execute `machine.bootloader` from within MicroPython to start the bootloader.
 
 Reference documents
 -----------------------
