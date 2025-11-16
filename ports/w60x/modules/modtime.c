@@ -35,7 +35,7 @@ static void mp_time_localtime_get(timeutils_struct_time_t *tm) {
     struct tm tm_rtc;
     tls_get_rtc(&tm_rtc);
 
-    tm->tm_year  = tm_rtc.tm_year + W600_YEAR_BASE;
+    tm->tm_year = tm_rtc.tm_year + W600_YEAR_BASE;
     tm->tm_mon = tm_rtc.tm_mon;
     tm->tm_mday = tm_rtc.tm_mday;
     tm->tm_hour = tm_rtc.tm_hour;
