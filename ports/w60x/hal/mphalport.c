@@ -49,8 +49,8 @@
 
 #define CNT_START_VALUE (0xffffffff)
 volatile uint64_t wdg_ticks_total;
-uint32_t wdg_ticks_reload_value = CNT_START_VALUE;
-static uint32_t ticks_per_us = 40;
+mp_uint_t wdg_ticks_reload_value = CNT_START_VALUE;
+static mp_uint_t ticks_per_us = 40;
 
 extern uint64_t get_wdg_counter_value(void);
 
@@ -75,7 +75,7 @@ void tls_sys_reset(void) {
     tls_reg_write32(HR_WDG_LOCK, 1);
 }
 
-void mp_hal_wdg_enable(uint32_t usec) {
+void mp_hal_wdg_enable(mp_uint_t usec) {
     // Adjust the wdg_ticks_total counter
     wdg_ticks_total += wdg_ticks_reload_value - tls_reg_read32(HR_WDG_CUR_VALUE);
     // Load the new value
@@ -124,30 +124,30 @@ uint64_t mp_hal_ticks_us64(void) {
     return r;
 }
 
-uint32_t mp_hal_ticks_ms(void) {
+mp_uint_t mp_hal_ticks_ms(void) {
     return mp_hal_ticks_us64() / 1000;
 }
 
-uint32_t mp_hal_ticks_us(void) {
+mp_uint_t mp_hal_ticks_us(void) {
     return mp_hal_ticks_us64();
 }
 
-static inline void delay(uint32_t us) {
+static inline void delay(mp_uint_t us) {
     if (us < 20) {
         volatile int32_t loops = ((int32_t)us - 2) * 6 + us / 10 * 6;
         while (loops > 0) {
             loops--;
         }
     } else {
-        uint32_t start = tls_reg_read32(HR_WDG_CUR_VALUE);
-        uint32_t diff = (us - 4) * ticks_per_us;
+        mp_uint_t start = tls_reg_read32(HR_WDG_CUR_VALUE);
+        mp_uint_t diff = (us - 4) * ticks_per_us;
         while ((start - tls_reg_read32(HR_WDG_CUR_VALUE)) < diff) {
             ;
         }
     }
 }
 
-static void __mp_hal_delay_ms(uint32_t ms) {
+static void __mp_hal_delay_ms(mp_uint_t ms) {
     if (ms / (1000 / HZ) > 0) {
         tls_os_time_delay(ms / (1000 / HZ));
     } else {
@@ -155,10 +155,10 @@ static void __mp_hal_delay_ms(uint32_t ms) {
     }
 }
 
-void mp_hal_delay_ms(uint32_t ms) {
+void mp_hal_delay_ms(mp_uint_t ms) {
     if (!tls_get_isr_count()) {
         // IRQs enabled, so can use systick counter to do the delay
-        uint32_t start = tls_os_get_time();
+        mp_uint_t start = tls_os_get_time();
         // Wraparound of tick is taken care of by 2's complement arithmetic.
         while ((tls_os_get_time() - start) < (ms / (1000 / HZ))) {
             // This macro will execute the necessary idle behaviour.  It may
@@ -175,7 +175,7 @@ void mp_hal_delay_ms(uint32_t ms) {
     }
 }
 
-void mp_hal_delay_us(uint32_t us) {
+void mp_hal_delay_us(mp_uint_t us) {
     if ((us / 1000) > 3) {
         mp_hal_delay_ms(us / 1000);
         delay(us % 1000);
@@ -184,11 +184,11 @@ void mp_hal_delay_us(uint32_t us) {
     }
 }
 
-void mp_hal_delay_us_fast(uint32_t us) {
+void mp_hal_delay_us_fast(mp_uint_t us) {
     delay(us);
 }
 
-uint32_t mp_hal_get_cpu_freq(void) {
+mp_uint_t mp_hal_get_cpu_freq(void) {
     tls_sys_clk sysclk;
     tls_sys_clk_get(&sysclk);
     return sysclk.cpuclk * 1000000;
