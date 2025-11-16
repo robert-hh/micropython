@@ -131,7 +131,7 @@ static mp_obj_t w600_get_version(void) {
     char buf[128];
     mp_uint_t flssize = 0;
     tls_fls_get_param(TLS_FLS_PARAM_TYPE_SIZE, &flssize);
-    int len = sprintf(buf, "%s, %ldM Flash, %c%x.%02x.%02x.%02x%02x, %c%x.%02x.%02x @ %s %s",
+    int len = sprintf(buf, "%s, %dM Flash, %c%x.%02x.%02x.%02x%02x, %c%x.%02x.%02x @ %s %s",
         MICROPY_W600_VERSION,
         flssize / 1048576,
         HwVer[0], HwVer[1], HwVer[2], HwVer[3], HwVer[4], HwVer[5],

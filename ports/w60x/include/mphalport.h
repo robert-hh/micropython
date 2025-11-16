@@ -51,15 +51,15 @@
 
 extern ringbuf_t stdin_ringbuf;
 
-uint32_t mp_hal_ticks_us(void);
-uint32_t mp_hal_ticks_ms(void);
+mp_uint_t mp_hal_ticks_us(void);
+mp_uint_t mp_hal_ticks_ms(void);
 
-void mp_hal_delay_us(uint32_t);
-void mp_hal_delay_us_fast(uint32_t);
+void mp_hal_delay_us(mp_uint_t);
+void mp_hal_delay_us_fast(mp_uint_t);
 void mp_hal_set_interrupt_char(int c);
-uint32_t mp_hal_get_cpu_freq(void);
+mp_uint_t mp_hal_get_cpu_freq(void);
 
-static inline uint32_t mp_hal_ticks_cpu(void) {
+static inline mp_uint_t mp_hal_ticks_cpu(void) {
     return CNT_START_VALUE - tls_reg_read32(HR_WDG_CUR_VALUE);
 }
 
