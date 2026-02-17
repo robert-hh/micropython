@@ -88,5 +88,6 @@ static inline int mp_hal_pin_read(mp_hal_pin_obj_t pin) {
     return tls_gpio_read(pin);
 }
 void mp_hal_pin_write(mp_hal_pin_obj_t pin, int v);
+void mp_hal_get_random(mp_uint_t n, uint8_t *buf);
 
 #endif // INCLUDED_MPHALPORT_H
