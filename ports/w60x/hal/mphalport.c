@@ -37,6 +37,8 @@
 #include "wm_watchdog.h"
 #include "wm_irq.h"
 #include "wm_rtc.h"
+#include "wm_adc.h"
+#include "wm_crypto_hard.h"
 #include "modmachine.h"
 
 #include "py/obj.h"
@@ -204,4 +206,40 @@ uint64_t mp_hal_time_ns(void) {
         tblock.tm_hour, tblock.tm_min, tblock.tm_sec);
     ns *= 1000000000ULL;
     return ns;
+}
+
+u32 w600_adc_get_allch_4bit_rst(void) {
+    extern u8 adc_irq_flag;
+    u32 average = 0;
+    int i = 0;
+
+    for (i = 0; i < 8; i++)
+    {
+        adc_get_offset();
+        tls_adc_init(0, 0);
+        tls_adc_reference_sel(ADC_REFERENCE_EXTERNAL);
+        adc_irq_flag = 0;
+        tls_adc_start_with_cpu(i);
+        tls_os_time_delay(2);
+        while (1) {
+            if (adc_irq_flag) {
+                adc_irq_flag = 0;
+                break;
+            }
+        }
+        average = (average << 4) | (tls_read_adc_result() & 0xF);
+        tls_adc_stop(0);
+    }
+
+    return average;
+}
+
+void mp_hal_get_random(mp_uint_t n, uint8_t * buf) {
+    static bool seeded = false; // Seed the RNG on the first call to uos.urandom
+    if (seeded == false) {
+        /* adc floating in the air can get the seed of true random number */
+        tls_crypto_random_init(w600_adc_get_allch_4bit_rst(), CRYPTO_RNG_SWITCH_32);
+        seeded = true;
+    }
+    tls_crypto_random_bytes((unsigned char *)buf, n);
 }
