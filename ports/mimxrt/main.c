@@ -129,8 +129,7 @@ int main(void) {
         #endif
 
         #if MICROPY_PY_LWIP
-        // mod_network_lwip_init();
-        systick_enable_dispatch(SYSTICK_DISPATCH_LWIP, mod_network_lwip_poll_wrapper);
+        mod_network_lwip_init();
         #endif
 
 

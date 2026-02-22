@@ -48,8 +48,8 @@
 #include "lib/cyw43-driver/src/cyw43.h"
 #endif
 
-// Poll lwIP every 128ms
-#define LWIP_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & 0x7f) == 0)
+// Poll lwIP every 32ms
+#define LWIP_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & 0x1f) == 0)
 
 u32_t sys_now(void) {
     return mp_hal_ticks_ms();
@@ -66,12 +66,9 @@ static void pyb_lwip_poll(void) {
     #endif
 }
 
-static bool network_poll_now_flag = false;
-
 void mod_network_lwip_poll_wrapper(uint32_t ticks_ms) {
-    if (LWIP_TICK(ticks_ms) || network_poll_now_flag) {
+    if (LWIP_TICK(ticks_ms)) {
         pendsv_schedule_dispatch(PENDSV_DISPATCH_LWIP, pyb_lwip_poll);
-        network_poll_now_flag = false;
     }
 
     #if MICROPY_PY_NETWORK_CYW43
@@ -86,7 +83,12 @@ void mod_network_lwip_poll_wrapper(uint32_t ticks_ms) {
 }
 
 void mod_network_poll_events(void) {
-    network_poll_now_flag = true;
+    pendsv_schedule_dispatch(PENDSV_DISPATCH_LWIP, pyb_lwip_poll);
+}
+
+
+void mod_network_lwip_init(void) {
+    systick_enable_dispatch(SYSTICK_DISPATCH_LWIP, mod_network_lwip_poll_wrapper);
 }
 
 #endif // MICROPY_PY_LWIP
