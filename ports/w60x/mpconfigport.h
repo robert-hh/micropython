@@ -51,7 +51,6 @@
 // extended modules
 #define MICROPY_PY_HASHLIB                  (0)  // Use the W60x version
 #define MICROPY_PY_HASHLIB_SHA256           (1)
-#define MICROPY_PY_OS_INCLUDEFILE           "ports/w60x/modules/modos.c"
 #define MICROPY_PY_OS_SYNC                  (1)
 #define MICROPY_PY_OS_DUPTERM               (1)
 #define MICROPY_PY_OS_DUPTERM_NOTIFY        (1)

@@ -36,14 +36,6 @@
 #include "modmachine.h"
 #endif
 
-int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen) {
-    tls_crypto_random_init(tls_os_get_time(), CRYPTO_RNG_SWITCH_32);
-    tls_crypto_random_bytes(output, len);
-    tls_crypto_random_stop();
-    *olen = len;
-    return 0;
-}
-
 #if defined(MBEDTLS_HAVE_TIME)
 time_t w60x_rtctime_seconds(time_t *timer) {
     struct tm tblock;

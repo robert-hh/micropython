@@ -234,7 +234,7 @@ u32 w600_adc_get_allch_4bit_rst(void) {
     return average;
 }
 
-void mp_hal_get_random(mp_uint_t n, uint8_t * buf) {
+void mp_hal_get_random(mp_uint_t n, uint8_t *buf) {
     static bool seeded = false; // Seed the RNG on the first call to uos.urandom
     if (seeded == false) {
         /* adc floating in the air can get the seed of true random number */
