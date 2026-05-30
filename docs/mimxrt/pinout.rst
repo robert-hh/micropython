@@ -425,8 +425,8 @@ These are provided for the other boards as well.
 |
 |
 
-Pin Assignment
---------------
+Encoder Counter pin assignment
+------------------------------
 
 Pins are specified in the same way as for the Pin class. The pins available for an
 assignment to the Encoder or Counter are:
