@@ -47,14 +47,13 @@
 #define CAN_SJW_MIN         1
 #define CAN_SJW_MAX         16
 
-#define CAN_TX_QUEUE_LEN    9
-#define CAN_TX_FIFO_LEN     16
-#define CAN_TX_FIFO_EMPTY   0
-#define CAN_TX_FIFO_LE_HALF_FULL 1
-#define CAN_TX_FIFO_GT_HALF_FULL 2
-#define CAN_TX_FIFO_FULL    3
+#define CAN_TX_QUEUE_LEN    32
 
 #define CAN_HW_MAX_FILTER   3
+
+#define CAN_MB_STATUS_FREE  0
+#define CAN_MB_STATUS_READY 1
+#define CAN_MB_STATUS_BUSY  2
 
 #if RTE_CANFD_CLK_SOURCE
     #define CANFD_CLK_DIVISOR (CANFD_CLK_SRC_160MHZ_CLK / RTE_CANFD_CLK_SPEED)
@@ -76,6 +75,16 @@
 #define ARM_CAN_STANDARD_ID(id)       (id & 0x000007FFUL)                         // < CAN identifier in standard format (11-bits)
 #define ARM_CAN_EXTENDED_ID(id)       ((id & 0x1FFFFFFFUL) | ARM_CAN_ID_IDE_Msk)  // < CAN identifier in extended format (29-bits)
 
+typedef struct machine_can_tx_queue {
+    uint8_t status;
+    canfd_tx_info_t tx_header;
+    #if MICROPY_HW_ENABLE_FDCAN
+    uint8_t data[CANFD_FAST_DATA_FRAME_SIZE_MAX];
+    #else
+    uint8_t data[CANFD_NOM_DATA_FRAME_SIZE_MAX];
+    #endif
+} machine_can_tx_queue_t;
+
 typedef struct machine_can_port {
     uint8_t can_hw_id;
     CANFD_Type *canfd_base;
@@ -91,6 +100,8 @@ typedef struct machine_can_port {
     canfd_transfer_t data_transfer;
     canfd_acpt_fltr_t filter_config[CANFD_MAX_ACCEPTANCE_FILTERS];
     int num_canfd_acpt_fltr;
+    machine_can_tx_queue_t tx_queue[CAN_TX_QUEUE_LEN];
+    int16_t id_sent;
 } machine_can_port_t;
 
 // Just one CAN device.
@@ -100,6 +111,8 @@ static machine_can_port_t canfd_port = {
     .canfd_cnt_base = (CANFD_CNT_Type *)CANFD_CNT_BASE,
     .can_state = MP_CAN_STATE_STOPPED,
 };
+
+static mp_int_t machine_can_send_next(machine_can_port_t *port);
 
 void CANFD_IRQHandler(void) {
     // Just one CAN device at index 0
@@ -151,20 +164,27 @@ void CANFD_IRQHandler(void) {
         }
 
         // Data RX and TX interrupts.
-        if (canfd_rx_msg_available(port->canfd_base)) {
+        if (irq_event & CANFD_RBUF_AVAILABLE_EVENT) {
             irq_flags |= MP_CAN_IRQ_RX;
         }
         if (irq_event & (CANFD_SECONDARY_BUF_TX_COMPLETE_EVENT | CANFD_PRIMARY_BUF_TX_COMPLETE_EVENT)) {
-            irq_flags |= MP_CAN_IRQ_TX;
+            irq_flags = (irq_flags & 0xffff) | MP_CAN_IRQ_TX | (port->id_sent << 16);
+            // Release the MB
+            if (port->id_sent >= 0) {
+                port->tx_queue[port->id_sent].status = CAN_MB_STATUS_FREE;
+            }
+            // Attempt to send the next one from the queue
+            port->id_sent = machine_can_send_next(port);
         }
         if (irq_event & CANFD_TX_ABORT_EVENT) {
             irq_flags |= (MP_CAN_IRQ_TX_FAILED | MP_CAN_IRQ_TX);
+            // Since the active message was cancelled, try to send the next one.
+            port->id_sent = machine_can_send_next(port);
         }
-
-        port->irq_flags = irq_flags;
 
         // Call the MP callback if the events match the trigger.
         if (irq_flags & self->mp_irq_trigger) {
+            port->irq_flags = irq_flags;
             mp_irq_handler(self->mp_irq_obj);
         }
         // Clear data and error interrupt flags
@@ -237,6 +257,8 @@ static void machine_can_update_irqs(machine_can_obj_t *self) {
 
     if (triggers & MP_CAN_IRQ_RX) {
         port->canfd_base->CANFD_RTIE |= CANFD_RTIE_RIE;
+    } else {
+        port->canfd_base->CANFD_RTIE &= ~CANFD_RTIE_RIE;
     }
     if (triggers & MP_CAN_IRQ_TX) {
         canfd_enable_tx_interrupts(port->canfd_base);
@@ -287,6 +309,8 @@ static void machine_can_port_init(machine_can_obj_t *self) {
     // Clear the TEC/REC error counters & leave a bus-off state
     port->canfd_base->CANFD_CFG_STAT |= CANFD_CFG_STAT_BUSOFF;
     port->can_state = MP_CAN_STATE_ACTIVE;
+    port->id_sent = -1;
+    memset(port->tx_queue, 0, sizeof(port->tx_queue));
 
     // Configure the Controller
     canfd_reset(port->canfd_base);
@@ -320,9 +344,14 @@ static void machine_can_port_init(machine_can_obj_t *self) {
     canfd_set_rbuf_almost_full_warn_limit(port->canfd_base, 14);
     canfd_set_err_warn_limit(port->canfd_base, 96); // This is the default
 
-    // Enable the CANFD interrupt events.
-    canfd_enable_rx_interrupts(port->canfd_base);
-    canfd_disable_tx_interrupts(port->canfd_base);
+    // Enable/Disable the CANFD interrupt events.
+    // Enable RX interrupt except CANFD_RTIE_RIE 
+    port->canfd_base->CANFD_RTIE =
+        (CANFD_RTIE_ROIE | CANFD_RTIE_RFIE | CANFD_RTIE_RAFIE);
+    if (self->mp_irq_trigger & MP_CAN_IRQ_RX) {
+        port->canfd_base->CANFD_RTIE |= CANFD_RTIE_RIE;
+    }
+    canfd_disable_tx_interrupts(port->canfd_base);  // Will be enabled on send
     canfd_enable_error_interrupts(port->canfd_base);
 
     // Enable the MCU interrupts for CANFD.
@@ -355,8 +384,69 @@ static void machine_can_port_deinit(machine_can_obj_t *self) {
     }
 }
 
+// Send the next message from the queue
+static mp_int_t machine_can_send_next(machine_can_port_t *port) {
+    machine_can_tx_queue_t *mb;
+    mp_int_t tx_mb = -1;
+
+    // Find the message with the highest priority
+    uint32_t id = UINT32_MAX;
+    for (mp_uint_t i = 0; i < CAN_TX_QUEUE_LEN; i++) {
+        mb = &port->tx_queue[i];
+        if ((mb->status == CAN_MB_STATUS_READY) && (mb->tx_header.id < id)) {
+            tx_mb = i;
+            id = mb->tx_header.id;
+        }
+    }
+
+    if (tx_mb >= 0) {
+        // MB found to be sent
+        machine_can_tx_queue_t *mb = &port->tx_queue[tx_mb];
+        mb->tx_header.id &= 0x1FFFFFFFUL; // Cut off the extra flags
+
+        // Invokes the low level functions to prepare and send the message
+        canfd_select_tx_buf(port->canfd_base, mb->tx_header.buf_type);
+        // Invokes interrupt mode send function
+        canfd_send(port->canfd_base, mb->tx_header, mb->data, mb->tx_header.dlc);
+
+        mb->status = CAN_MB_STATUS_BUSY;  // In transmission
+
+        // Enable TX interrupt, just in case it was not.
+        canfd_enable_tx_interrupts(port->canfd_base);
+    }
+    return tx_mb;
+}
+
+// Compare ID value only
+#define IS_MATCHING_ID(mb, id) (mb->tx_header.id == id)
+#define IS_MB_EMPTY(mb) (mb->status == CAN_MB_STATUS_FREE)
+
+static mp_int_t can_find_txmb(machine_can_port_t *port, uint32_t id, mp_uint_t flags) {
+    machine_can_tx_queue_t *mb;
+    mp_int_t tx_mb = -1;
+
+    for (mp_uint_t i = 0; i < CAN_TX_QUEUE_LEN; i++) {
+        mb = &port->tx_queue[i];
+        if (tx_mb == -1 && IS_MB_EMPTY(mb)) {
+            tx_mb = i; // First free slot
+            // Keep scanning, in case a higher numbered mbox has the same id
+            // Except if CAN_MSG_FLAG_UNORDERED
+            if (flags & CAN_MSG_FLAG_UNORDERED) {
+                break;
+            }
+        } else if (tx_mb >= 0 && IS_MATCHING_ID(mb, id) && !IS_MB_EMPTY(mb)) {
+            // This mailbox has a pending tx with the same id, so we can only pick a higher number
+            // mbox to ensure correct ordering
+            tx_mb = -1;
+        }
+    }
+    return tx_mb;
+}
+
 static mp_int_t machine_can_port_send(machine_can_obj_t *self, mp_uint_t id, const byte *data, size_t data_len, mp_uint_t flags) {
     struct machine_can_port *port = self->port;
+    mp_int_t tx_mb = -1;
+    uint32_t idx = 0;
 
     // If the node is in other than below modes, returns an error
     if ((self->mode != MP_CAN_MODE_NORMAL) &&
@@ -364,55 +454,64 @@ static mp_int_t machine_can_port_send(machine_can_obj_t *self, mp_uint_t id, con
         (self->mode != MP_CAN_MODE_SILENT_LOOPBACK)) {
         return -1;
     }
-    // Check if the FIFO is more than half full. If yes, return an error.
-    // If the check is made for FIFO being full, then the sending gets
-    // corrupted under heavy load. Reason to be determined.
-    if ((port->canfd_base->CANFD_TCTRL & CANFD_TCTRL_TSSTAT_Msk) >= CAN_TX_FIFO_GT_HALF_FULL) {
+
+
+    // Create a modified ID with Ext ID and RDR flags
+    if (flags & CAN_MSG_FLAG_EXT_ID) {
+        idx = (ARM_CAN_EXTENDED_ID(id)); // correct the flag later & (~ARM_CAN_ID_IDE_Msk));
+    } else {
+        idx = ARM_CAN_STANDARD_ID(id);
+    }
+    if (flags & CAN_MSG_FLAG_RTR) {
+        idx |= 1 << 30;
+    }
+    // Check if space is available in the TX Queue.
+    tx_mb = can_find_txmb(port, idx, flags);
+    if (tx_mb < 0) {
         return -1;
     }
 
-    memset(&port->data_transfer.tx_header, 0x0, sizeof(canfd_tx_info_t));
-    port->data_transfer.tx_header.buf_type = CANFD_BUF_TYPE_SECONDARY;
+    machine_can_tx_queue_t *mb = &port->tx_queue[tx_mb];
+    memset(mb, 0x0, sizeof(machine_can_tx_queue_t));
 
-    // Stores the message id based on message frame ID type
-    port->data_transfer.tx_header.frame_type = !!(flags & CAN_MSG_FLAG_EXT_ID);
+    // Set up the message header and copy the data
+    mb->tx_header.frame_type = !!(flags & CAN_MSG_FLAG_EXT_ID);
+    mb->tx_header.id = idx;
+    mb->tx_header.buf_type = CANFD_BUF_TYPE_PRIMARY;
+    mb->tx_header.edl = 0;
+    mb->tx_header.brs = !!(flags & CAN_MSG_FLAG_BRS);
+    mb->tx_header.dlc = data_len;
+    mb->tx_header.rtr = !!(flags & CAN_MSG_FLAG_RTR);
+    memcpy(mb->data, data, data_len);
 
-    if (port->data_transfer.tx_header.frame_type) {
-        port->data_transfer.tx_header.id = (ARM_CAN_EXTENDED_ID(id) & (~ARM_CAN_ID_IDE_Msk));
-    } else {
-        port->data_transfer.tx_header.id = ARM_CAN_STANDARD_ID(id);
+    mb->status = CAN_MB_STATUS_READY;  // Ready to be sent.
+
+    // Send the first message if nothing is in transmission
+    if (port->id_sent < 0) {
+        port->id_sent = machine_can_send_next(port);
     }
 
-    // Copies the message header
-    port->data_transfer.tx_header.edl = 0;
-    port->data_transfer.tx_header.brs = !!(flags & CAN_MSG_FLAG_BRS);
-    port->data_transfer.tx_header.dlc = data_len;
-    port->data_transfer.tx_header.rtr = !!(flags & CAN_MSG_FLAG_RTR);
-
-    // Invokes the low level functions to prepare and send the message
-    canfd_select_tx_buf(port->canfd_base, port->data_transfer.tx_header.buf_type);
-    // Invokes interrupt mode send function
-    canfd_send(port->canfd_base, port->data_transfer.tx_header, data, data_len);
-
-    // Enable TX interrupt.
-    canfd_enable_tx_interrupts(port->canfd_base);
-
-    // The alif CAN controller provides no information about the slot where the
-    // message is stored. So the return value is always 0.
-
-    return 0;
+    return tx_mb;
 }
 
 static bool machine_can_port_cancel_send(machine_can_obj_t *self, mp_uint_t idx) {
-    if (canfd_stb_empty(self->port->canfd_base)) {
-        // Nothing to cancel
-        return false;
-    } else {
-        // Cancel ALL queued messages, since a specific message cannot be selected.
-        canfd_abort_tx(self->port->canfd_base, CANFD_BUF_TYPE_SECONDARY);
-        // tbd: wait until the flag is set?
+    struct machine_can_port *port = self->port;
+    machine_can_tx_queue_t *mb = &port->tx_queue[idx];
+
+    if (mb->status == CAN_MB_STATUS_READY) {
+        mb->status = CAN_MB_STATUS_FREE;
+        port->irq_flags = (MP_CAN_IRQ_TX | MP_CAN_IRQ_TX_FAILED | (idx << 16));
+        if (port->irq_flags & self->mp_irq_trigger) {
+            mp_irq_handler(self->mp_irq_obj);
+        }
+        return true;
+    } else if (mb->status == CAN_MB_STATUS_BUSY) {
+        // Cancel messages waiting for transmission
+        canfd_abort_tx(self->port->canfd_base, CANFD_BUF_TYPE_PRIMARY);
+        mb->status = CAN_MB_STATUS_FREE;
         return true;
     }
+    return false;
 }
 
 static bool machine_can_port_recv(machine_can_obj_t *self, void *data, size_t *dlen, mp_uint_t *id, mp_uint_t *flags, mp_uint_t *errors) {
@@ -454,9 +553,10 @@ static machine_can_state_t machine_can_port_get_state(machine_can_obj_t *self) {
 
 // For now, just call deinit() and init() to restart.
 static void machine_can_port_restart(machine_can_obj_t *self) {
+    // Disable IRQ preventing IRQ from cancelling messages.
+    canfd_disable_tx_interrupts(self->port->canfd_base);
     // Cancel ALL queued messages, since a specific message cannot be selected.
-    canfd_abort_tx(self->port->canfd_base, CANFD_BUF_TYPE_SECONDARY);
-    machine_can_port_deinit(self);
+    canfd_abort_tx(self->port->canfd_base, CANFD_BUF_TYPE_PRIMARY);
     // init() clears the error counters, leave a bus-off state and
     // set the bus state to ACTIVE again.
     machine_can_port_init(self);
@@ -464,21 +564,26 @@ static void machine_can_port_restart(machine_can_obj_t *self) {
 
 // Updates values in self->counters (which counters are updated by this
 // function versus from ISRs and the like is port specific.
-// For tx_pending value only rough numbers of the queue size are available:
-// Empty->0, up to half full->1, more than half full->9, full->16.
 // For rx_pending value only the fact of pending messages is known.
 
 static void machine_can_port_update_counters(machine_can_obj_t *self) {
-    static uint8_t tx_queue_sizes[4] = { 0, 1, CAN_TX_FIFO_LEN / 2 + 1, CAN_TX_FIFO_LEN };
     struct machine_can_port *port = self->port;
+
     machine_can_counters_t *counters = &self->counters;
+
+    int tx_pending = 0;
+    for (mp_uint_t i = 0; i < CAN_TX_QUEUE_LEN; i++) {
+        if (port->tx_queue[i].status != CAN_MB_STATUS_FREE) {
+            tx_pending++;
+        }
+    }
 
     counters->tec = canfd_get_tx_error_count(port->canfd_base);
     counters->rec = canfd_get_rx_error_count(port->canfd_base);
     counters->num_warning = port->num_error_warning;
     counters->num_passive = port->num_error_passive;
     counters->num_bus_off = port->num_bus_off;
-    counters->tx_pending = tx_queue_sizes[(port->canfd_base->CANFD_TCTRL & CANFD_TCTRL_TSSTAT_Msk)];
+    counters->tx_pending = tx_pending;
     counters->rx_pending = canfd_rx_msg_available(port->canfd_base);
     counters->rx_overruns = port->num_rx_overrun;
 }
