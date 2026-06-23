@@ -71,12 +71,9 @@
 #define ARM_CAN_ID_IDE_Pos            31UL
 #define ARM_CAN_ID_IDE_Msk            (1UL << ARM_CAN_ID_IDE_Pos)
 
-/****** CAN Identifier encoding *****/
-#define ARM_CAN_STANDARD_ID(id)       (id & 0x000007FFUL)                         // < CAN identifier in standard format (11-bits)
-#define ARM_CAN_EXTENDED_ID(id)       ((id & 0x1FFFFFFFUL) | ARM_CAN_ID_IDE_Msk)  // < CAN identifier in extended format (29-bits)
-
 typedef struct machine_can_tx_queue {
     uint8_t status;
+    uint32_t priority;
     canfd_tx_info_t tx_header;
     #if MICROPY_HW_ENABLE_FDCAN
     uint8_t data[CANFD_FAST_DATA_FRAME_SIZE_MAX];
@@ -90,8 +87,9 @@ typedef struct machine_can_port {
     CANFD_Type *canfd_base;
     CANFD_CNT_Type *canfd_cnt_base;
     machine_can_state_t can_state;
-    machine_can_mode_t can_mode;
     bool is_enabled;
+    bool silent_abort;
+    int16_t id_sent;
     mp_int_t irq_flags;
     uint16_t num_error_warning;
     uint16_t num_error_passive;
@@ -101,7 +99,6 @@ typedef struct machine_can_port {
     canfd_acpt_fltr_t filter_config[CANFD_MAX_ACCEPTANCE_FILTERS];
     int num_canfd_acpt_fltr;
     machine_can_tx_queue_t tx_queue[CAN_TX_QUEUE_LEN];
-    int16_t id_sent;
 } machine_can_port_t;
 
 // Just one CAN device.
@@ -177,14 +174,18 @@ void CANFD_IRQHandler(void) {
             port->id_sent = machine_can_send_next(port);
         }
         if (irq_event & CANFD_TX_ABORT_EVENT) {
-            irq_flags |= (MP_CAN_IRQ_TX_FAILED | MP_CAN_IRQ_TX);
+            if (!port->silent_abort) {
+                irq_flags = (irq_flags & 0xffff) | (MP_CAN_IRQ_TX_FAILED | MP_CAN_IRQ_TX | (port->id_sent << 16));
+            }
+            port->silent_abort = false;
             // Since the active message was cancelled, try to send the next one.
             port->id_sent = machine_can_send_next(port);
         }
 
+        port->irq_flags = irq_flags;
+
         // Call the MP callback if the events match the trigger.
         if (irq_flags & self->mp_irq_trigger) {
-            port->irq_flags = irq_flags;
             mp_irq_handler(self->mp_irq_obj);
         }
         // Clear data and error interrupt flags
@@ -287,6 +288,14 @@ static void machine_can_port_init(machine_can_obj_t *self) {
         port = &canfd_port;
         self->port = port;
 
+        // port is in static RAM and not cleared unless there is a
+        // power cycle. Thus clearing the filter is required.
+        memset(port, 0, sizeof(machine_can_port_t));
+        port->can_hw_id = 1;
+        port->canfd_base = (CANFD_Type *)CANFD_BASE;
+        port->canfd_cnt_base = (CANFD_CNT_Type *)CANFD_CNT_BASE;
+        port->can_state = MP_CAN_STATE_STOPPED;
+
         // Both 160M and HFOSC clocks must be enabled even if only one
         // of them is used.
         enable_cgu_clk38p4m();
@@ -310,6 +319,7 @@ static void machine_can_port_init(machine_can_obj_t *self) {
     port->canfd_base->CANFD_CFG_STAT |= CANFD_CFG_STAT_BUSOFF;
     port->can_state = MP_CAN_STATE_ACTIVE;
     port->id_sent = -1;
+    port->silent_abort = false;
     memset(port->tx_queue, 0, sizeof(port->tx_queue));
 
     // Configure the Controller
@@ -345,7 +355,7 @@ static void machine_can_port_init(machine_can_obj_t *self) {
     canfd_set_err_warn_limit(port->canfd_base, 96); // This is the default
 
     // Enable/Disable the CANFD interrupt events.
-    // Enable RX interrupt except CANFD_RTIE_RIE 
+    // Enable RX interrupt except CANFD_RTIE_RIE
     port->canfd_base->CANFD_RTIE =
         (CANFD_RTIE_ROIE | CANFD_RTIE_RFIE | CANFD_RTIE_RAFIE);
     if (self->mp_irq_trigger & MP_CAN_IRQ_RX) {
@@ -389,20 +399,19 @@ static mp_int_t machine_can_send_next(machine_can_port_t *port) {
     machine_can_tx_queue_t *mb;
     mp_int_t tx_mb = -1;
 
-    // Find the message with the highest priority
-    uint32_t id = UINT32_MAX;
+    // Find the message with the highest priority (== lowest value)
+    uint32_t priority = UINT32_MAX;
     for (mp_uint_t i = 0; i < CAN_TX_QUEUE_LEN; i++) {
         mb = &port->tx_queue[i];
-        if ((mb->status == CAN_MB_STATUS_READY) && (mb->tx_header.id < id)) {
+        if ((mb->status == CAN_MB_STATUS_READY) && (mb->priority < priority)) {
             tx_mb = i;
-            id = mb->tx_header.id;
+            priority = mb->priority;
         }
     }
 
     if (tx_mb >= 0) {
         // MB found to be sent
         machine_can_tx_queue_t *mb = &port->tx_queue[tx_mb];
-        mb->tx_header.id &= 0x1FFFFFFFUL; // Cut off the extra flags
 
         // Invokes the low level functions to prepare and send the message
         canfd_select_tx_buf(port->canfd_base, mb->tx_header.buf_type);
@@ -417,11 +426,42 @@ static mp_int_t machine_can_send_next(machine_can_port_t *port) {
     return tx_mb;
 }
 
+// Check, if the actual BUSY message has to be replaced
+#if 1
+static void machine_can_reorder_queue(machine_can_port_t *port) {
+    machine_can_tx_queue_t *mb;
+    mp_int_t tx_mb = -1;
+    mp_int_t busy_mb = -1;
+
+    // Find the message with the highest priority (== lowest value)
+    uint32_t priority = UINT32_MAX;
+    for (mp_uint_t i = 0; i < CAN_TX_QUEUE_LEN; i++) {
+        mb = &port->tx_queue[i];
+        if ((mb->status == CAN_MB_STATUS_READY) && (mb->priority < priority)) {
+            tx_mb = i;
+            priority = mb->priority;
+        }
+        if (mb->status == CAN_MB_STATUS_BUSY) {
+            busy_mb = i;
+        }
+        // mp_printf(MP_PYTHON_PRINTER, "%d ", mb->status);
+    }
+    // mp_printf(MP_PYTHON_PRINTER, "\n");
+    if ((busy_mb >= 0) && (busy_mb != tx_mb)
+        && (port->tx_queue[tx_mb].priority < port->tx_queue[busy_mb].priority)) {
+        // A new message has a higher priority than the waiting message. Cancel it.
+        port->silent_abort = true;
+        port->tx_queue[busy_mb].status = CAN_MB_STATUS_READY;
+        canfd_abort_tx(port->canfd_base, CANFD_BUF_TYPE_PRIMARY);
+    }
+}
+#endif
+
 // Compare ID value only
-#define IS_MATCHING_ID(mb, id) (mb->tx_header.id == id)
+#define IS_MATCHING_ID(mb, priority) (mb->priority == priority)
 #define IS_MB_EMPTY(mb) (mb->status == CAN_MB_STATUS_FREE)
 
-static mp_int_t can_find_txmb(machine_can_port_t *port, uint32_t id, mp_uint_t flags) {
+static mp_int_t can_find_txmb(machine_can_port_t *port, uint32_t priority, mp_uint_t flags) {
     machine_can_tx_queue_t *mb;
     mp_int_t tx_mb = -1;
 
@@ -429,13 +469,13 @@ static mp_int_t can_find_txmb(machine_can_port_t *port, uint32_t id, mp_uint_t f
         mb = &port->tx_queue[i];
         if (tx_mb == -1 && IS_MB_EMPTY(mb)) {
             tx_mb = i; // First free slot
-            // Keep scanning, in case a higher numbered mbox has the same id
+            // Keep scanning, in case a higher numbered mbox has the same priority
             // Except if CAN_MSG_FLAG_UNORDERED
             if (flags & CAN_MSG_FLAG_UNORDERED) {
                 break;
             }
-        } else if (tx_mb >= 0 && IS_MATCHING_ID(mb, id) && !IS_MB_EMPTY(mb)) {
-            // This mailbox has a pending tx with the same id, so we can only pick a higher number
+        } else if (tx_mb >= 0 && IS_MATCHING_ID(mb, priority) && !IS_MB_EMPTY(mb)) {
+            // This mailbox has a pending tx with the same id & flags, so we can only pick a higher number
             // mbox to ensure correct ordering
             tx_mb = -1;
         }
@@ -446,7 +486,7 @@ static mp_int_t can_find_txmb(machine_can_port_t *port, uint32_t id, mp_uint_t f
 static mp_int_t machine_can_port_send(machine_can_obj_t *self, mp_uint_t id, const byte *data, size_t data_len, mp_uint_t flags) {
     struct machine_can_port *port = self->port;
     mp_int_t tx_mb = -1;
-    uint32_t idx = 0;
+    uint32_t priority;
 
     // If the node is in other than below modes, returns an error
     if ((self->mode != MP_CAN_MODE_NORMAL) &&
@@ -456,27 +496,32 @@ static mp_int_t machine_can_port_send(machine_can_obj_t *self, mp_uint_t id, con
     }
 
 
-    // Create a modified ID with Ext ID and RDR flags
+    // Create a priority tag with Ext ID and RTR flags for fast comparison.
+    // Format Std: 0000.0000.0000.0000.0000.IIII.IIII.IIIR
+    // Format Ext: X0II.IIII.IIII.IIII.IIII.IIII.IIII.IIIR
+
     if (flags & CAN_MSG_FLAG_EXT_ID) {
-        idx = (ARM_CAN_EXTENDED_ID(id)); // correct the flag later & (~ARM_CAN_ID_IDE_Msk));
+        priority = ((id & 0x1FFFFFFFUL) << 1) | ARM_CAN_ID_IDE_Msk;
     } else {
-        idx = ARM_CAN_STANDARD_ID(id);
+        priority = (id & 0x000007FFUL) << 1;
     }
     if (flags & CAN_MSG_FLAG_RTR) {
-        idx |= 1 << 30;
+        priority |= 1;
     }
+
     // Check if space is available in the TX Queue.
-    tx_mb = can_find_txmb(port, idx, flags);
+    tx_mb = can_find_txmb(port, priority, flags);
     if (tx_mb < 0) {
         return -1;
     }
 
     machine_can_tx_queue_t *mb = &port->tx_queue[tx_mb];
     memset(mb, 0x0, sizeof(machine_can_tx_queue_t));
+    mb->priority = priority;
 
     // Set up the message header and copy the data
     mb->tx_header.frame_type = !!(flags & CAN_MSG_FLAG_EXT_ID);
-    mb->tx_header.id = idx;
+    mb->tx_header.id = id & 0x1FFFFFFFUL; // Cut off any extra flags
     mb->tx_header.buf_type = CANFD_BUF_TYPE_PRIMARY;
     mb->tx_header.edl = 0;
     mb->tx_header.brs = !!(flags & CAN_MSG_FLAG_BRS);
@@ -486,10 +531,11 @@ static mp_int_t machine_can_port_send(machine_can_obj_t *self, mp_uint_t id, con
 
     mb->status = CAN_MB_STATUS_READY;  // Ready to be sent.
 
-    // Send the first message if nothing is in transmission
+    // Try to send the message
     if (port->id_sent < 0) {
         port->id_sent = machine_can_send_next(port);
     }
+    machine_can_reorder_queue(port);
 
     return tx_mb;
 }
